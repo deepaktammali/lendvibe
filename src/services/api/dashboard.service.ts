@@ -1,12 +1,11 @@
 import {
-  getBorrowers as dbGetBorrowers,
-  getLoans as dbGetLoans,
-  getPayments as dbGetPayments,
-  getFixedIncomes as dbGetFixedIncomes,
-  getLoansWithCalculatedBalances as dbGetLoansWithCalculatedBalances,
   getPayments as dbGetAllPayments,
+  getBorrowers as dbGetBorrowers,
+  getFixedIncomes as dbGetFixedIncomes,
+  getLoans as dbGetLoans,
+  getLoansWithCalculatedBalances as dbGetLoansWithCalculatedBalances
 } from '@/lib/database';
-import type { Borrower, Loan, Payment, FixedIncome } from '@/types/database';
+import type { LoanWithBorrowerAndDueDate, PaymentWithBorrowerInfo, RecentActivity } from '@/types/api/dashboard';
 
 export interface DashboardSummary {
   totalBorrowers: number;
@@ -16,8 +15,8 @@ export interface DashboardSummary {
   activeLoans: number;
   totalOutstandingBalance: number;
   totalPaidAmount: number;
-  recentPayments: Array<Payment & { borrower_name: string; loan_principal: number }>;
-  upcomingPayments: Array<Loan & { borrower_name: string; days_until_due: number }>;
+  recentPayments: PaymentWithBorrowerInfo[];
+  upcomingPayments: LoanWithBorrowerAndDueDate[];
 }
 
 export interface DashboardStats {
@@ -41,16 +40,6 @@ export interface DashboardStats {
     active: number;
     totalIncome: number;
   };
-}
-
-export interface RecentActivity {
-  id: string;
-  type: 'borrower' | 'loan' | 'payment' | 'fixed_income';
-  action: 'created' | 'updated' | 'deleted';
-  entity_id: string;
-  entity_name: string;
-  timestamp: string;
-  details?: Record<string, any>;
 }
 
 export const dashboardService = {

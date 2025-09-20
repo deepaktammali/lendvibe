@@ -2,31 +2,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import {
-  createLoan,
-  deleteLoan,
-  getBorrowers,
-  getLoansWithCalculatedBalances,
-  updateLoanStatus
-} from '@/lib/database';
+import { useGetBorrowers } from '@/hooks/api/useBorrowers';
+import { useCreateLoan, useDeleteLoan, useGetLoansWithCalculatedBalances, useUpdateLoanStatus } from '@/hooks/api/useLoans';
+import { getLoanTypeLabel, getLoanTypesByCategory, isFixedIncomeType, isTraditionalLoanType, LOAN_CATEGORY_LABELS } from '@/lib/loans';
 import { loanSchema, type LoanFormData } from '@/lib/validation';
-import { getLoanTypeLabel, getLoanTypesByCategory, LOAN_CATEGORY_LABELS, isFixedIncomeType, isTraditionalLoanType } from '@/lib/loans';
-import type { Borrower, Loan } from '@/types/database';
+import type { Loan } from '@/types/api/loans';
 import { useForm } from '@tanstack/react-form';
 import { AlertCircle, Calendar, Eye, IndianRupee, Percent, Plus, Search, Trash2, User } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-
-
-
-interface LoanWithCalculatedBalance extends Loan {
-  borrower_name: string;
-  real_remaining_principal: number;
-}
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -41,32 +28,16 @@ const formatDate = (dateString: string) => {
 
 export default function Loans() {
   const navigate = useNavigate();
-  const [loans, setLoans] = useState<LoanWithCalculatedBalance[]>([]);
-  const [borrowers, setBorrowers] = useState<Borrower[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    try {
-      const [loansWithCalculatedBalances, borrowersData] = await Promise.all([
-        getLoansWithCalculatedBalances(),
-        getBorrowers()
-      ]);
-
-      setLoans(loansWithCalculatedBalances);
-      setBorrowers(borrowersData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use the new TanStack Query hooks
+  const { data: loans = [], isLoading: loading, error } = useGetLoansWithCalculatedBalances();
+  const { data: borrowers = [] } = useGetBorrowers();
+  const createLoanMutation = useCreateLoan();
+  const deleteLoanMutation = useDeleteLoan();
+  const updateLoanStatusMutation = useUpdateLoanStatus();
 
   const loanForm = useForm({
     defaultValues: {
@@ -106,14 +77,11 @@ export default function Loans() {
           start_date: value.start_date,
           repayment_interval_unit: value.repayment_interval_unit,
           repayment_interval_value: value.repayment_interval_value,
-          current_balance: value.principal_amount,
-          status: 'active' as const
         };
 
-        await createLoan(loanData);
+        await createLoanMutation.mutateAsync(loanData);
         setIsAddDialogOpen(false);
         loanForm.reset();
-        await loadData();
       } catch (error) {
         console.error('Failed to create loan:', error);
       }
@@ -122,8 +90,7 @@ export default function Loans() {
 
   const handleStatusChange = async (loanId: string, newStatus: Loan['status']) => {
     try {
-      await updateLoanStatus(loanId, newStatus);
-      await loadData();
+      await updateLoanStatusMutation.mutateAsync({ id: loanId, status: newStatus });
     } catch (error) {
       console.error('Failed to update loan status:', error);
     }
@@ -132,8 +99,7 @@ export default function Loans() {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this loan? This action cannot be undone.')) {
       try {
-        await deleteLoan(id);
-        await loadData();
+        await deleteLoanMutation.mutateAsync(id);
       } catch (error) {
         console.error('Failed to delete loan:', error);
       }

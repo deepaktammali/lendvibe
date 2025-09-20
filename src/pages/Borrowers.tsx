@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useGetBorrowers, useCreateBorrower, useUpdateBorrower, useDeleteBorrower } from '@/hooks/api/useBorrowers';
 import { borrowerSchema, type BorrowerFormData } from '@/lib/validation';
-import type { Borrower } from '@/types/database';
+import type { Borrower } from '@/types/api/borrowers';
 
 
 export default function Borrowers() {

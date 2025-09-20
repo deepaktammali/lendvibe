@@ -10,7 +10,7 @@ import {
   updateLoanStatus,
   getLoan,
 } from '@/lib/database';
-import type { Payment } from '@/types/database';
+import type { Payment } from '@/types/api/payments';
 import type { CreatePayment } from '@/types/api/payments';
 
 export type CreatePaymentData = CreatePayment.Payload;
@@ -29,20 +29,77 @@ export interface PaymentWithDetails extends Payment {
 }
 
 export const paymentService = {
-  async getPayments(): Promise<Payment[]> {
-    return await dbGetPayments();
+  async getPayments(): Promise<PaymentWithDetails[]> {
+    const dbPayments = await dbGetPayments();
+    // Transform database types to API types with borrower information
+    // Note: In a real implementation, this would join with borrower/loan tables
+    // For now, we'll return basic payment data
+    return dbPayments.map(dbPayment => ({
+      id: dbPayment.id,
+      loan_id: dbPayment.loan_id,
+      amount: dbPayment.amount,
+      payment_type: dbPayment.payment_type,
+      principal_amount: dbPayment.principal_amount,
+      interest_amount: dbPayment.interest_amount,
+      payment_date: dbPayment.payment_date,
+      created_at: dbPayment.created_at,
+      borrower_name: 'Unknown', // Would need to join with borrower data
+      loan_principal: 0, // Would need to join with loan data
+    }));
   },
 
   async getPaymentsByLoan(loanId: string): Promise<Payment[]> {
-    return await dbGetPaymentsByLoan(loanId);
+    const dbPayments = await dbGetPaymentsByLoan(loanId);
+    // Transform database types to API types
+    return dbPayments.map(dbPayment => ({
+      id: dbPayment.id,
+      loan_id: dbPayment.loan_id,
+      amount: dbPayment.amount,
+      payment_type: dbPayment.payment_type,
+      principal_amount: dbPayment.principal_amount,
+      interest_amount: dbPayment.interest_amount,
+      payment_date: dbPayment.payment_date,
+      created_at: dbPayment.created_at,
+    }));
   },
 
   async getLastPaymentByLoan(loanId: string): Promise<Payment | null> {
-    return await dbGetLastPaymentByLoan(loanId);
+    const dbPayment = await dbGetLastPaymentByLoan(loanId);
+    if (!dbPayment) return null;
+
+    // Transform database type to API type
+    return {
+      id: dbPayment.id,
+      loan_id: dbPayment.loan_id,
+      amount: dbPayment.amount,
+      payment_type: dbPayment.payment_type,
+      principal_amount: dbPayment.principal_amount,
+      interest_amount: dbPayment.interest_amount,
+      payment_date: dbPayment.payment_date,
+      created_at: dbPayment.created_at,
+    };
   },
 
   async getLastPaymentsByLoans(loanIds: string[]): Promise<Map<string, Payment>> {
-    return await dbGetLastPaymentsByLoans(loanIds);
+    const dbPaymentsMap = await dbGetLastPaymentsByLoans(loanIds);
+    const apiPaymentsMap = new Map<string, Payment>();
+
+    for (const [loanId, dbPayment] of dbPaymentsMap) {
+      if (dbPayment) {
+        apiPaymentsMap.set(loanId, {
+          id: dbPayment.id,
+          loan_id: dbPayment.loan_id,
+          amount: dbPayment.amount,
+          payment_type: dbPayment.payment_type,
+          principal_amount: dbPayment.principal_amount,
+          interest_amount: dbPayment.interest_amount,
+          payment_date: dbPayment.payment_date,
+          created_at: dbPayment.created_at,
+        });
+      }
+    }
+
+    return apiPaymentsMap;
   },
 
   async createPayment(data: CreatePaymentData): Promise<Payment> {
@@ -54,25 +111,35 @@ export const paymentService = {
     const totalAmount = data.principal_amount + data.interest_amount;
     const newBalance = loan.current_balance - data.principal_amount;
 
-    const paymentData: Omit<Payment, 'id' | 'created_at'> = {
+    const paymentData = {
       loan_id: data.loan_id,
       amount: totalAmount,
       payment_date: data.payment_date,
       principal_amount: data.principal_amount,
       interest_amount: data.interest_amount,
-      payment_type: data.principal_amount > 0 && data.interest_amount > 0
+      payment_type: (data.principal_amount > 0 && data.interest_amount > 0
         ? 'mixed'
-        : data.principal_amount > 0 ? 'principal' : 'interest',
+        : data.principal_amount > 0 ? 'principal' : 'interest') as Payment['payment_type'],
     };
 
-    const payment = await dbCreatePayment(paymentData);
+    const dbPayment = await dbCreatePayment(paymentData);
     await updateLoanBalance(data.loan_id, Math.max(0, newBalance));
 
     if (newBalance <= 0.005) {
       await updateLoanStatus(data.loan_id, 'paid_off');
     }
 
-    return payment;
+    // Transform database type to API type
+    return {
+      id: dbPayment.id,
+      loan_id: dbPayment.loan_id,
+      amount: dbPayment.amount,
+      payment_type: dbPayment.payment_type,
+      principal_amount: dbPayment.principal_amount,
+      interest_amount: dbPayment.interest_amount,
+      payment_date: dbPayment.payment_date,
+      created_at: dbPayment.created_at,
+    };
   },
 
   async updatePayment(id: string, data: UpdatePaymentData, originalPayment: Payment): Promise<void> {

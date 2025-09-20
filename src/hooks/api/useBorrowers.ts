@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { borrowerService, borrowerKeys, type CreateBorrowerData, type UpdateBorrowerData } from '@/services/api/borrowers.service';
-import type { Borrower } from '@/types/database';
+import type { Borrower } from '@/types/api/borrowers';
 
 export function useGetBorrowers() {
   return useQuery({

@@ -1,4 +1,27 @@
-import type { Loan } from '../database';
+export interface Loan {
+  id: string;
+  borrower_id: string;
+  loan_type: 'installment' | 'bullet';
+  principal_amount: number;
+  interest_rate: number;
+  term_months: number;
+  start_date: string; // YYYY-MM-DD format
+  status: 'active' | 'paid_off' | 'defaulted';
+  current_balance: number;
+  repayment_interval_unit?: 'days' | 'weeks' | 'months' | 'years';
+  repayment_interval_value?: number;
+  end_date?: string; // YYYY-MM-DD format
+  created_at: string;
+}
+
+export interface LoanWithBorrower extends Loan {
+  borrower_name: string;
+}
+
+export interface LoanWithCalculatedBalance extends Loan {
+  borrower_name: string;
+  real_remaining_principal: number;
+}
 
 // Query Types
 namespace GetLoans {
@@ -23,11 +46,11 @@ namespace GetLoansByBorrower {
 }
 
 namespace GetLoansWithBorrowers {
-  export type Response = Array<Loan & { borrower_name: string }>;
+  export type Response = LoanWithBorrower[];
 }
 
 namespace GetLoansWithCalculatedBalances {
-  export type Response = Array<Loan & { borrower_name: string; real_remaining_principal: number }>;
+  export type Response = LoanWithCalculatedBalance[];
 }
 
 namespace GetRealRemainingPrincipal {

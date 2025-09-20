@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Search, IndianRupee, Receipt, Calendar, TrendingUp, User, Edit, Trash2 } from 'lucide-react';
 import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
@@ -10,19 +10,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  getPayments,
-  createPayment,
-  getLoans,
-  getBorrowers,
-  updateLoanBalance,
-  getLoan,
-  updateLoanStatus,
-  updatePayment,
-  deletePayment
-} from '@/lib/database';
+import { useGetPaymentsWithDetails, useCreatePayment, useUpdatePayment, useDeletePayment } from '@/hooks/api/usePayments';
+import { useGetLoans } from '@/hooks/api/useLoans';
+import { useGetBorrowers } from '@/hooks/api/useBorrowers';
 import { paymentFormSchema, type PaymentFormInput } from '@/lib/validation';
-import type { Payment, Loan, Borrower } from '@/types/database';
+import type { Payment } from '@/types/api/payments';
 
 
 interface PaymentWithDetails extends Payment {
@@ -31,10 +23,6 @@ interface PaymentWithDetails extends Payment {
 }
 
 export default function Payments() {
-  const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
-  const [loans, setLoans] = useState<Loan[]>([]);
-  const [borrowers, setBorrowers] = useState<Borrower[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -42,39 +30,13 @@ export default function Payments() {
   const [editingPayment, setEditingPayment] = useState<PaymentWithDetails | null>(null);
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-
-  const loadData = async () => {
-    try {
-      const [paymentsData, loansData, borrowersData] = await Promise.all([
-        getPayments(),
-        getLoans(),
-        getBorrowers()
-      ]);
-
-      const paymentsWithDetails: PaymentWithDetails[] = paymentsData.map(payment => {
-        const loan = loansData.find(l => l.id === payment.loan_id);
-        const borrower = borrowersData.find(b => b.id === loan?.borrower_id);
-        
-        return {
-          ...payment,
-          borrower_name: borrower?.name || 'Unknown Borrower',
-          loan_principal: loan?.principal_amount || 0
-        };
-      });
-
-      setPayments(paymentsWithDetails);
-      setLoans(loansData.filter(loan => loan.status === 'active'));
-      setBorrowers(borrowersData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use the new TanStack Query hooks
+  const { data: payments = [], isLoading: loading, error } = useGetPaymentsWithDetails();
+  const { data: loans = [] } = useGetLoans();
+  const { data: borrowers = [] } = useGetBorrowers();
+  const createPaymentMutation = useCreatePayment();
+  const updatePaymentMutation = useUpdatePayment();
+  const deletePaymentMutation = useDeletePayment();
 
   const editForm = useForm({
     defaultValues: {
@@ -90,50 +52,28 @@ export default function Payments() {
       if (!editingPayment) return;
 
       try {
-        const oldLoan = await getLoan(editingPayment.loan_id);
-        const newLoan = await getLoan(value.loan_id);
-
-        if (!oldLoan || !newLoan) {
-          throw new Error('Loan not found');
-        }
-
         const totalAmount = value.principal_amount + value.interest_amount;
 
-        // Calculate balance changes
-        const oldPrincipalChange = editingPayment.principal_amount;
-        const newPrincipalChange = value.principal_amount;
-
-        // Update the payment
-        await updatePayment(editingPayment.id, {
+        const updateData = {
           loan_id: value.loan_id,
           amount: totalAmount,
           payment_date: value.payment_date,
           principal_amount: value.principal_amount,
           interest_amount: value.interest_amount,
-          payment_type: value.principal_amount > 0 && value.interest_amount > 0
+          payment_type: (value.principal_amount > 0 && value.interest_amount > 0
             ? 'mixed'
-            : value.principal_amount > 0 ? 'principal' : 'interest',
+            : value.principal_amount > 0 ? 'principal' : 'interest') as Payment['payment_type'],
+        };
+
+        await updatePaymentMutation.mutateAsync({
+          id: editingPayment.id,
+          data: updateData,
+          originalPayment: editingPayment
         });
-
-        // Recalculate loan balances
-        if (editingPayment.loan_id === value.loan_id) {
-          // Same loan - adjust balance by the difference
-          const balanceDifference = newPrincipalChange - oldPrincipalChange;
-          const newBalance = oldLoan.current_balance - balanceDifference;
-          await updateLoanBalance(value.loan_id, Math.max(0, newBalance));
-        } else {
-          // Different loans - restore old loan balance and reduce new loan balance
-          const oldLoanNewBalance = oldLoan.current_balance + oldPrincipalChange;
-          await updateLoanBalance(editingPayment.loan_id, oldLoanNewBalance);
-
-          const newLoanNewBalance = newLoan.current_balance - newPrincipalChange;
-          await updateLoanBalance(value.loan_id, Math.max(0, newLoanNewBalance));
-        }
 
         setIsEditDialogOpen(false);
         setEditingPayment(null);
         editForm.reset();
-        await loadData();
       } catch (error) {
         console.error('Failed to update payment:', error);
       }
@@ -152,35 +92,16 @@ export default function Payments() {
     },
     onSubmit: async ({ value }) => {
       try {
-        const loan = await getLoan(value.loan_id);
-        if (!loan) {
-          throw new Error('Loan not found');
-        }
-
-        const totalAmount = value.principal_amount + value.interest_amount;
-        const newBalance = loan.current_balance - value.principal_amount;
-
-        const paymentData: Omit<Payment, 'id' | 'created_at'> = {
+        const paymentData = {
           loan_id: value.loan_id,
-          amount: totalAmount,
-          payment_date: value.payment_date,
           principal_amount: value.principal_amount,
           interest_amount: value.interest_amount,
-          payment_type: value.principal_amount > 0 && value.interest_amount > 0
-            ? 'mixed'
-            : value.principal_amount > 0 ? 'principal' : 'interest',
+          payment_date: value.payment_date,
         };
 
-        await createPayment(paymentData);
-        await updateLoanBalance(value.loan_id, Math.max(0, newBalance));
-
-        if (newBalance <= 0.005) {
-          await updateLoanStatus(value.loan_id, 'paid_off');
-        }
-        
+        await createPaymentMutation.mutateAsync(paymentData);
         setIsAddDialogOpen(false);
         paymentForm.reset();
-        await loadData();
       } catch (error) {
         console.error('Failed to record payment:', error);
       }
@@ -201,18 +122,12 @@ export default function Payments() {
       const payment = payments.find(p => p.id === paymentId);
       if (!payment) return;
 
-      const loan = await getLoan(payment.loan_id);
-      if (!loan) return;
-
-      // Restore the principal amount to the loan balance
-      const newBalance = loan.current_balance + payment.principal_amount;
-      await updateLoanBalance(payment.loan_id, newBalance);
-
-      // Delete the payment
-      await deletePayment(paymentId);
+      await deletePaymentMutation.mutateAsync({
+        id: paymentId,
+        payment: payment
+      });
 
       setDeletePaymentId(null);
-      await loadData();
     } catch (error) {
       console.error('Failed to delete payment:', error);
     }

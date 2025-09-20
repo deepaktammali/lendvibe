@@ -1,4 +1,14 @@
-import type { Payment } from '../database';
+// API Types - separate from database types
+export interface Payment {
+  id: string;
+  loan_id: string;
+  amount: number;
+  payment_type: 'principal' | 'interest' | 'mixed';
+  principal_amount: number;
+  interest_amount: number;
+  payment_date: string; // YYYY-MM-DD format
+  created_at: string;
+}
 
 // Query Types
 namespace GetPayments {

@@ -1,11 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { paymentService, paymentKeys, type CreatePaymentData, type UpdatePaymentData } from '@/services/api/payments.service';
 import { loanKeys } from '@/services/api/loans.service';
-import type { Payment } from '@/types/database';
+import type { Payment } from '@/types/api/payments';
 
 export function useGetPayments() {
   return useQuery({
     queryKey: paymentKeys.lists(),
+    queryFn: paymentService.getPayments,
+  });
+}
+
+export function useGetPaymentsWithDetails() {
+  return useQuery({
+    queryKey: [...paymentKeys.lists(), 'withDetails'],
     queryFn: paymentService.getPayments,
   });
 }

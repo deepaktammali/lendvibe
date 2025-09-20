@@ -1,67 +1,42 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Search, IndianRupee, Calendar, Clock, TrendingUp, User, Eye, Trash2 } from 'lucide-react';
-import { useForm } from '@tanstack/react-form';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import {
-  createFixedIncome,
-  deleteFixedIncome,
-  getBorrowers,
-  getFixedIncomesWithTenants
-} from '@/lib/database';
+import { useGetBorrowers } from '@/hooks/api/useBorrowers';
+import { useCreateFixedIncome, useDeleteFixedIncome, useGetFixedIncomesWithTenants } from '@/hooks/api/useFixedIncome';
 import { fixedIncomeSchema, type FixedIncomeFormData } from '@/lib/validation';
+import type { FixedIncome } from '@/types/api/fixedIncome';
 import { FIXED_INCOME_TYPE_LABELS } from '@/types/database';
-import type { Borrower, FixedIncome } from '@/types/database';
-
-interface FixedIncomeWithTenant extends FixedIncome {
-  tenant_name: string;
-}
-
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-  }).format(amount);
-};
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString();
-};
+import { useForm } from '@tanstack/react-form';
+import { Calendar, Clock, Eye, IndianRupee, Plus, Search, Trash2, TrendingUp, User } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export default function FixedIncome() {
   const navigate = useNavigate();
-  const [fixedIncomes, setFixedIncomes] = useState<FixedIncomeWithTenant[]>([]);
-  const [borrowers, setBorrowers] = useState<Borrower[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Use the new TanStack Query hooks
+  const { data: fixedIncomes = [], isLoading: loading, error } = useGetFixedIncomesWithTenants();
+  const { data: borrowers = [] } = useGetBorrowers();
+  const createFixedIncomeMutation = useCreateFixedIncome();
+  const deleteFixedIncomeMutation = useDeleteFixedIncome();
 
-  const loadData = async () => {
-    try {
-      const [fixedIncomeData, borrowersData] = await Promise.all([
-        getFixedIncomesWithTenants(),
-        getBorrowers()
-      ]);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount);
+  };
 
-      setFixedIncomes(fixedIncomeData);
-      setBorrowers(borrowersData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    } finally {
-      setLoading(false);
-    }
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
   };
 
   const fixedIncomeForm = useForm({
@@ -81,7 +56,7 @@ export default function FixedIncome() {
     },
     onSubmit: async ({ value }) => {
       try {
-        const fixedIncomeData: Omit<FixedIncome, 'id' | 'created_at'> = {
+        const fixedIncomeData = {
           tenant_id: value.tenant_id,
           income_type: value.income_type,
           principal_amount: value.principal_amount,
@@ -90,25 +65,21 @@ export default function FixedIncome() {
           payment_interval_value: value.payment_interval_value,
           start_date: value.start_date,
           end_date: value.hasEndDate ? value.end_date : undefined,
-          status: 'active',
         };
 
-        await createFixedIncome(fixedIncomeData);
+        await createFixedIncomeMutation.mutateAsync(fixedIncomeData);
         setIsAddDialogOpen(false);
         fixedIncomeForm.reset();
-        await loadData();
       } catch (error) {
         console.error('Failed to create fixed income:', error);
       }
     },
   });
 
-
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this fixed income? This action cannot be undone.')) {
       try {
-        await deleteFixedIncome(id);
-        await loadData();
+        await deleteFixedIncomeMutation.mutateAsync(id);
       } catch (error) {
         console.error('Failed to delete fixed income:', error);
       }

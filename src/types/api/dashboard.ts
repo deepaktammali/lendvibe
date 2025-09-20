@@ -1,4 +1,26 @@
-import type { Loan, Payment } from '../database';
+import type { Payment } from './payments';
+import type { Loan } from './loans';
+
+// Dashboard-specific types
+export interface PaymentWithBorrowerInfo extends Payment {
+  borrower_name: string;
+  loan_principal: number;
+}
+
+export interface LoanWithBorrowerAndDueDate extends Loan {
+  borrower_name: string;
+  days_until_due: number;
+}
+
+export interface RecentActivity {
+  id: string;
+  type: 'borrower' | 'loan' | 'payment' | 'fixed_income';
+  action: 'created' | 'updated' | 'deleted';
+  entity_id: string;
+  entity_name: string;
+  timestamp: string;
+  details?: Record<string, any>;
+}
 
 // Dashboard summary types
 namespace GetDashboardSummary {
@@ -10,8 +32,8 @@ namespace GetDashboardSummary {
         activeLoans: number;
         totalOutstandingBalance: number;
         totalPaidAmount: number;
-        recentPayments: Array<Payment & { borrower_name: string; loan_principal: number }>;
-        upcomingPayments: Array<Loan & { borrower_name: string; days_until_due: number }>;
+        recentPayments: PaymentWithBorrowerInfo[];
+        upcomingPayments: LoanWithBorrowerAndDueDate[];
     };
 }
 
@@ -41,19 +63,10 @@ namespace GetDashboardStats {
 }
 
 namespace GetRecentActivity {
-    export type Response = Array<{
-        id: string;
-        type: 'borrower' | 'loan' | 'payment' | 'fixed_income';
-        action: 'created' | 'updated' | 'deleted';
-        entity_id: string;
-        entity_name: string;
-        timestamp: string;
-        details?: Record<string, any>;
-    }>;
+    export type Response = RecentActivity[];
 }
 
 // Export all types for easy importing
 export type {
     GetDashboardStats, GetDashboardSummary, GetRecentActivity
 };
-

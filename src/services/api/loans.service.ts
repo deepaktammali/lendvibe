@@ -11,39 +11,115 @@ import {
   getRealRemainingPrincipal as dbGetRealRemainingPrincipal,
   syncAllLoanBalances as dbSyncAllLoanBalances,
 } from '@/lib/database';
-import type { Loan } from '@/types/database';
+import type { Loan, LoanWithBorrower, LoanWithCalculatedBalance } from '@/types/api/loans';
 import type { CreateLoan } from '@/types/api/loans';
 
 export type CreateLoanData = CreateLoan.Payload;
 
-export interface LoanWithBorrower extends Loan {
-  borrower_name: string;
-}
-
-export interface LoanWithCalculatedBalance extends Loan {
-  borrower_name: string;
-  real_remaining_principal: number;
-}
-
 export const loanService = {
   async getLoans(): Promise<Loan[]> {
-    return await dbGetLoans();
+    const dbLoans = await dbGetLoans();
+    // Transform database types to API types
+    return dbLoans.map(dbLoan => ({
+      id: dbLoan.id,
+      borrower_id: dbLoan.borrower_id,
+      loan_type: dbLoan.loan_type,
+      principal_amount: dbLoan.principal_amount,
+      interest_rate: dbLoan.interest_rate,
+      term_months: dbLoan.term_months,
+      start_date: dbLoan.start_date,
+      status: dbLoan.status,
+      current_balance: dbLoan.current_balance,
+      repayment_interval_unit: dbLoan.repayment_interval_unit,
+      repayment_interval_value: dbLoan.repayment_interval_value,
+      end_date: dbLoan.end_date,
+      created_at: dbLoan.created_at,
+    }));
   },
 
   async getLoan(id: string): Promise<Loan | null> {
-    return await dbGetLoan(id);
+    const dbLoan = await dbGetLoan(id);
+    if (!dbLoan) return null;
+
+    // Transform database type to API type
+    return {
+      id: dbLoan.id,
+      borrower_id: dbLoan.borrower_id,
+      loan_type: dbLoan.loan_type,
+      principal_amount: dbLoan.principal_amount,
+      interest_rate: dbLoan.interest_rate,
+      term_months: dbLoan.term_months,
+      start_date: dbLoan.start_date,
+      status: dbLoan.status,
+      current_balance: dbLoan.current_balance,
+      repayment_interval_unit: dbLoan.repayment_interval_unit,
+      repayment_interval_value: dbLoan.repayment_interval_value,
+      end_date: dbLoan.end_date,
+      created_at: dbLoan.created_at,
+    };
   },
 
   async getLoansByBorrower(borrowerId: string): Promise<Loan[]> {
-    return await dbGetLoansByBorrower(borrowerId);
+    const dbLoans = await dbGetLoansByBorrower(borrowerId);
+    // Transform database types to API types
+    return dbLoans.map(dbLoan => ({
+      id: dbLoan.id,
+      borrower_id: dbLoan.borrower_id,
+      loan_type: dbLoan.loan_type,
+      principal_amount: dbLoan.principal_amount,
+      interest_rate: dbLoan.interest_rate,
+      term_months: dbLoan.term_months,
+      start_date: dbLoan.start_date,
+      status: dbLoan.status,
+      current_balance: dbLoan.current_balance,
+      repayment_interval_unit: dbLoan.repayment_interval_unit,
+      repayment_interval_value: dbLoan.repayment_interval_value,
+      end_date: dbLoan.end_date,
+      created_at: dbLoan.created_at,
+    }));
   },
 
   async getLoansWithBorrowers(): Promise<LoanWithBorrower[]> {
-    return await dbGetLoansWithBorrowers();
+    const dbLoansWithBorrowers = await dbGetLoansWithBorrowers();
+    // Transform database types to API types
+    return dbLoansWithBorrowers.map(dbLoan => ({
+      id: dbLoan.id,
+      borrower_id: dbLoan.borrower_id,
+      loan_type: dbLoan.loan_type,
+      principal_amount: dbLoan.principal_amount,
+      interest_rate: dbLoan.interest_rate,
+      term_months: dbLoan.term_months,
+      start_date: dbLoan.start_date,
+      status: dbLoan.status,
+      current_balance: dbLoan.current_balance,
+      repayment_interval_unit: dbLoan.repayment_interval_unit,
+      repayment_interval_value: dbLoan.repayment_interval_value,
+      end_date: dbLoan.end_date,
+      created_at: dbLoan.created_at,
+      borrower_name: dbLoan.borrower_name,
+    }));
   },
 
   async getLoansWithCalculatedBalances(): Promise<LoanWithCalculatedBalance[]> {
-    return await dbGetLoansWithCalculatedBalances();
+    const dbLoansWithBalances = await dbGetLoansWithCalculatedBalances();
+    // Transform database types to API types
+    return dbLoansWithBalances.map(dbLoan => ({
+      id: dbLoan.id,
+      borrower_id: dbLoan.borrower_id,
+      loan_type: dbLoan.loan_type,
+      principal_amount: dbLoan.principal_amount,
+      interest_rate: dbLoan.interest_rate,
+      term_months: dbLoan.term_months,
+      start_date: dbLoan.start_date,
+      status: dbLoan.status,
+      current_balance: dbLoan.current_balance,
+      repayment_interval_unit: dbLoan.repayment_interval_unit,
+      repayment_interval_value: dbLoan.repayment_interval_value,
+      end_date: dbLoan.end_date,
+      created_at: dbLoan.created_at,
+      borrower_name: dbLoan.borrower_name,
+      real_remaining_principal: dbLoan.real_remaining_principal,
+    }));
   },
 
   async getRealRemainingPrincipal(loanId: string): Promise<number> {
@@ -51,12 +127,29 @@ export const loanService = {
   },
 
   async createLoan(data: CreateLoanData): Promise<Loan> {
-    const loanData: Omit<Loan, 'id' | 'created_at'> = {
+    const loanData = {
       ...data,
-      status: 'active',
+      status: 'active' as const,
       current_balance: data.principal_amount,
     };
-    return await dbCreateLoan(loanData);
+    const dbLoan = await dbCreateLoan(loanData);
+
+    // Transform database type to API type
+    return {
+      id: dbLoan.id,
+      borrower_id: dbLoan.borrower_id,
+      loan_type: dbLoan.loan_type,
+      principal_amount: dbLoan.principal_amount,
+      interest_rate: dbLoan.interest_rate,
+      term_months: dbLoan.term_months,
+      start_date: dbLoan.start_date,
+      status: dbLoan.status,
+      current_balance: dbLoan.current_balance,
+      repayment_interval_unit: dbLoan.repayment_interval_unit,
+      repayment_interval_value: dbLoan.repayment_interval_value,
+      end_date: dbLoan.end_date,
+      created_at: dbLoan.created_at,
+    };
   },
 
   async updateLoanBalance(id: string, newBalance: number): Promise<void> {

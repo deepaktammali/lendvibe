@@ -14,7 +14,7 @@ import {
   getLastIncomePaymentsByFixedIncomes as dbGetLastIncomePaymentsByFixedIncomes,
   updateIncomePayment as dbUpdateIncomePayment,
 } from '@/lib/database';
-import type { FixedIncome, IncomePayment } from '@/types/database';
+import type { FixedIncome, IncomePayment, FixedIncomeWithTenant } from '@/types/api/fixedIncome';
 
 export interface CreateFixedIncomeData {
   tenant_id: string;
@@ -39,9 +39,7 @@ export interface UpdateFixedIncomeData {
   status?: FixedIncome['status'];
 }
 
-export interface FixedIncomeWithTenant extends FixedIncome {
-  tenant_name: string;
-}
+
 
 export interface CreateIncomePaymentData {
   fixed_income_id: string;
@@ -57,27 +55,101 @@ export interface UpdateIncomePaymentData {
 
 export const fixedIncomeService = {
   async getFixedIncomes(): Promise<FixedIncome[]> {
-    return await dbGetFixedIncomes();
+    const dbFixedIncomes = await dbGetFixedIncomes();
+    // Transform database types to API types
+    return dbFixedIncomes.map(dbFixedIncome => ({
+      id: dbFixedIncome.id,
+      tenant_id: dbFixedIncome.tenant_id,
+      income_type: dbFixedIncome.income_type,
+      principal_amount: dbFixedIncome.principal_amount,
+      income_rate: dbFixedIncome.income_rate,
+      payment_interval_unit: dbFixedIncome.payment_interval_unit,
+      payment_interval_value: dbFixedIncome.payment_interval_value,
+      start_date: dbFixedIncome.start_date,
+      end_date: dbFixedIncome.end_date,
+      status: dbFixedIncome.status,
+      created_at: dbFixedIncome.created_at,
+    }));
   },
 
   async getFixedIncome(id: string): Promise<FixedIncome | null> {
-    return await dbGetFixedIncome(id);
+    const dbFixedIncome = await dbGetFixedIncome(id);
+    if (!dbFixedIncome) return null;
+
+    // Transform database type to API type
+    return {
+      id: dbFixedIncome.id,
+      tenant_id: dbFixedIncome.tenant_id,
+      income_type: dbFixedIncome.income_type,
+      principal_amount: dbFixedIncome.principal_amount,
+      income_rate: dbFixedIncome.income_rate,
+      payment_interval_unit: dbFixedIncome.payment_interval_unit,
+      payment_interval_value: dbFixedIncome.payment_interval_value,
+      start_date: dbFixedIncome.start_date,
+      end_date: dbFixedIncome.end_date,
+      status: dbFixedIncome.status,
+      created_at: dbFixedIncome.created_at,
+    };
   },
 
   async getFixedIncomesByTenant(tenantId: string): Promise<FixedIncome[]> {
-    return await dbGetFixedIncomesByTenant(tenantId);
+    const dbFixedIncomes = await dbGetFixedIncomesByTenant(tenantId);
+    // Transform database types to API types
+    return dbFixedIncomes.map(dbFixedIncome => ({
+      id: dbFixedIncome.id,
+      tenant_id: dbFixedIncome.tenant_id,
+      income_type: dbFixedIncome.income_type,
+      principal_amount: dbFixedIncome.principal_amount,
+      income_rate: dbFixedIncome.income_rate,
+      payment_interval_unit: dbFixedIncome.payment_interval_unit,
+      payment_interval_value: dbFixedIncome.payment_interval_value,
+      start_date: dbFixedIncome.start_date,
+      end_date: dbFixedIncome.end_date,
+      status: dbFixedIncome.status,
+      created_at: dbFixedIncome.created_at,
+    }));
   },
 
   async getFixedIncomesWithTenants(): Promise<FixedIncomeWithTenant[]> {
-    return await dbGetFixedIncomesWithTenants();
+    const dbFixedIncomesWithTenants = await dbGetFixedIncomesWithTenants();
+    // Transform database types to API types
+    return dbFixedIncomesWithTenants.map(dbFixedIncome => ({
+      id: dbFixedIncome.id,
+      tenant_id: dbFixedIncome.tenant_id,
+      income_type: dbFixedIncome.income_type,
+      principal_amount: dbFixedIncome.principal_amount,
+      income_rate: dbFixedIncome.income_rate,
+      payment_interval_unit: dbFixedIncome.payment_interval_unit,
+      payment_interval_value: dbFixedIncome.payment_interval_value,
+      start_date: dbFixedIncome.start_date,
+      end_date: dbFixedIncome.end_date,
+      status: dbFixedIncome.status,
+      created_at: dbFixedIncome.created_at,
+      tenant_name: dbFixedIncome.tenant_name,
+    }));
   },
 
   async createFixedIncome(data: CreateFixedIncomeData): Promise<FixedIncome> {
-    const fixedIncomeData: Omit<FixedIncome, 'id' | 'created_at'> = {
+    const fixedIncomeData = {
       ...data,
-      status: 'active',
+      status: 'active' as const,
     };
-    return await dbCreateFixedIncome(fixedIncomeData);
+    const dbFixedIncome = await dbCreateFixedIncome(fixedIncomeData);
+
+    // Transform database type to API type
+    return {
+      id: dbFixedIncome.id,
+      tenant_id: dbFixedIncome.tenant_id,
+      income_type: dbFixedIncome.income_type,
+      principal_amount: dbFixedIncome.principal_amount,
+      income_rate: dbFixedIncome.income_rate,
+      payment_interval_unit: dbFixedIncome.payment_interval_unit,
+      payment_interval_value: dbFixedIncome.payment_interval_value,
+      start_date: dbFixedIncome.start_date,
+      end_date: dbFixedIncome.end_date,
+      status: dbFixedIncome.status,
+      created_at: dbFixedIncome.created_at,
+    };
   },
 
   async updateFixedIncomeStatus(id: string, status: FixedIncome['status']): Promise<void> {
@@ -90,28 +162,78 @@ export const fixedIncomeService = {
 
   // Income Payment operations
   async getIncomePayments(): Promise<IncomePayment[]> {
-    return await dbGetIncomePayments();
+    const dbIncomePayments = await dbGetIncomePayments();
+    // Transform database types to API types
+    return dbIncomePayments.map(dbPayment => ({
+      id: dbPayment.id,
+      fixed_income_id: dbPayment.fixed_income_id,
+      amount: dbPayment.amount,
+      payment_date: dbPayment.payment_date,
+      created_at: dbPayment.created_at,
+    }));
   },
 
   async getIncomePaymentsByFixedIncome(fixedIncomeId: string): Promise<IncomePayment[]> {
-    return await dbGetIncomePaymentsByFixedIncome(fixedIncomeId);
+    const dbIncomePayments = await dbGetIncomePaymentsByFixedIncome(fixedIncomeId);
+    // Transform database types to API types
+    return dbIncomePayments.map(dbPayment => ({
+      id: dbPayment.id,
+      fixed_income_id: dbPayment.fixed_income_id,
+      amount: dbPayment.amount,
+      payment_date: dbPayment.payment_date,
+      created_at: dbPayment.created_at,
+    }));
   },
 
   async getLastIncomePaymentByFixedIncome(fixedIncomeId: string): Promise<IncomePayment | null> {
-    return await dbGetLastIncomePaymentByFixedIncome(fixedIncomeId);
+    const dbPayment = await dbGetLastIncomePaymentByFixedIncome(fixedIncomeId);
+    if (!dbPayment) return null;
+
+    // Transform database type to API type
+    return {
+      id: dbPayment.id,
+      fixed_income_id: dbPayment.fixed_income_id,
+      amount: dbPayment.amount,
+      payment_date: dbPayment.payment_date,
+      created_at: dbPayment.created_at,
+    };
   },
 
   async getLastIncomePaymentsByFixedIncomes(fixedIncomeIds: string[]): Promise<Map<string, IncomePayment>> {
-    return await dbGetLastIncomePaymentsByFixedIncomes(fixedIncomeIds);
+    const dbPaymentsMap = await dbGetLastIncomePaymentsByFixedIncomes(fixedIncomeIds);
+    const apiPaymentsMap = new Map<string, IncomePayment>();
+
+    for (const [fixedIncomeId, dbPayment] of dbPaymentsMap) {
+      if (dbPayment) {
+        apiPaymentsMap.set(fixedIncomeId, {
+          id: dbPayment.id,
+          fixed_income_id: dbPayment.fixed_income_id,
+          amount: dbPayment.amount,
+          payment_date: dbPayment.payment_date,
+          created_at: dbPayment.created_at,
+        });
+      }
+    }
+
+    return apiPaymentsMap;
   },
 
   async createIncomePayment(data: CreateIncomePaymentData): Promise<IncomePayment> {
-    const paymentData: Omit<IncomePayment, 'id' | 'created_at'> = {
+    const paymentData = {
       fixed_income_id: data.fixed_income_id,
       amount: data.amount,
       payment_date: data.payment_date,
     };
-    return await dbCreateIncomePayment(paymentData);
+    const dbPayment = await dbCreateIncomePayment(paymentData);
+
+    // Transform database type to API type
+    return {
+      id: dbPayment.id,
+      fixed_income_id: dbPayment.fixed_income_id,
+      amount: dbPayment.amount,
+      payment_date: dbPayment.payment_date,
+      created_at: dbPayment.created_at,
+    };
   },
 
   async updateIncomePayment(id: string, data: UpdateIncomePaymentData): Promise<void> {

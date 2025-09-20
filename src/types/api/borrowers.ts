@@ -1,4 +1,12 @@
-import type { Borrower } from '../database';
+// API Types - separate from database types
+export interface Borrower {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  created_at: string;
+}
 
 // Query Types
 namespace GetBorrowers {

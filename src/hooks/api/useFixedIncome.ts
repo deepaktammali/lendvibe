@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fixedIncomeService, fixedIncomeKeys, type CreateFixedIncomeData, type CreateIncomePaymentData, type UpdateIncomePaymentData } from '@/services/api/fixed-incomes.service';
 import { borrowerKeys } from '@/services/api/borrowers.service';
-import type { FixedIncome, IncomePayment } from '@/types/database';
+import type { FixedIncome, IncomePayment } from '@/types/api/fixedIncome';
 
 export function useGetFixedIncomes() {
   return useQuery({

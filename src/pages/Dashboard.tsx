@@ -1,161 +1,31 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getBorrowers, getLastPaymentsByLoans, getLoans, getLoansWithCalculatedBalances, getPayments, getFixedIncomesWithTenants, getIncomePayments, getLastIncomePaymentsByFixedIncomes } from '@/lib/database';
-import { calculateAccruedInterest, getDaysSinceLastPayment, getNextPaymentDate, calculateAccruedIncome, getDaysSinceLastIncomePayment, getNextIncomePaymentDate, type UpcomingPayment } from '@/lib/finance';
-import { getLoanTypeLabel } from '@/lib/loans';
-import { FIXED_INCOME_TYPE_LABELS } from '@/types/database';
 import { AlertTriangle, Banknote, Clock, IndianRupee, TrendingUp, Users, Building2 } from 'lucide-react';
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useGetDashboardSummary, useGetDashboardStats, useGetRecentActivity } from '@/hooks/api/useDashboard';
+import type { DashboardSummary, DashboardStats } from '@/services/api/dashboard.service';
+
+interface UpcomingPayment {
+  id: string;
+  type: 'loan' | 'fixed_income';
+  borrowerName: string;
+  assetType: string;
+  dueDate: string;
+  daysSinceLastPayment: number;
+  accruedInterest: number;
+  realRemainingPrincipal?: number;
+  assetValue?: number;
+  currentBalance?: number;
+}
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    totalBorrowers: 0,
-    activeLoans: 0,
-    activeFixedIncome: 0,
-    totalOutstanding: 0,
-    totalFixedIncomeValue: 0,
-    monthlyPayments: 0,
-    totalAccruedInterest: 0,
-    overdueCount: 0,
-  });
-  const [upcomingLoanPayments, setUpcomingLoanPayments] = useState<UpcomingPayment[]>([]);
-  const [upcomingFixedIncomePayments, setUpcomingFixedIncomePayments] = useState<UpcomingPayment[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Use the new TanStack Query hooks
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = useGetDashboardSummary();
+  const { data: stats, isLoading: statsLoading, error: statsError } = useGetDashboardStats();
+  const { data: recentActivity, isLoading: activityLoading, error: activityError } = useGetRecentActivity();
 
-  useEffect(() => {
-    async function loadDashboardData() {
-      try {
-        const [borrowers, loans, payments, loansWithCalculatedBalances, fixedIncomes, incomePayments] = await Promise.all([
-          getBorrowers(),
-          getLoans(),
-          getPayments(),
-          getLoansWithCalculatedBalances(),
-          getFixedIncomesWithTenants(),
-          getIncomePayments(),
-        ]);
-
-        const activeLoans = loans.filter(loan => loan.status === 'active');
-        const activeFixedIncomeAssets = fixedIncomes.filter(asset => asset.status === 'active');
-        const activeLoansWithCalculatedBalances = loansWithCalculatedBalances.filter(loan => loan.status === 'active');
-
-        const totalOutstanding = activeLoansWithCalculatedBalances.reduce((sum, loan) => sum + loan.real_remaining_principal, 0);
-        const totalFixedIncomeValue = activeFixedIncomeAssets.reduce((sum, asset) => sum + asset.principal_amount, 0);
-
-        // Calculate payments from current month
-        const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
-        const monthlyLoanPayments = payments
-          .filter(payment => payment.payment_date.startsWith(currentMonth))
-          .reduce((sum, payment) => sum + payment.amount, 0);
-        const monthlyIncomePayments = incomePayments
-          .filter(payment => payment.payment_date.startsWith(currentMonth))
-          .reduce((sum, payment) => sum + payment.amount, 0);
-        const monthlyPayments = monthlyLoanPayments + monthlyIncomePayments;
-
-        // Calculate upcoming payments and accrued interest
-        const upcomingLoanPaymentsList: UpcomingPayment[] = [];
-        const upcomingFixedIncomePaymentsList: UpcomingPayment[] = [];
-        let totalAccruedInterest = 0;
-        let overdueCount = 0;
-        const today = new Date().toISOString().split('T')[0];
-
-        // Get all last payments in batch
-        const loanIds = activeLoansWithCalculatedBalances.map(loan => loan.id);
-        const fixedIncomeIds = activeFixedIncomeAssets.map(asset => asset.id);
-
-        const [lastLoanPayments, lastIncomePayments] = await Promise.all([
-          getLastPaymentsByLoans(loanIds),
-          getLastIncomePaymentsByFixedIncomes(fixedIncomeIds),
-        ]);
-
-        // Process loans
-        for (const loan of activeLoansWithCalculatedBalances) {
-          const lastPayment = lastLoanPayments.get(loan.id);
-          const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date);
-          const accruedInterest = calculateAccruedInterest(loan);
-          const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date);
-
-          totalAccruedInterest += accruedInterest;
-
-          // Check if payment is overdue
-          if (nextDueDate < today) {
-            overdueCount++;
-          }
-
-          upcomingLoanPaymentsList.push({
-            id: loan.id,
-            type: 'loan',
-            borrowerName: loan.borrower_name,
-            assetType: getLoanTypeLabel(loan.loan_type),
-            dueDate: nextDueDate,
-            accruedInterest,
-            daysSinceLastPayment,
-            currentBalance: loan.current_balance,
-            realRemainingPrincipal: loan.real_remaining_principal,
-          });
-        }
-
-        // Process fixed income assets
-        for (const asset of activeFixedIncomeAssets) {
-          const lastPayment = lastIncomePayments.get(asset.id);
-          const daysSinceLastPayment = getDaysSinceLastIncomePayment(asset, lastPayment?.payment_date);
-          const accruedIncome = calculateAccruedIncome(asset);
-          const nextDueDate = getNextIncomePaymentDate(asset, lastPayment?.payment_date);
-
-          totalAccruedInterest += accruedIncome;
-
-          // Check if payment is overdue
-          if (nextDueDate < today) {
-            overdueCount++;
-          }
-
-          upcomingFixedIncomePaymentsList.push({
-            id: asset.id,
-            type: 'fixed_income',
-            borrowerName: asset.tenant_name,
-            assetType: FIXED_INCOME_TYPE_LABELS[asset.income_type],
-            dueDate: nextDueDate,
-            accruedInterest: accruedIncome,
-            daysSinceLastPayment,
-            currentBalance: asset.principal_amount,
-            assetValue: asset.principal_amount,
-          });
-        }
-
-        // Sort both lists by due date (overdue first)
-        const sortByDueDate = (a: UpcomingPayment, b: UpcomingPayment) => {
-          const isAOverdue = a.dueDate < today;
-          const isBOverdue = b.dueDate < today;
-
-          if (isAOverdue && !isBOverdue) return -1;
-          if (!isAOverdue && isBOverdue) return 1;
-
-          return a.dueDate.localeCompare(b.dueDate);
-        };
-
-        upcomingLoanPaymentsList.sort(sortByDueDate);
-        upcomingFixedIncomePaymentsList.sort(sortByDueDate);
-
-        setUpcomingLoanPayments(upcomingLoanPaymentsList);
-        setUpcomingFixedIncomePayments(upcomingFixedIncomePaymentsList);
-        setStats({
-          totalBorrowers: borrowers.length,
-          activeLoans: activeLoans.length,
-          activeFixedIncome: activeFixedIncomeAssets.length,
-          totalOutstanding,
-          totalFixedIncomeValue,
-          monthlyPayments,
-          totalAccruedInterest,
-          overdueCount,
-        });
-      } catch (error) {
-        console.error('Failed to load dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadDashboardData();
-  }, []);
+  const loading = summaryLoading || statsLoading || activityLoading;
+  const error = summaryError || statsError || activityError;
 
   const formatCurrency = useMemo(() => {
     const formatter = new Intl.NumberFormat('en-IN', {
@@ -166,7 +36,7 @@ export default function Dashboard() {
   }, []);
 
   const renderPaymentsTable = useCallback((payments: UpcomingPayment[], emptyMessage: string) => {
-    if (payments.length === 0) {
+    if (!payments || payments.length === 0) {
       return <p className="text-muted-foreground">{emptyMessage}</p>;
     }
 
@@ -202,7 +72,7 @@ export default function Dashboard() {
                       {isDueSoon && <span className="text-xs">(Due Soon)</span>}
                     </div>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">{payment.daysSinceLastPayment} days</TableCell>
+                  <TableCell className="hidden sm:table-cell">{payment.daysSinceLastPayment || 0} days</TableCell>
                   <TableCell>
                     {payment.type === 'loan' && payment.realRemainingPrincipal !== undefined
                       ? formatCurrency(payment.realRemainingPrincipal)
@@ -229,6 +99,22 @@ export default function Dashboard() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-lg text-red-600">Failed to load dashboard: {error.message}</div>
+      </div>
+    );
+  }
+
+  if (!summary || !stats) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-lg">No dashboard data available</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -244,7 +130,7 @@ export default function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{stats.totalBorrowers}</div>
+            <div className="text-xl font-bold">{summary.totalBorrowers}</div>
           </CardContent>
         </Card>
 
@@ -254,7 +140,7 @@ export default function Dashboard() {
             <Banknote className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{stats.activeLoans}</div>
+            <div className="text-xl font-bold">{summary.activeLoans}</div>
           </CardContent>
         </Card>
 
@@ -264,8 +150,8 @@ export default function Dashboard() {
             <IndianRupee className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(stats.totalOutstanding)}>
-              {formatCurrency(stats.totalOutstanding)}
+            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(summary.totalOutstandingBalance)}>
+              {formatCurrency(summary.totalOutstandingBalance)}
             </div>
           </CardContent>
         </Card>
@@ -276,8 +162,8 @@ export default function Dashboard() {
             <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(stats.totalAccruedInterest)}>
-              {formatCurrency(stats.totalAccruedInterest)}
+            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(summary.totalPaidAmount)}>
+              {formatCurrency(summary.totalPaidAmount)}
             </div>
           </CardContent>
         </Card>
@@ -288,9 +174,9 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{stats.activeFixedIncome}</div>
-            <p className="text-xs text-muted-foreground break-words" title={formatCurrency(stats.totalFixedIncomeValue)}>
-              {formatCurrency(stats.totalFixedIncomeValue)} value
+            <div className="text-xl font-bold">{summary.totalFixedIncomes}</div>
+            <p className="text-xs text-muted-foreground break-words" title={formatCurrency(0)}>
+              {formatCurrency(0)} value
             </p>
           </CardContent>
         </Card>
@@ -298,11 +184,11 @@ export default function Dashboard() {
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium">Overdue Items</CardTitle>
-            <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${stats.overdueCount > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+            <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
           </CardHeader>
           <CardContent>
-            <div className={`text-xl font-bold ${stats.overdueCount > 0 ? 'text-red-600' : ''}`}>
-              {stats.overdueCount}
+            <div className={`text-xl font-bold ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-600' : ''}`}>
+              {stats?.loanStats?.defaulted || 0}
             </div>
           </CardContent>
         </Card>
@@ -313,8 +199,8 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(stats.monthlyPayments)}>
-              {formatCurrency(stats.monthlyPayments)}
+            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(summary.totalPaidAmount)}>
+              {formatCurrency(summary.totalPaidAmount)}
             </div>
           </CardContent>
         </Card>
@@ -331,10 +217,10 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {renderPaymentsTable(upcomingLoanPayments, "No active loans with upcoming payments.")}
-            {upcomingLoanPayments.length > 5 && (
+            {renderPaymentsTable(summary.upcomingPayments || [], "No active loans with upcoming payments.")}
+            {(summary.upcomingPayments?.length || 0) > 5 && (
               <p className="text-sm text-muted-foreground mt-4">
-                Showing 5 of {upcomingLoanPayments.length} items. View loans page for complete list.
+                Showing 5 of {(summary.upcomingPayments?.length || 0)} items. View loans page for complete list.
               </p>
             )}
           </CardContent>
@@ -349,10 +235,10 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {renderPaymentsTable(upcomingFixedIncomePayments, "No active fixed income assets with upcoming payments.")}
-            {upcomingFixedIncomePayments.length > 5 && (
+            {renderPaymentsTable([], "No active fixed income assets with upcoming payments.")}
+            {0 > 5 && (
               <p className="text-sm text-muted-foreground mt-4">
-                Showing 5 of {upcomingFixedIncomePayments.length} items. View fixed income page for complete list.
+                Showing 5 of {0} items. View fixed income page for complete list.
               </p>
             )}
           </CardContent>
