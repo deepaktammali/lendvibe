@@ -8,6 +8,7 @@ import {
   getLoansWithCalculatedBalances as dbGetLoansWithCalculatedBalances,
   getRealRemainingPrincipal as dbGetRealRemainingPrincipal,
   syncAllLoanBalances as dbSyncAllLoanBalances,
+  updateLoan as dbUpdateLoan,
   updateLoanBalance as dbUpdateLoanBalance,
   updateLoanStatus as dbUpdateLoanStatus,
 } from '@/lib/database'
@@ -156,6 +157,10 @@ export const loanService = {
 
   async updateLoanStatus(id: string, status: Loan['status']): Promise<void> {
     return await dbUpdateLoanStatus(id, status)
+  },
+
+  async updateLoan(id: string, updates: Partial<Omit<Loan, 'id' | 'created_at'>>): Promise<void> {
+    return await dbUpdateLoan(id, updates)
   },
 
   async deleteLoan(id: string): Promise<void> {

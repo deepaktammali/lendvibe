@@ -156,6 +156,65 @@ export async function updateLoanStatus(id: string, status: Loan['status']): Prom
   await database.execute('UPDATE loans SET status = $1 WHERE id = $2', [status, id])
 }
 
+export async function updateLoan(
+  id: string,
+  updates: Partial<Omit<Loan, 'id' | 'created_at'>>
+): Promise<void> {
+  const database = await initDatabase()
+  const fields = []
+  const values = []
+  let paramIndex = 1
+
+  if (updates.borrower_id !== undefined) {
+    fields.push(`borrower_id = $${paramIndex++}`)
+    values.push(updates.borrower_id)
+  }
+  if (updates.loan_type !== undefined) {
+    fields.push(`loan_type = $${paramIndex++}`)
+    values.push(updates.loan_type)
+  }
+  if (updates.principal_amount !== undefined) {
+    fields.push(`principal_amount = $${paramIndex++}`)
+    values.push(updates.principal_amount)
+  }
+  if (updates.interest_rate !== undefined) {
+    fields.push(`interest_rate = $${paramIndex++}`)
+    values.push(updates.interest_rate)
+  }
+  if (updates.start_date !== undefined) {
+    fields.push(`start_date = $${paramIndex++}`)
+    values.push(updates.start_date)
+  }
+  if (updates.end_date !== undefined) {
+    fields.push(`end_date = $${paramIndex++}`)
+    values.push(updates.end_date)
+  }
+  if (updates.status !== undefined) {
+    fields.push(`status = $${paramIndex++}`)
+    values.push(updates.status)
+  }
+  if (updates.current_balance !== undefined) {
+    fields.push(`current_balance = $${paramIndex++}`)
+    values.push(updates.current_balance)
+  }
+  if (updates.repayment_interval_unit !== undefined) {
+    fields.push(`repayment_interval_unit = $${paramIndex++}`)
+    values.push(updates.repayment_interval_unit)
+  }
+  if (updates.repayment_interval_value !== undefined) {
+    fields.push(`repayment_interval_value = $${paramIndex++}`)
+    values.push(updates.repayment_interval_value)
+  }
+
+  if (fields.length > 0) {
+    values.push(id)
+    await database.execute(
+      `UPDATE loans SET ${fields.join(', ')} WHERE id = $${paramIndex}`,
+      values
+    )
+  }
+}
+
 export async function deleteLoan(id: string): Promise<void> {
   const database = await initDatabase()
   await database.execute('DELETE FROM loans WHERE id = $1', [id])

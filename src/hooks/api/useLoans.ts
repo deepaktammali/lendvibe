@@ -153,6 +153,37 @@ export function useUpdateLoanStatus() {
   })
 }
 
+export function useUpdateLoan() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<Omit<Loan, 'id' | 'created_at'>> }) =>
+      loanService.updateLoan(id, updates),
+    onSuccess: (_, { id, updates }) => {
+      // Update the loan in cache
+      queryClient.setQueryData<Loan | null>(loanKeys.detail(id), (old) => {
+        if (!old) return null
+        return { ...old, ...updates }
+      })
+
+      // Update in lists
+      const updateLoanInList = (old: Loan[] | undefined) => {
+        if (!old) return old
+        return old.map((loan) => (loan.id === id ? { ...loan, ...updates } : loan))
+      }
+
+      queryClient.setQueryData<Loan[]>(loanKeys.lists(), updateLoanInList)
+
+      // Invalidate related queries
+      queryClient.invalidateQueries({ queryKey: loanKeys.all })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
+    },
+    onError: (error) => {
+      console.error('Failed to update loan:', error)
+    },
+  })
+}
+
 export function useDeleteLoan() {
   const queryClient = useQueryClient()
 

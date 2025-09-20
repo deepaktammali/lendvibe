@@ -1,17 +1,35 @@
+import { useForm } from '@tanstack/react-form'
 import {
   AlertTriangle,
   ArrowLeft,
   Calendar,
   Clock,
+  Edit,
   IndianRupee,
   TrendingUp,
   User,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -20,29 +38,90 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { useGetBorrowers } from '@/hooks/api/useBorrowers'
 import { useGetBorrower } from '@/hooks/api/useBorrowers'
-import { useGetLoan } from '@/hooks/api/useLoans'
+import { useGetLoan, useUpdateLoan } from '@/hooks/api/useLoans'
 import { useGetPaymentsByLoan } from '@/hooks/api/usePayments'
 import {
   calculateAccruedInterest,
   getDaysSinceLastPayment,
   getNextPaymentDate,
 } from '@/lib/finance'
-import { getLoanTypeLabel } from '@/lib/loans'
+import { getLoanTypeLabel, getLoanTypesByCategory, isFixedIncomeType, isTraditionalLoanType } from '@/lib/loans'
+import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
 import type { Payment } from '@/types/api/payments'
 
 export default function LoanDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
   const { data: loan, isLoading: loanLoading, error: loanError } = useGetLoan(id || '')
   const { data: borrower, isLoading: borrowerLoading } = useGetBorrower(loan?.borrower_id || '')
+  const { data: borrowers = [] } = useGetBorrowers()
   const { data: payments = [], isLoading: paymentsLoading } = useGetPaymentsByLoan(id || '')
+  const updateLoanMutation = useUpdateLoan()
 
   const loading = loanLoading || borrowerLoading || paymentsLoading
   const error = loanError
+
+  // Edit form
+  const editForm = useForm({
+    defaultValues: {
+      borrower_id: loan?.borrower_id || '',
+      loan_type: loan?.loan_type || 'installment' as const,
+      principal_amount: loan?.principal_amount || 0,
+      interest_rate: loan?.interest_rate || 0,
+      start_date: loan?.start_date || new Date().toISOString().split('T')[0],
+      hasEndDate: !!loan?.end_date,
+      end_date: loan?.end_date || '',
+      repayment_interval_unit: loan?.repayment_interval_unit || 'months' as const,
+      repayment_interval_value: loan?.repayment_interval_value || 1,
+    } as LoanFormData,
+    validators: {
+      onBlur: loanSchema,
+    },
+    onSubmit: async ({ value }) => {
+      if (!loan) return
+
+      try {
+        const loanData = {
+          borrower_id: value.borrower_id,
+          loan_type: value.loan_type,
+          principal_amount: value.principal_amount,
+          interest_rate: value.interest_rate,
+          start_date: value.start_date,
+          end_date: value.end_date || undefined,
+          repayment_interval_unit: value.repayment_interval_unit,
+          repayment_interval_value: value.repayment_interval_value,
+        }
+
+        await updateLoanMutation.mutateAsync({ id: loan.id, updates: loanData })
+        setIsEditDialogOpen(false)
+      } catch (error) {
+        console.error('Failed to update loan:', error)
+      }
+    },
+  })
+
+  // Update form values when loan data changes or dialog opens
+  useEffect(() => {
+    if (loan && isEditDialogOpen) {
+      editForm.reset({
+        borrower_id: loan.borrower_id,
+        loan_type: loan.loan_type,
+        principal_amount: loan.principal_amount,
+        interest_rate: loan.interest_rate,
+        start_date: loan.start_date,
+        hasEndDate: !!loan.end_date,
+        end_date: loan.end_date || '',
+        repayment_interval_unit: loan.repayment_interval_unit,
+        repayment_interval_value: loan.repayment_interval_value,
+      })
+    }
+  }, [loan, isEditDialogOpen, editForm])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -136,6 +215,277 @@ export default function LoanDetail() {
             <p className="text-gray-600 mt-2">Comprehensive loan information and payment history</p>
           </div>
         </div>
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setIsEditDialogOpen(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Loan
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Loan</DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                editForm.handleSubmit()
+              }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
+              <editForm.Field name="borrower_id">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-loan-borrower">Borrower *</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a borrower" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {borrowers.map((borrower) => (
+                          <SelectItem key={borrower.id} value={borrower.id}>
+                            {borrower.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              </editForm.Field>
+
+              <editForm.Field name="loan_type">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-loan-type">Loan Type *</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) =>
+                        field.handleChange(value as LoanFormData['loan_type'])
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a loan type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(() => {
+                          const { traditional_loan, fixed_income } = getLoanTypesByCategory()
+                          return (
+                            <>
+                              <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                Traditional Loan
+                              </div>
+                              {traditional_loan.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {getLoanTypeLabel(type)}
+                                </SelectItem>
+                              ))}
+                              <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide mt-2">
+                                Fixed Income
+                              </div>
+                              {fixed_income.map((type) => (
+                                <SelectItem key={type} value={type}>
+                                  {getLoanTypeLabel(type)}
+                                </SelectItem>
+                              ))}
+                            </>
+                          )
+                        })()}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </editForm.Field>
+
+              <editForm.Field name="principal_amount">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-loan-principal">Principal Amount *</Label>
+                    <Input
+                      id="edit-loan-principal"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={field.state.value || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        field.handleChange(value)
+                      }}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              </editForm.Field>
+
+              <editForm.Field name="interest_rate">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-loan-rate">Interest Rate (%)</Label>
+                    <Input
+                      id="edit-loan-rate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={field.state.value || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        field.handleChange(value)
+                      }}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              </editForm.Field>
+
+              <editForm.Field name="repayment_interval_unit">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-repayment-unit">Repayment Unit *</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) =>
+                        field.handleChange(value as LoanFormData['repayment_interval_unit'])
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="days">Days</SelectItem>
+                        <SelectItem value="weeks">Weeks</SelectItem>
+                        <SelectItem value="months">Months</SelectItem>
+                        <SelectItem value="years">Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </editForm.Field>
+
+              <editForm.Subscribe selector={(state) => state.values.repayment_interval_unit}>
+                {(unit) => {
+                  const unitName = unit || 'interval'
+                  const capitalizedUnit = unitName.charAt(0).toUpperCase() + unitName.slice(1)
+                  const labelText = `Number of ${capitalizedUnit}`
+
+                  return (
+                    <editForm.Field name="repayment_interval_value">
+                      {(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor="edit-repayment-value">{labelText} *</Label>
+                          <Input
+                            id="edit-repayment-value"
+                            type="number"
+                            min="1"
+                            value={field.state.value || ''}
+                            onChange={(e) => field.handleChange(parseInt(e.target.value, 10) || 1)}
+                            onBlur={field.handleBlur}
+                          />
+                        </div>
+                      )}
+                    </editForm.Field>
+                  )
+                }}
+              </editForm.Subscribe>
+
+              <editForm.Field name="start_date">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-loan-startDate">Start Date *</Label>
+                    <Input
+                      id="edit-loan-startDate"
+                      type="date"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              </editForm.Field>
+
+              <editForm.Field name="hasEndDate">
+                {(field) => (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        id="edit-loan-hasEndDate"
+                        type="checkbox"
+                        checked={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <Label htmlFor="edit-loan-hasEndDate">Has End Date</Label>
+                    </div>
+                  </div>
+                )}
+              </editForm.Field>
+
+              <editForm.Subscribe selector={(state) => state.values.hasEndDate}>
+                {(hasEndDate) => {
+                  if (hasEndDate) {
+                    return (
+                      <editForm.Field name="end_date">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor="edit-loan-endDate">End Date *</Label>
+                            <Input
+                              id="edit-loan-endDate"
+                              type="date"
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-sm text-red-600">
+                                {field.state.meta.errors[0]?.message}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </editForm.Field>
+                    )
+                  }
+                  return null
+                }}
+              </editForm.Subscribe>
+
+              <div className="flex justify-end space-x-2 pt-4 md:col-span-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    editForm.reset()
+                    setIsEditDialogOpen(false)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <editForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                  {([canSubmit, isSubmitting]) => (
+                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                      {isSubmitting ? 'Updating...' : 'Update Loan'}
+                    </Button>
+                  )}
+                </editForm.Subscribe>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Loan Overview Cards */}
