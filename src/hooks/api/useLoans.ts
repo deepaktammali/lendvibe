@@ -1,8 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { loanService, loanKeys, type CreateLoanData } from '@/services/api/loans.service'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { borrowerKeys } from '@/services/api/borrowers.service'
+import { type CreateLoanData, loanKeys, loanService } from '@/services/api/loans.service'
 import { paymentKeys } from '@/services/api/payments.service'
-import type { Loan, LoanWithBorrower, LoanWithCalculatedBalance } from '@/types/api/loans'
+import type { Loan } from '@/types/api/loans'
 
 export function useGetLoans() {
   return useQuery({

@@ -1,17 +1,16 @@
 import {
-  getPayments as dbGetPayments,
   createPayment as dbCreatePayment,
-  updatePayment as dbUpdatePayment,
   deletePayment as dbDeletePayment,
-  getPaymentsByLoan as dbGetPaymentsByLoan,
   getLastPaymentByLoan as dbGetLastPaymentByLoan,
   getLastPaymentsByLoans as dbGetLastPaymentsByLoans,
+  getPayments as dbGetPayments,
+  getPaymentsByLoan as dbGetPaymentsByLoan,
+  updatePayment as dbUpdatePayment,
+  getLoan,
   updateLoanBalance,
   updateLoanStatus,
-  getLoan,
 } from '@/lib/database'
-import type { Payment } from '@/types/api/payments'
-import type { CreatePayment } from '@/types/api/payments'
+import type { CreatePayment, Payment } from '@/types/api/payments'
 
 export type CreatePaymentData = CreatePayment.Payload
 export type UpdatePaymentData = {
@@ -185,7 +184,9 @@ export const paymentService = {
       await updateLoanBalance(originalPayment.loan_id, oldLoanNewBalance)
 
       const newLoanNewBalance = newLoan.current_balance - newPrincipalAmount
-      await updateLoanBalance(data.loan_id!, Math.max(0, newLoanNewBalance))
+      if (data.loan_id) {
+        await updateLoanBalance(data.loan_id, Math.max(0, newLoanNewBalance))
+      }
     }
   },
 

@@ -1,14 +1,14 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
-import { useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { initDatabase } from './lib/database'
+import { useEffect } from 'react'
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
-import Dashboard from './pages/Dashboard'
+import { initDatabase } from './lib/database'
 import Borrowers from './pages/Borrowers'
-import Loans from './pages/Loans'
-import LoanDetail from './pages/LoanDetail'
+import Dashboard from './pages/Dashboard'
 import FixedIncome from './pages/FixedIncome'
+import LoanDetail from './pages/LoanDetail'
+import Loans from './pages/Loans'
 import Payments from './pages/Payments'
 
 const queryClient = new QueryClient({
@@ -32,7 +32,9 @@ const queryClient = new QueryClient({
 function App() {
   useEffect(() => {
     // Initialize database on app start
-    initDatabase().catch(console.error)
+    initDatabase().catch((error) => {
+      console.error('Failed to initialize database:', error)
+    })
   }, [])
 
   return (

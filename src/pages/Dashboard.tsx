@@ -1,3 +1,13 @@
+import {
+  AlertTriangle,
+  Banknote,
+  Building2,
+  Clock,
+  IndianRupee,
+  TrendingUp,
+  Users,
+} from 'lucide-react'
+import { useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -8,44 +18,17 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  AlertTriangle,
-  Banknote,
-  Clock,
-  IndianRupee,
-  TrendingUp,
-  Users,
-  Building2,
-} from 'lucide-react'
-import { useMemo, useCallback } from 'react'
-import {
-  useGetDashboardSummary,
   useGetDashboardStats,
+  useGetDashboardSummary,
   useGetRecentActivity,
 } from '@/hooks/api/useDashboard'
-import type { DashboardSummary, DashboardStats } from '@/services/api/dashboard.service'
-
-interface UpcomingPayment {
-  id: string
-  type: 'loan' | 'fixed_income'
-  borrowerName: string
-  assetType: string
-  dueDate: string
-  daysSinceLastPayment: number
-  accruedInterest: number
-  realRemainingPrincipal?: number
-  assetValue?: number
-  currentBalance?: number
-}
+import type { LoanWithBorrowerAndDueDate, FixedIncomeWithTenantAndDueDate } from '@/types/api/dashboard'
 
 export default function Dashboard() {
   // Use the new TanStack Query hooks
   const { data: summary, isLoading: summaryLoading, error: summaryError } = useGetDashboardSummary()
   const { data: stats, isLoading: statsLoading, error: statsError } = useGetDashboardStats()
-  const {
-    data: recentActivity,
-    isLoading: activityLoading,
-    error: activityError,
-  } = useGetRecentActivity()
+  const { isLoading: activityLoading, error: activityError } = useGetRecentActivity()
 
   const loading = summaryLoading || statsLoading || activityLoading
   const error = summaryError || statsError || activityError
@@ -58,8 +41,8 @@ export default function Dashboard() {
     return (amount: number) => formatter.format(amount)
   }, [])
 
-  const renderPaymentsTable = useCallback(
-    (payments: UpcomingPayment[], emptyMessage: string) => {
+  const renderLoanPaymentsTable = useCallback(
+    (payments: LoanWithBorrowerAndDueDate[], emptyMessage: string) => {
       if (!payments || payments.length === 0) {
         return <p className="text-muted-foreground">{emptyMessage}</p>
       }
@@ -73,27 +56,28 @@ export default function Dashboard() {
                 <TableHead className="min-w-[100px]">Type</TableHead>
                 <TableHead className="min-w-[120px]">Due Date</TableHead>
                 <TableHead className="min-w-[100px] hidden sm:table-cell">
-                  Days Since Last Payment
+                  Days Until Due
                 </TableHead>
                 <TableHead className="min-w-[120px]">Principal/Value</TableHead>
-                <TableHead className="min-w-[120px]">Accrued Amount</TableHead>
+                <TableHead className="min-w-[120px]">Interest Rate</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {payments.slice(0, 5).map((payment) => {
                 const today = new Date().toISOString().split('T')[0]
-                const isOverdue = payment.dueDate < today
-                const dueDateObj = new Date(payment.dueDate)
+                const dueDate = payment.end_date || payment.start_date
+                const isOverdue = dueDate < today
+                const dueDateObj = new Date(dueDate)
                 const isDueSoon =
                   !isOverdue && dueDateObj.getTime() - Date.now() <= 7 * 24 * 60 * 60 * 1000
 
                 return (
                   <TableRow
-                    key={`${payment.type}-${payment.id}`}
+                    key={`${payment.loan_type}-${payment.id}`}
                     className={isOverdue ? 'bg-red-50' : isDueSoon ? 'bg-yellow-50' : ''}
                   >
-                    <TableCell className="font-medium">{payment.borrowerName}</TableCell>
-                    <TableCell>{payment.assetType}</TableCell>
+                    <TableCell className="font-medium">{payment.borrower_name}</TableCell>
+                    <TableCell>{payment.loan_type}</TableCell>
                     <TableCell>
                       <div
                         className={`flex items-center gap-1 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-yellow-600' : ''}`}
@@ -105,15 +89,80 @@ export default function Dashboard() {
                       </div>
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      {payment.daysSinceLastPayment || 0} days
+                      {payment.days_until_due || 0} days
                     </TableCell>
                     <TableCell>
-                      {payment.type === 'loan' && payment.realRemainingPrincipal !== undefined
-                        ? formatCurrency(payment.realRemainingPrincipal)
-                        : formatCurrency(payment.assetValue || payment.currentBalance)}
+                      {formatCurrency(payment.current_balance)}
                     </TableCell>
                     <TableCell className="font-medium text-green-600">
-                      {formatCurrency(payment.accruedInterest)}
+                      {payment.interest_rate}%
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )
+    },
+    [formatCurrency]
+  )
+
+  const renderFixedIncomePaymentsTable = useCallback(
+    (payments: FixedIncomeWithTenantAndDueDate[], emptyMessage: string) => {
+      if (!payments || payments.length === 0) {
+        return <p className="text-muted-foreground">{emptyMessage}</p>
+      }
+
+      return (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[120px]">Party</TableHead>
+                <TableHead className="min-w-[100px]">Type</TableHead>
+                <TableHead className="min-w-[120px]">Due Date</TableHead>
+                <TableHead className="min-w-[100px] hidden sm:table-cell">
+                  Days Until Due
+                </TableHead>
+                <TableHead className="min-w-[120px]">Asset Value</TableHead>
+                <TableHead className="min-w-[120px]">Income Rate</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {payments.slice(0, 5).map((payment) => {
+                const today = new Date().toISOString().split('T')[0]
+                const dueDate = payment.end_date || payment.start_date
+                const isOverdue = dueDate < today
+                const dueDateObj = new Date(dueDate)
+                const isDueSoon =
+                  !isOverdue && dueDateObj.getTime() - Date.now() <= 7 * 24 * 60 * 60 * 1000
+
+                return (
+                  <TableRow
+                    key={`${payment.income_type}-${payment.id}`}
+                    className={isOverdue ? 'bg-red-50' : isDueSoon ? 'bg-yellow-50' : ''}
+                  >
+                    <TableCell className="font-medium">{payment.tenant_name}</TableCell>
+                    <TableCell>{payment.income_type}</TableCell>
+                    <TableCell>
+                      <div
+                        className={`flex items-center gap-1 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-yellow-600' : ''}`}
+                      >
+                        {isOverdue && <AlertTriangle className="h-4 w-4" />}
+                        {dueDateObj.toLocaleDateString()}
+                        {isOverdue && <span className="text-xs">(Overdue)</span>}
+                        {isDueSoon && <span className="text-xs">(Due Soon)</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {payment.days_until_due || 0} days
+                    </TableCell>
+                    <TableCell>
+                      {formatCurrency(payment.principal_amount)}
+                    </TableCell>
+                    <TableCell className="font-medium text-green-600">
+                      {payment.income_rate}%
                     </TableCell>
                   </TableRow>
                 )
@@ -135,9 +184,23 @@ export default function Dashboard() {
   }
 
   if (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-lg text-red-600">Failed to load dashboard: {error.message}</div>
+        <div className="text-center space-y-4">
+          <div className="text-lg text-red-600">Failed to load dashboard</div>
+          <div className="text-sm text-gray-600 max-w-md">
+            {errorMessage}
+          </div>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     )
   }
@@ -165,7 +228,7 @@ export default function Dashboard() {
             <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{summary.totalBorrowers}</div>
+            <div className="text-xl font-bold">{summary.totalBorrowers ?? 0}</div>
           </CardContent>
         </Card>
 
@@ -175,7 +238,7 @@ export default function Dashboard() {
             <Banknote className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{summary.activeLoans}</div>
+            <div className="text-xl font-bold">{summary.activeLoans ?? 0}</div>
           </CardContent>
         </Card>
 
@@ -189,7 +252,7 @@ export default function Dashboard() {
               className="text-sm sm:text-base lg:text-lg font-bold break-words"
               title={formatCurrency(summary.totalOutstandingBalance)}
             >
-              {formatCurrency(summary.totalOutstandingBalance)}
+              {formatCurrency(summary.totalOutstandingBalance ?? 0)}
             </div>
           </CardContent>
         </Card>
@@ -204,7 +267,7 @@ export default function Dashboard() {
               className="text-sm sm:text-base lg:text-lg font-bold break-words"
               title={formatCurrency(summary.totalPaidAmount)}
             >
-              {formatCurrency(summary.totalPaidAmount)}
+              {formatCurrency(summary.totalPaidAmount ?? 0)}
             </div>
           </CardContent>
         </Card>
@@ -215,7 +278,7 @@ export default function Dashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl font-bold">{summary.totalFixedIncomes}</div>
+            <div className="text-xl font-bold">{summary.totalFixedIncomes ?? 0}</div>
             <p className="text-xs text-muted-foreground break-words" title={formatCurrency(0)}>
               {formatCurrency(0)} value
             </p>
@@ -250,7 +313,7 @@ export default function Dashboard() {
               className="text-sm sm:text-base lg:text-lg font-bold break-words"
               title={formatCurrency(summary.totalPaidAmount)}
             >
-              {formatCurrency(summary.totalPaidAmount)}
+              {formatCurrency(summary.totalPaidAmount ?? 0)}
             </div>
           </CardContent>
         </Card>
@@ -267,7 +330,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {renderPaymentsTable(
+            {renderLoanPaymentsTable(
               summary.upcomingPayments || [],
               'No active loans with upcoming payments.'
             )}
@@ -289,10 +352,14 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {renderPaymentsTable([], 'No active fixed income assets with upcoming payments.')}
-            {0 > 5 && (
+            {renderFixedIncomePaymentsTable(
+              summary.upcomingFixedIncomePayments || [],
+              'No active fixed income assets with upcoming payments.'
+            )}
+            {(summary.upcomingFixedIncomePayments?.length || 0) > 5 && (
               <p className="text-sm text-muted-foreground mt-4">
-                Showing 5 of {0} items. View fixed income page for complete list.
+                Showing 5 of {summary.upcomingFixedIncomePayments?.length || 0} items. View fixed income page for
+                complete list.
               </p>
             )}
           </CardContent>

@@ -9,6 +9,7 @@ import type {
   LoanWithBorrowerAndDueDate,
   PaymentWithBorrowerInfo,
   RecentActivity,
+  FixedIncomeWithTenantAndDueDate,
 } from '@/types/api/dashboard'
 
 export interface DashboardSummary {
@@ -21,6 +22,7 @@ export interface DashboardSummary {
   totalPaidAmount: number
   recentPayments: PaymentWithBorrowerInfo[]
   upcomingPayments: LoanWithBorrowerAndDueDate[]
+  upcomingFixedIncomePayments: FixedIncomeWithTenantAndDueDate[]
 }
 
 export interface DashboardStats {
@@ -92,7 +94,25 @@ export const dashboardService = {
         ...loan,
         borrower_name: 'Unknown', // Would need to join with borrower data
         days_until_due: Math.ceil(
-          (new Date(loan.end_date!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          (new Date(loan.end_date || now.toISOString()).getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24)
+        ),
+      }))
+      .slice(0, 5)
+
+    // Get upcoming fixed income payments (fixed incomes with due dates in next 30 days)
+    const upcomingFixedIncomePayments = fixedIncomes
+      .filter((fixedIncome) => {
+        if (!fixedIncome.end_date) return false
+        const endDate = new Date(fixedIncome.end_date)
+        return endDate >= now && endDate <= thirtyDaysFromNow
+      })
+      .map((fixedIncome) => ({
+        ...fixedIncome,
+        tenant_name: 'Unknown', // Would need to join with borrower data
+        days_until_due: Math.ceil(
+          (new Date(fixedIncome.end_date || now.toISOString()).getTime() - now.getTime()) /
+            (1000 * 60 * 60 * 24)
         ),
       }))
       .slice(0, 5)
@@ -107,6 +127,7 @@ export const dashboardService = {
       totalPaidAmount,
       recentPayments,
       upcomingPayments,
+      upcomingFixedIncomePayments,
     }
   },
 

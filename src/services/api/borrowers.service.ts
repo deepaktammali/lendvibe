@@ -5,8 +5,7 @@ import {
   getBorrowers as dbGetBorrowers,
   updateBorrower as dbUpdateBorrower,
 } from '@/lib/database'
-import type { Borrower } from '@/types/api/borrowers'
-import type { CreateBorrower } from '@/types/api/borrowers'
+import type { Borrower, CreateBorrower } from '@/types/api/borrowers'
 
 export type CreateBorrowerData = CreateBorrower.Payload
 export type UpdateBorrowerData = {

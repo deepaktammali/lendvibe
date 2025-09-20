@@ -1,20 +1,20 @@
 import {
   createFixedIncome as dbCreateFixedIncome,
+  createIncomePayment as dbCreateIncomePayment,
   deleteFixedIncome as dbDeleteFixedIncome,
+  deleteIncomePayment as dbDeleteIncomePayment,
   getFixedIncome as dbGetFixedIncome,
   getFixedIncomes as dbGetFixedIncomes,
   getFixedIncomesByTenant as dbGetFixedIncomesByTenant,
   getFixedIncomesWithTenants as dbGetFixedIncomesWithTenants,
-  updateFixedIncomeStatus as dbUpdateFixedIncomeStatus,
-  createIncomePayment as dbCreateIncomePayment,
-  deleteIncomePayment as dbDeleteIncomePayment,
   getIncomePayments as dbGetIncomePayments,
   getIncomePaymentsByFixedIncome as dbGetIncomePaymentsByFixedIncome,
   getLastIncomePaymentByFixedIncome as dbGetLastIncomePaymentByFixedIncome,
   getLastIncomePaymentsByFixedIncomes as dbGetLastIncomePaymentsByFixedIncomes,
+  updateFixedIncomeStatus as dbUpdateFixedIncomeStatus,
   updateIncomePayment as dbUpdateIncomePayment,
 } from '@/lib/database'
-import type { FixedIncome, IncomePayment, FixedIncomeWithTenant } from '@/types/api/fixedIncome'
+import type { FixedIncome, FixedIncomeWithTenant, IncomePayment } from '@/types/api/fixedIncome'
 
 export interface CreateFixedIncomeData {
   tenant_id: string

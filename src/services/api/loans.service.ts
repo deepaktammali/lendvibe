@@ -1,18 +1,22 @@
 import {
-  getLoans as dbGetLoans,
-  getLoan as dbGetLoan,
   createLoan as dbCreateLoan,
-  updateLoanBalance as dbUpdateLoanBalance,
-  updateLoanStatus as dbUpdateLoanStatus,
   deleteLoan as dbDeleteLoan,
+  getLoan as dbGetLoan,
+  getLoans as dbGetLoans,
   getLoansByBorrower as dbGetLoansByBorrower,
   getLoansWithBorrowers as dbGetLoansWithBorrowers,
   getLoansWithCalculatedBalances as dbGetLoansWithCalculatedBalances,
   getRealRemainingPrincipal as dbGetRealRemainingPrincipal,
   syncAllLoanBalances as dbSyncAllLoanBalances,
+  updateLoanBalance as dbUpdateLoanBalance,
+  updateLoanStatus as dbUpdateLoanStatus,
 } from '@/lib/database'
-import type { Loan, LoanWithBorrower, LoanWithCalculatedBalance } from '@/types/api/loans'
-import type { CreateLoan } from '@/types/api/loans'
+import type {
+  CreateLoan,
+  Loan,
+  LoanWithBorrower,
+  LoanWithCalculatedBalance,
+} from '@/types/api/loans'
 
 export type CreateLoanData = CreateLoan.Payload
 

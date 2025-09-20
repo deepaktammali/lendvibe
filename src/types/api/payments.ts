@@ -52,7 +52,7 @@ namespace CreatePayment {
 }
 
 namespace UpdatePayment {
-  export type Response = void
+  export type Response = undefined
   export type Payload = {
     id: string
     data: {
@@ -68,7 +68,7 @@ namespace UpdatePayment {
 }
 
 namespace DeletePayment {
-  export type Response = void
+  export type Response = undefined
   export type Payload = {
     id: string
     payment: Payment

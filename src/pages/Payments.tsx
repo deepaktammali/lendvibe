@@ -1,28 +1,16 @@
-import { useState } from 'react'
+import { useForm } from '@tanstack/react-form'
 import {
-  Plus,
-  Search,
-  IndianRupee,
-  Receipt,
   Calendar,
+  Edit,
+  IndianRupee,
+  Plus,
+  Receipt,
+  Search,
+  Trash2,
   TrendingUp,
   User,
-  Edit,
-  Trash2,
 } from 'lucide-react'
-import { useForm } from '@tanstack/react-form'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { useState } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,14 +21,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -49,14 +41,22 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  useGetPaymentsWithDetails,
-  useCreatePayment,
-  useUpdatePayment,
-  useDeletePayment,
-} from '@/hooks/api/usePayments'
-import { useGetLoans } from '@/hooks/api/useLoans'
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import { useGetBorrowers } from '@/hooks/api/useBorrowers'
-import { paymentFormSchema, type PaymentFormInput } from '@/lib/validation'
+import { useGetLoans } from '@/hooks/api/useLoans'
+import {
+  useCreatePayment,
+  useDeletePayment,
+  useGetPaymentsWithDetails,
+  useUpdatePayment,
+} from '@/hooks/api/usePayments'
+import { type PaymentFormInput, paymentFormSchema } from '@/lib/validation'
 import type { Payment } from '@/types/api/payments'
 
 interface PaymentWithDetails extends Payment {

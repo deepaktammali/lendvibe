@@ -73,25 +73,25 @@ namespace CreateLoan {
 }
 
 namespace UpdateLoanBalance {
-  export type Response = void
+  export type Response = undefined
   export type Payload = {
     newBalance: number
   } // ID is part of URL path
 }
 
 namespace UpdateLoanStatus {
-  export type Response = void
+  export type Response = undefined
   export type Payload = {
     status: Loan['status']
   } // ID is part of URL path
 }
 
 namespace DeleteLoan {
-  export type Response = void
+  export type Response = undefined
 }
 
 namespace SyncAllLoanBalances {
-  export type Response = void
+  export type Response = undefined
 }
 
 // Export all types for easy importing

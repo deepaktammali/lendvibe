@@ -1,3 +1,17 @@
+import { useForm } from '@tanstack/react-form'
+import {
+  Calendar,
+  Clock,
+  Eye,
+  IndianRupee,
+  Plus,
+  Search,
+  Trash2,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -31,23 +45,9 @@ import {
   useDeleteFixedIncome,
   useGetFixedIncomesWithTenants,
 } from '@/hooks/api/useFixedIncome'
-import { fixedIncomeSchema, type FixedIncomeFormData } from '@/lib/validation'
+import { type FixedIncomeFormData, fixedIncomeSchema } from '@/lib/validation'
 import type { FixedIncome } from '@/types/api/fixedIncome'
 import { FIXED_INCOME_TYPE_LABELS } from '@/types/database'
-import { useForm } from '@tanstack/react-form'
-import {
-  Calendar,
-  Clock,
-  Eye,
-  IndianRupee,
-  Plus,
-  Search,
-  Trash2,
-  TrendingUp,
-  User,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 export default function FixedIncome() {
   const navigate = useNavigate()
@@ -315,7 +315,7 @@ export default function FixedIncome() {
                         min="1"
                         value={field.state.value || ''}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 1
+                          const value = parseInt(e.target.value, 10) || 1
                           field.handleChange(value)
                         }}
                         onBlur={field.handleBlur}

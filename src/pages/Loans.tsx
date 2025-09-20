@@ -1,3 +1,17 @@
+import { useForm } from '@tanstack/react-form'
+import {
+  AlertCircle,
+  Calendar,
+  Eye,
+  IndianRupee,
+  Percent,
+  Plus,
+  Search,
+  Trash2,
+  User,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -38,22 +52,8 @@ import {
   isTraditionalLoanType,
   LOAN_CATEGORY_LABELS,
 } from '@/lib/loans'
-import { loanSchema, type LoanFormData } from '@/lib/validation'
+import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
-import { useForm } from '@tanstack/react-form'
-import {
-  AlertCircle,
-  Calendar,
-  Eye,
-  IndianRupee,
-  Percent,
-  Plus,
-  Search,
-  Trash2,
-  User,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -362,7 +362,7 @@ export default function Loans() {
                             type="number"
                             min="1"
                             value={field.state.value || ''}
-                            onChange={(e) => field.handleChange(parseInt(e.target.value) || 1)}
+                            onChange={(e) => field.handleChange(parseInt(e.target.value, 10) || 1)}
                             onBlur={field.handleBlur}
                           />
                         </div>
@@ -389,7 +389,7 @@ export default function Loans() {
                                 min="1"
                                 value={field.state.value || ''}
                                 onChange={(e) => {
-                                  const value = parseInt(e.target.value) || 12
+                                  const value = parseInt(e.target.value, 10) || 12
                                   field.handleChange(value)
                                 }}
                                 onBlur={field.handleBlur}
@@ -635,10 +635,10 @@ export default function Loans() {
                 <p className="text-sm font-medium text-gray-600">Avg. Interest</p>
                 <p className="text-lg font-bold">
                   {filteredLoans.length > 0
-                    ? (
+                    ? `${(
                         filteredLoans.reduce((sum, loan) => sum + loan.interest_rate, 0) /
-                        filteredLoans.length
-                      ).toFixed(1) + '%'
+                          filteredLoans.length
+                      ).toFixed(1)}%`
                     : '0%'}
                 </p>
               </div>

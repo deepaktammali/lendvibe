@@ -1,4 +1,4 @@
-import type { Loan, FixedIncome } from '@/types/database'
+import type { FixedIncome, Loan } from '@/types/database'
 import { isFixedIncomeType } from './loans'
 
 /**

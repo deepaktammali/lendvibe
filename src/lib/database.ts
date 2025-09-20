@@ -1,5 +1,5 @@
 import Database from '@tauri-apps/plugin-sql'
-import type { Borrower, Loan, Payment, FixedIncome, IncomePayment } from '../types/database'
+import type { Borrower, FixedIncome, IncomePayment, Loan, Payment } from '../types/database'
 
 let db: Database | null = null
 

@@ -1,3 +1,13 @@
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  Clock,
+  IndianRupee,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,16 +31,6 @@ import {
 import { getLoanTypeLabel } from '@/lib/loans'
 import type { Loan } from '@/types/api/loans'
 import type { Payment } from '@/types/api/payments'
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Calendar,
-  Clock,
-  IndianRupee,
-  TrendingUp,
-  User,
-} from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
 
 export default function LoanDetail() {
   const { id } = useParams<{ id: string }>()

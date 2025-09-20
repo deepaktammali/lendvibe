@@ -1,10 +1,8 @@
-import { useState } from 'react'
-import { Plus, Search, Edit, Trash2, User, Phone, MapPin } from 'lucide-react'
 import { useForm } from '@tanstack/react-form'
+import { Edit, MapPin, Phone, Plus, Search, Trash2, User } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -12,6 +10,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Table,
   TableBody,
@@ -21,12 +21,12 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import {
-  useGetBorrowers,
   useCreateBorrower,
-  useUpdateBorrower,
   useDeleteBorrower,
+  useGetBorrowers,
+  useUpdateBorrower,
 } from '@/hooks/api/useBorrowers'
-import { borrowerSchema, type BorrowerFormData } from '@/lib/validation'
+import { type BorrowerFormData, borrowerSchema } from '@/lib/validation'
 import type { Borrower } from '@/types/api/borrowers'
 
 export default function Borrowers() {

@@ -69,7 +69,7 @@ namespace CreateFixedIncome {
 }
 
 namespace UpdateFixedIncomeStatus {
-  export type Response = void
+  export type Response = undefined
   export type Request = {
     id: string
     status: FixedIncome['status']
@@ -77,7 +77,7 @@ namespace UpdateFixedIncomeStatus {
 }
 
 namespace DeleteFixedIncome {
-  export type Response = void
+  export type Response = undefined
   export type Request = {
     id: string
   }
@@ -124,7 +124,7 @@ namespace CreateIncomePayment {
 }
 
 namespace UpdateIncomePayment {
-  export type Response = void
+  export type Response = undefined
   export type Request = {
     id: string
     data: {
@@ -136,7 +136,7 @@ namespace UpdateIncomePayment {
 }
 
 namespace DeleteIncomePayment {
-  export type Response = void
+  export type Response = undefined
   export type Request = {
     id: string
   }

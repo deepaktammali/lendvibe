@@ -1,11 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { loanKeys } from '@/services/api/loans.service'
 import {
-  paymentService,
-  paymentKeys,
   type CreatePaymentData,
+  paymentKeys,
+  paymentService,
   type UpdatePaymentData,
 } from '@/services/api/payments.service'
-import { loanKeys } from '@/services/api/loans.service'
 import type { Payment } from '@/types/api/payments'
 
 export function useGetPayments() {

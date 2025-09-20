@@ -33,7 +33,7 @@ namespace CreateBorrower {
 }
 
 namespace UpdateBorrower {
-  export type Response = void
+  export type Response = undefined
   export type Payload = {
     data: {
       name?: string
@@ -45,7 +45,7 @@ namespace UpdateBorrower {
 }
 
 namespace DeleteBorrower {
-  export type Response = void
+  export type Response = undefined
 }
 
 // Export all types for easy importing
