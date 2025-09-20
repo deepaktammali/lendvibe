@@ -163,10 +163,10 @@ export default function Dashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium truncate">Total Borrowers</CardTitle>
+            <CardTitle className="text-xs font-medium">Total Borrowers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
@@ -176,7 +176,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium truncate">Active Loans</CardTitle>
+            <CardTitle className="text-xs font-medium">Active Loans</CardTitle>
             <Banknote className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
@@ -186,11 +186,11 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium truncate">Total Outstanding</CardTitle>
+            <CardTitle className="text-xs font-medium">Total Outstanding</CardTitle>
             <IndianRupee className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold truncate" title={formatCurrency(stats.totalOutstanding)}>
+            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(stats.totalOutstanding)}>
               {formatCurrency(stats.totalOutstanding)}
             </div>
           </CardContent>
@@ -198,11 +198,11 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium truncate">Accrued Interest</CardTitle>
+            <CardTitle className="text-xs font-medium">Accrued Interest</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold truncate" title={formatCurrency(stats.totalAccruedInterest)}>
+            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(stats.totalAccruedInterest)}>
               {formatCurrency(stats.totalAccruedInterest)}
             </div>
           </CardContent>
@@ -210,12 +210,12 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium truncate">Fixed Income Assets</CardTitle>
+            <CardTitle className="text-xs font-medium leading-tight">Fixed Income Assets</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold">{stats.activeFixedIncome}</div>
-            <p className="text-xs text-muted-foreground truncate" title={formatCurrency(stats.totalFixedIncomeValue)}>
+            <p className="text-xs text-muted-foreground break-words" title={formatCurrency(stats.totalFixedIncomeValue)}>
               {formatCurrency(stats.totalFixedIncomeValue)} value
             </p>
           </CardContent>
@@ -223,7 +223,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium truncate">Overdue Items</CardTitle>
+            <CardTitle className="text-xs font-medium">Overdue Items</CardTitle>
             <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${stats.overdueCount > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
           </CardHeader>
           <CardContent>
@@ -235,11 +235,11 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium truncate">This Month's Payments</CardTitle>
+            <CardTitle className="text-xs font-medium leading-tight">This Month's Payments</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold truncate" title={formatCurrency(stats.monthlyPayments)}>
+            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(stats.monthlyPayments)}>
               {formatCurrency(stats.monthlyPayments)}
             </div>
           </CardContent>
@@ -258,17 +258,18 @@ export default function Dashboard() {
           {upcomingPayments.length === 0 ? (
             <p className="text-muted-foreground">No active loans or fixed income assets with upcoming payments.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Party</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Days Since Last Payment</TableHead>
-                  <TableHead>Principal/Value</TableHead>
-                  <TableHead>Accrued Amount</TableHead>
-                </TableRow>
-              </TableHeader>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[120px]">Party</TableHead>
+                    <TableHead className="min-w-[100px]">Type</TableHead>
+                    <TableHead className="min-w-[120px]">Due Date</TableHead>
+                    <TableHead className="min-w-[100px] hidden sm:table-cell">Days Since Last Payment</TableHead>
+                    <TableHead className="min-w-[120px]">Principal/Value</TableHead>
+                    <TableHead className="min-w-[120px]">Accrued Amount</TableHead>
+                  </TableRow>
+                </TableHeader>
               <TableBody>
                 {upcomingPayments.slice(0, 10).map((payment) => {
                   const today = new Date().toISOString().split('T')[0];
@@ -287,7 +288,7 @@ export default function Dashboard() {
                           {isDueSoon && <span className="text-xs">(Due Soon)</span>}
                         </div>
                       </TableCell>
-                      <TableCell>{payment.daysSinceLastPayment} days</TableCell>
+                      <TableCell className="hidden sm:table-cell">{payment.daysSinceLastPayment} days</TableCell>
                       <TableCell>
                         {payment.type === 'loan' && payment.realRemainingPrincipal !== undefined
                           ? formatCurrency(payment.realRemainingPrincipal)
@@ -301,7 +302,8 @@ export default function Dashboard() {
                   );
                 })}
               </TableBody>
-            </Table>
+              </Table>
+            </div>
           )}
           {upcomingPayments.length > 10 && (
             <p className="text-sm text-muted-foreground mt-4">

@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "lending-app",
+  "productName": "LendVibe",
   "version": "0.1.0",
-  "identifier": "com.deepaktammali.lending-app",
+  "identifier": "com.deepaktammali.lendvibe",
   "build": {
     "beforeDevCommand": "bun run dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "lending-app",
-        "width": 800,
-        "height": 600
+        "title": "LendVibe",
+        "width": 1200,
+        "height": 800
       }
     ],
     "security": {
