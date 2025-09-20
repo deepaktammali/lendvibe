@@ -49,7 +49,7 @@ import { type FixedIncomeFormData, fixedIncomeSchema } from '@/lib/validation'
 import type { FixedIncome } from '@/types/api/fixedIncome'
 import { FIXED_INCOME_TYPE_LABELS } from '@/types/database'
 
-export default function FixedIncome() {
+export default function FixedIncomePage() {
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -85,7 +85,7 @@ export default function FixedIncome() {
       end_date: '',
     } as FixedIncomeFormData & { hasEndDate: boolean },
     validators: {
-      onChange: fixedIncomeSchema,
+      onBlur: fixedIncomeSchema,
     },
     onSubmit: async ({ value }) => {
       try {

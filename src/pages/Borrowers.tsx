@@ -48,7 +48,7 @@ export default function Borrowers() {
       address: '',
     } as BorrowerFormData,
     validators: {
-      onChange: borrowerSchema,
+      onBlur: borrowerSchema,
     },
     onSubmit: async ({ value }) => {
       try {
@@ -68,7 +68,7 @@ export default function Borrowers() {
       address: '',
     } as BorrowerFormData,
     validators: {
-      onChange: borrowerSchema,
+      onBlur: borrowerSchema,
     },
     onSubmit: async ({ value }) => {
       try {

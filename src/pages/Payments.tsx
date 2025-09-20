@@ -88,7 +88,7 @@ export default function Payments() {
       payment_date: new Date().toISOString().split('T')[0],
     } as PaymentFormInput,
     validators: {
-      onChange: paymentFormSchema,
+      onBlur: paymentFormSchema,
     },
     onSubmit: async ({ value }) => {
       if (!editingPayment) return
@@ -132,7 +132,7 @@ export default function Payments() {
       payment_date: new Date().toISOString().split('T')[0],
     } as PaymentFormInput,
     validators: {
-      onChange: paymentFormSchema,
+      onBlur: paymentFormSchema,
     },
     onSubmit: async ({ value }) => {
       try {

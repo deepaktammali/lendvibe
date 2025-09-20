@@ -11,14 +11,14 @@ CREATE TABLE borrowers (
     created_at TEXT NOT NULL
 );
 
--- Create loans table with end_date instead of term_months
+-- Create loans table with end_date
 CREATE TABLE loans (
     id TEXT PRIMARY KEY,
     borrower_id TEXT NOT NULL,
     principal_amount REAL NOT NULL,
     interest_rate REAL NOT NULL,
     start_date TEXT NOT NULL,
-    end_date TEXT, -- Optional end date (calculated from term if needed)
+    end_date TEXT, -- Optional end date
     status TEXT NOT NULL DEFAULT 'active',
     current_balance REAL NOT NULL,
     created_at TEXT NOT NULL,
