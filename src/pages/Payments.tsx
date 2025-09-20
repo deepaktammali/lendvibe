@@ -62,6 +62,7 @@ import {
   IndianRupee,
   Plus,
   Receipt,
+  RefreshCw,
   Search,
   Trash2,
   TrendingUp,
@@ -84,10 +85,10 @@ export default function Payments() {
   const [selectedPeriod, setSelectedPeriod] = useState<number>(1) // months
 
   // Use the new TanStack Query hooks
-  const { data: payments = [], isLoading: loading } = useGetPaymentsWithDetails()
-  const { data: loans = [] } = useGetLoans()
-  const { data: borrowers = [] } = useGetBorrowers()
-  const { data: fixedIncomes = [] } = useGetFixedIncomesWithTenants()
+  const { data: payments = [], isLoading: loading, refetch: refetchPayments } = useGetPaymentsWithDetails()
+  const { data: loans = [], refetch: refetchLoans } = useGetLoans()
+  const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
+  const { data: fixedIncomes = [], refetch: refetchFixedIncomes } = useGetFixedIncomesWithTenants()
   const createPaymentMutation = useCreatePayment()
   const updatePaymentMutation = useUpdatePayment()
   const deletePaymentMutation = useDeletePayment()
@@ -754,7 +755,22 @@ export default function Payments() {
       {/* Payments Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Payment History ({filteredPayments.length})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Payment History ({filteredPayments.length})</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                refetchPayments()
+                refetchLoans()
+                refetchBorrowers()
+                refetchFixedIncomes()
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {filteredPayments.length === 0 ? (
@@ -838,17 +854,32 @@ export default function Payments() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Upcoming Payments</CardTitle>
-            <Select value={selectedPeriod.toString()} onValueChange={(value) => setSelectedPeriod(parseInt(value))}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Select period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="1">This Month</SelectItem>
-                <SelectItem value="3">Next 3 Months</SelectItem>
-                <SelectItem value="6">Next 6 Months</SelectItem>
-                <SelectItem value="12">Next Year</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  refetchPayments()
+                  refetchLoans()
+                  refetchBorrowers()
+                  refetchFixedIncomes()
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Select value={selectedPeriod.toString()} onValueChange={(value) => setSelectedPeriod(parseInt(value))}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">This Month</SelectItem>
+                  <SelectItem value="3">Next 3 Months</SelectItem>
+                  <SelectItem value="6">Next 6 Months</SelectItem>
+                  <SelectItem value="12">Next Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

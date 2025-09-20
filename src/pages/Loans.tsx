@@ -6,6 +6,7 @@ import {
   IndianRupee,
   Percent,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   User,
@@ -73,8 +74,8 @@ export default function Loans() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: loans = [], isLoading: loading } = useGetLoansWithCalculatedBalances()
-  const { data: borrowers = [] } = useGetBorrowers()
+  const { data: loans = [], isLoading: loading, refetch: refetchLoans } = useGetLoansWithCalculatedBalances()
+  const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
   const createLoanMutation = useCreateLoan()
   const deleteLoanMutation = useDeleteLoan()
   const updateLoanStatusMutation = useUpdateLoanStatus()
@@ -592,7 +593,20 @@ export default function Loans() {
       {/* Loans Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Loans ({filteredLoans.length})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Loans ({filteredLoans.length})</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                refetchLoans()
+                refetchBorrowers()
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {filteredLoans.length === 0 ? (

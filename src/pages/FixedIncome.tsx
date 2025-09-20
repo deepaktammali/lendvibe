@@ -5,6 +5,7 @@ import {
   Eye,
   IndianRupee,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
   TrendingUp,
@@ -56,8 +57,8 @@ export default function FixedIncomePage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: fixedIncomes = [], isLoading: loading } = useGetFixedIncomesWithTenants()
-  const { data: borrowers = [] } = useGetBorrowers()
+  const { data: fixedIncomes = [], isLoading: loading, refetch: refetchFixedIncomes } = useGetFixedIncomesWithTenants()
+  const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
   const createFixedIncomeMutation = useCreateFixedIncome()
   const deleteFixedIncomeMutation = useDeleteFixedIncome()
 
@@ -547,7 +548,20 @@ export default function FixedIncomePage() {
       {/* Fixed Income Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Fixed Income Assets ({filteredFixedIncomes.length})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Fixed Income Assets ({filteredFixedIncomes.length})</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                refetchFixedIncomes()
+                refetchBorrowers()
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {filteredFixedIncomes.length === 0 ? (

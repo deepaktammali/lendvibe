@@ -6,6 +6,7 @@ import {
   Clock,
   Edit,
   IndianRupee,
+  RefreshCw,
   TrendingUp,
   User,
 } from 'lucide-react'
@@ -58,10 +59,10 @@ export default function LoanDetail() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: loan, isLoading: loanLoading, error: loanError } = useGetLoan(id || '')
-  const { data: borrower, isLoading: borrowerLoading } = useGetBorrower(loan?.borrower_id || '')
-  const { data: borrowers = [] } = useGetBorrowers()
-  const { data: payments = [], isLoading: paymentsLoading } = useGetPaymentsByLoan(id || '')
+  const { data: loan, isLoading: loanLoading, error: loanError, refetch: refetchLoan } = useGetLoan(id || '')
+  const { data: borrower, isLoading: borrowerLoading, refetch: refetchBorrower } = useGetBorrower(loan?.borrower_id || '')
+  const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
+  const { data: payments = [], isLoading: paymentsLoading, refetch: refetchPayments } = useGetPaymentsByLoan(id || '')
   const updateLoanMutation = useUpdateLoan()
 
   const loading = loanLoading || borrowerLoading || paymentsLoading
@@ -627,7 +628,22 @@ export default function LoanDetail() {
       {/* Payment History */}
       <Card>
         <CardHeader>
-          <CardTitle>Payment History ({payments.length})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Payment History ({payments.length})</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                refetchLoan()
+                refetchBorrower()
+                refetchBorrowers()
+                refetchPayments()
+              }}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {payments.length === 0 ? (
