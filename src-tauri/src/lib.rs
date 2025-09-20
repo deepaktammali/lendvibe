@@ -25,6 +25,12 @@ pub fn run() {
                             sql: include_str!("../migrations/002_add_loan_type.sql"),
                             kind: tauri_plugin_sql::MigrationKind::Up,
                         },
+                        tauri_plugin_sql::Migration {
+                            version: 3,
+                            description: "create fixed income tables",
+                            sql: include_str!("../migrations/003_create_fixed_income.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
                     ],
                 )
                 .build(),
