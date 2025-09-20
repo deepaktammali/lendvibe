@@ -1,31 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, DollarSign, Receipt, Calendar, TrendingUp, User } from 'lucide-react';
+import { Plus, Search, IndianRupee, Receipt, Calendar, TrendingUp, User, Edit, Trash2 } from 'lucide-react';
+import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  getPayments, 
-  createPayment, 
-  getLoans, 
+import {
+  getPayments,
+  createPayment,
+  getLoans,
   getBorrowers,
   updateLoanBalance,
-  getLoan
+  getLoan,
+  updateLoanStatus,
+  updatePayment,
+  deletePayment
 } from '@/lib/database';
+import { paymentFormSchema, type PaymentFormInput } from '@/lib/validation';
 import type { Payment, Loan, Borrower } from '@/types/database';
 
-interface PaymentFormData {
-  loan_id: string;
-  amount: number;
-  payment_type: 'principal' | 'interest' | 'mixed';
-  principal_amount: number;
-  interest_amount: number;
-  payment_date: string;
-}
 
 interface PaymentWithDetails extends Payment {
   borrower_name: string;
@@ -40,43 +38,14 @@ export default function Payments() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<PaymentFormData>({
-    loan_id: '',
-    amount: 0,
-    payment_type: 'mixed',
-    principal_amount: 0,
-    interest_amount: 0,
-    payment_date: new Date().toISOString().split('T')[0],
-  });
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<PaymentWithDetails | null>(null);
+  const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    // Auto-calculate principal and interest when amount or type changes
-    if (formData.payment_type === 'principal') {
-      setFormData(prev => ({
-        ...prev,
-        principal_amount: prev.amount,
-        interest_amount: 0
-      }));
-    } else if (formData.payment_type === 'interest') {
-      setFormData(prev => ({
-        ...prev,
-        principal_amount: 0,
-        interest_amount: prev.amount
-      }));
-    } else if (formData.payment_type === 'mixed' && formData.amount > 0) {
-      // For mixed payments, default to 50/50 split (user can adjust)
-      const half = formData.amount / 2;
-      setFormData(prev => ({
-        ...prev,
-        principal_amount: half,
-        interest_amount: half
-      }));
-    }
-  }, [formData.amount, formData.payment_type]);
 
   const loadData = async () => {
     try {
@@ -86,7 +55,6 @@ export default function Payments() {
         getBorrowers()
       ]);
 
-      // Combine payment data with loan and borrower details
       const paymentsWithDetails: PaymentWithDetails[] = paymentsData.map(payment => {
         const loan = loansData.find(l => l.id === payment.loan_id);
         const borrower = borrowersData.find(b => b.id === loan?.borrower_id);
@@ -99,7 +67,7 @@ export default function Payments() {
       });
 
       setPayments(paymentsWithDetails);
-      setLoans(loansData.filter(loan => loan.status === 'active')); // Only show active loans for new payments
+      setLoans(loansData.filter(loan => loan.status === 'active'));
       setBorrowers(borrowersData);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -108,38 +76,146 @@ export default function Payments() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      // Create the payment
-      await createPayment(formData);
-      
-      // Update loan balance if principal was paid
-      if (formData.principal_amount > 0) {
-        const loan = await getLoan(formData.loan_id);
-        if (loan) {
-          const newBalance = Math.max(0, loan.current_balance - formData.principal_amount);
-          await updateLoanBalance(formData.loan_id, newBalance);
-        }
-      }
-      
-      setIsAddDialogOpen(false);
-      resetForm();
-      await loadData();
-    } catch (error) {
-      console.error('Failed to record payment:', error);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
+  const editForm = useForm({
+    defaultValues: {
       loan_id: '',
-      amount: 0,
-      payment_type: 'mixed',
       principal_amount: 0,
       interest_amount: 0,
       payment_date: new Date().toISOString().split('T')[0],
-    });
+    } as PaymentFormInput,
+    validators: {
+      onChange: paymentFormSchema,
+    },
+    onSubmit: async ({ value }) => {
+      if (!editingPayment) return;
+
+      try {
+        const oldLoan = await getLoan(editingPayment.loan_id);
+        const newLoan = await getLoan(value.loan_id);
+
+        if (!oldLoan || !newLoan) {
+          throw new Error('Loan not found');
+        }
+
+        const totalAmount = value.principal_amount + value.interest_amount;
+
+        // Calculate balance changes
+        const oldPrincipalChange = editingPayment.principal_amount;
+        const newPrincipalChange = value.principal_amount;
+
+        // Update the payment
+        await updatePayment(editingPayment.id, {
+          loan_id: value.loan_id,
+          amount: totalAmount,
+          payment_date: value.payment_date,
+          principal_amount: value.principal_amount,
+          interest_amount: value.interest_amount,
+          payment_type: value.principal_amount > 0 && value.interest_amount > 0
+            ? 'mixed'
+            : value.principal_amount > 0 ? 'principal' : 'interest',
+        });
+
+        // Recalculate loan balances
+        if (editingPayment.loan_id === value.loan_id) {
+          // Same loan - adjust balance by the difference
+          const balanceDifference = newPrincipalChange - oldPrincipalChange;
+          const newBalance = oldLoan.current_balance - balanceDifference;
+          await updateLoanBalance(value.loan_id, Math.max(0, newBalance));
+        } else {
+          // Different loans - restore old loan balance and reduce new loan balance
+          const oldLoanNewBalance = oldLoan.current_balance + oldPrincipalChange;
+          await updateLoanBalance(editingPayment.loan_id, oldLoanNewBalance);
+
+          const newLoanNewBalance = newLoan.current_balance - newPrincipalChange;
+          await updateLoanBalance(value.loan_id, Math.max(0, newLoanNewBalance));
+        }
+
+        setIsEditDialogOpen(false);
+        setEditingPayment(null);
+        editForm.reset();
+        await loadData();
+      } catch (error) {
+        console.error('Failed to update payment:', error);
+      }
+    },
+  });
+
+  const paymentForm = useForm({
+    defaultValues: {
+      loan_id: '',
+      principal_amount: 0,
+      interest_amount: 0,
+      payment_date: new Date().toISOString().split('T')[0],
+    } as PaymentFormInput,
+    validators: {
+      onChange: paymentFormSchema,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        const loan = await getLoan(value.loan_id);
+        if (!loan) {
+          throw new Error('Loan not found');
+        }
+
+        const totalAmount = value.principal_amount + value.interest_amount;
+        const newBalance = loan.current_balance - value.principal_amount;
+
+        const paymentData: Omit<Payment, 'id' | 'created_at'> = {
+          loan_id: value.loan_id,
+          amount: totalAmount,
+          payment_date: value.payment_date,
+          principal_amount: value.principal_amount,
+          interest_amount: value.interest_amount,
+          payment_type: value.principal_amount > 0 && value.interest_amount > 0
+            ? 'mixed'
+            : value.principal_amount > 0 ? 'principal' : 'interest',
+        };
+
+        await createPayment(paymentData);
+        await updateLoanBalance(value.loan_id, Math.max(0, newBalance));
+
+        if (newBalance <= 0.005) {
+          await updateLoanStatus(value.loan_id, 'paid_off');
+        }
+        
+        setIsAddDialogOpen(false);
+        paymentForm.reset();
+        await loadData();
+      } catch (error) {
+        console.error('Failed to record payment:', error);
+      }
+    },
+  });
+
+  const handleEditPayment = (payment: PaymentWithDetails) => {
+    setEditingPayment(payment);
+    editForm.setFieldValue('loan_id', payment.loan_id);
+    editForm.setFieldValue('principal_amount', payment.principal_amount);
+    editForm.setFieldValue('interest_amount', payment.interest_amount);
+    editForm.setFieldValue('payment_date', payment.payment_date);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeletePayment = async (paymentId: string) => {
+    try {
+      const payment = payments.find(p => p.id === paymentId);
+      if (!payment) return;
+
+      const loan = await getLoan(payment.loan_id);
+      if (!loan) return;
+
+      // Restore the principal amount to the loan balance
+      const newBalance = loan.current_balance + payment.principal_amount;
+      await updateLoanBalance(payment.loan_id, newBalance);
+
+      // Delete the payment
+      await deletePayment(paymentId);
+
+      setDeletePaymentId(null);
+      await loadData();
+    } catch (error) {
+      console.error('Failed to delete payment:', error);
+    }
   };
 
   const filteredPayments = payments.filter(payment => {
@@ -153,9 +229,9 @@ export default function Payments() {
   });
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'INR',
     }).format(amount);
   };
 
@@ -183,12 +259,10 @@ export default function Payments() {
     );
   };
 
-  // Calculate summary stats
   const totalPayments = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
   const totalPrincipal = filteredPayments.reduce((sum, payment) => sum + payment.principal_amount, 0);
   const totalInterest = filteredPayments.reduce((sum, payment) => sum + payment.interest_amount, 0);
   
-  // Current month payments
   const currentMonth = new Date().toISOString().slice(0, 7);
   const monthlyPayments = filteredPayments
     .filter(payment => payment.payment_date.startsWith(currentMonth))
@@ -221,63 +295,47 @@ export default function Payments() {
             <DialogHeader>
               <DialogTitle>Record Payment</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="payment-loan">Loan *</Label>
-                <Select 
-                  value={formData.loan_id} 
-                  onValueChange={(value) => setFormData({ ...formData, loan_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a loan" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loans.map((loan) => {
-                      const borrower = borrowers.find(b => b.id === loan.borrower_id);
-                      return (
-                        <SelectItem key={loan.id} value={loan.id}>
-                          {borrower?.name} - {formatCurrency(loan.current_balance)} remaining
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="payment-type">Payment Type *</Label>
-                <Select 
-                  value={formData.payment_type} 
-                  onValueChange={(value: Payment['payment_type']) => 
-                    setFormData({ ...formData, payment_type: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mixed">Mixed (Principal + Interest)</SelectItem>
-                    <SelectItem value="principal">Principal Only</SelectItem>
-                    <SelectItem value="interest">Interest Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                paymentForm.handleSubmit();
+              }}
+              className="space-y-4"
+            >
+              <paymentForm.Field
+                name="loan_id"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-loan">Loan *</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a loan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loans.map((loan) => {
+                          const borrower = borrowers.find(b => b.id === loan.borrower_id);
+                          return (
+                            <SelectItem key={loan.id} value={loan.id}>
+                              {borrower?.name} - {formatCurrency(loan.current_balance)} remaining
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
               
-              <div className="space-y-2">
-                <Label htmlFor="payment-amount">Total Amount *</Label>
-                <Input
-                  id="payment-amount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.amount || ''}
-                  onChange={(e) => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
-
-              {formData.payment_type === 'mixed' && (
-                <>
+              <paymentForm.Field
+                name="principal_amount"
+                children={(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="payment-principal">Principal Amount</Label>
                     <Input
@@ -285,19 +343,24 @@ export default function Payments() {
                       type="number"
                       step="0.01"
                       min="0"
-                      max={formData.amount}
-                      value={formData.principal_amount || ''}
+                      value={field.state.value || ''}
                       onChange={(e) => {
-                        const principal = parseFloat(e.target.value) || 0;
-                        setFormData({ 
-                          ...formData, 
-                          principal_amount: principal,
-                          interest_amount: formData.amount - principal
-                        });
+                        const amount = parseFloat(e.target.value) || 0;
+                        field.handleChange(amount);
                       }}
+                      onBlur={field.handleBlur}
+                      placeholder="0.00"
                     />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
                   </div>
-                  
+                )}
+              />
+
+              <paymentForm.Field
+                name="interest_amount"
+                children={(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="payment-interest">Interest Amount</Label>
                     <Input
@@ -305,50 +368,237 @@ export default function Payments() {
                       type="number"
                       step="0.01"
                       min="0"
-                      max={formData.amount}
-                      value={formData.interest_amount || ''}
+                      value={field.state.value || ''}
                       onChange={(e) => {
-                        const interest = parseFloat(e.target.value) || 0;
-                        setFormData({ 
-                          ...formData, 
-                          interest_amount: interest,
-                          principal_amount: formData.amount - interest
-                        });
+                        const amount = parseFloat(e.target.value) || 0;
+                        field.handleChange(amount);
                       }}
+                      onBlur={field.handleBlur}
+                      placeholder="0.00"
                     />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
                   </div>
-                </>
-              )}
+                )}
+              />
               
-              <div className="space-y-2">
-                <Label htmlFor="payment-date">Payment Date *</Label>
-                <Input
-                  id="payment-date"
-                  type="date"
-                  value={formData.payment_date}
-                  onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                  required
-                />
-              </div>
+              <paymentForm.Field
+                name="payment_date"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-date">Payment Date *</Label>
+                    <Input
+                      id="payment-date"
+                      type="date"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
               
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    resetForm();
+                    paymentForm.reset();
                     setIsAddDialogOpen(false);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={!formData.loan_id || formData.amount <= 0}>
-                  Record Payment
-                </Button>
+                <paymentForm.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                  children={([canSubmit, isSubmitting]) => (
+                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                      {isSubmitting ? 'Recording...' : 'Record Payment'}
+                    </Button>
+                  )}
+                />
               </div>
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Payment Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Payment</DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                editForm.handleSubmit();
+              }}
+              className="space-y-4"
+            >
+              <editForm.Field
+                name="loan_id"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-loan">Loan *</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a loan" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {loans.map((loan) => {
+                          const borrower = borrowers.find(b => b.id === loan.borrower_id);
+                          return (
+                            <SelectItem key={loan.id} value={loan.id}>
+                              {borrower?.name} - {formatCurrency(loan.current_balance)} remaining
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
+
+              <editForm.Field
+                name="principal_amount"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-principal">Principal Amount</Label>
+                    <Input
+                      id="edit-principal"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={field.state.value || ''}
+                      onChange={(e) => {
+                        const amount = parseFloat(e.target.value) || 0;
+                        field.handleChange(amount);
+                      }}
+                      onBlur={field.handleBlur}
+                      placeholder="0.00"
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
+
+              <editForm.Field
+                name="interest_amount"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-interest">Interest Amount</Label>
+                    <Input
+                      id="edit-interest"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={field.state.value || ''}
+                      onChange={(e) => {
+                        const amount = parseFloat(e.target.value) || 0;
+                        field.handleChange(amount);
+                      }}
+                      onBlur={field.handleBlur}
+                      placeholder="0.00"
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
+
+              <editForm.Field
+                name="payment_date"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-date">Payment Date *</Label>
+                    <Input
+                      id="edit-date"
+                      type="date"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    editForm.reset();
+                    setIsEditDialogOpen(false);
+                    setEditingPayment(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <editForm.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                  children={([canSubmit, isSubmitting]) => (
+                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                      {isSubmitting ? 'Updating...' : 'Update Payment'}
+                    </Button>
+                  )}
+                />
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={!!deletePaymentId} onOpenChange={() => setDeletePaymentId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Payment</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this payment? This action cannot be undone.
+                {deletePaymentId && (() => {
+                  const payment = payments.find(p => p.id === deletePaymentId);
+                  if (payment) {
+                    return (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                        <p><strong>Borrower:</strong> {payment.borrower_name}</p>
+                        <p><strong>Amount:</strong> {formatCurrency(payment.amount)}</p>
+                        <p><strong>Principal:</strong> {formatCurrency(payment.principal_amount)}</p>
+                        <p><strong>Interest:</strong> {formatCurrency(payment.interest_amount)}</p>
+                        <p><strong>Date:</strong> {formatDate(payment.payment_date)}</p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deletePaymentId && handleDeletePayment(deletePaymentId)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete Payment
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Filters */}
@@ -389,7 +639,7 @@ export default function Payments() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center">
-              <DollarSign className="h-8 w-8 text-green-600" />
+              <IndianRupee className="h-8 w-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Payments</p>
                 <p className="text-lg font-bold">{formatCurrency(totalPayments)}</p>
@@ -463,6 +713,7 @@ export default function Payments() {
                   <TableHead>Type</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Recorded</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -491,6 +742,25 @@ export default function Payments() {
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">
                       {formatDate(payment.created_at)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditPayment(payment)}
+                        >
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setDeletePaymentId(payment.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

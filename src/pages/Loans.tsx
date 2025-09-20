@@ -1,49 +1,52 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, DollarSign, Calendar, Percent, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  getBorrowers, 
-  getLoans, 
-  createLoan, 
-  updateLoanStatus, 
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  createLoan,
   deleteLoan,
-  getLoansByBorrower 
+  getBorrowers,
+  getLoansWithCalculatedBalances,
+  updateLoanStatus
 } from '@/lib/database';
+import { loanSchema, type LoanFormData } from '@/lib/validation';
+import { getLoanTypeLabel, getLoanTypesByCategory, LOAN_CATEGORY_LABELS, isFixedIncomeType, isTraditionalLoanType } from '@/lib/loans';
 import type { Borrower, Loan } from '@/types/database';
+import { useForm } from '@tanstack/react-form';
+import { AlertCircle, Calendar, Eye, IndianRupee, Percent, Plus, Search, Trash2, User } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-interface LoanFormData {
-  borrower_id: string;
-  principal_amount: number;
-  interest_rate: number;
-  term_months: number;
-  start_date: string;
-}
 
-interface LoanWithBorrower extends Loan {
+
+interface LoanWithCalculatedBalance extends Loan {
   borrower_name: string;
+  real_remaining_principal: number;
 }
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+  }).format(amount);
+};
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString();
+};
 
 export default function Loans() {
-  const [loans, setLoans] = useState<LoanWithBorrower[]>([]);
+  const navigate = useNavigate();
+  const [loans, setLoans] = useState<LoanWithCalculatedBalance[]>([]);
   const [borrowers, setBorrowers] = useState<Borrower[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<LoanFormData>({
-    borrower_id: '',
-    principal_amount: 0,
-    interest_rate: 0,
-    term_months: 12,
-    start_date: new Date().toISOString().split('T')[0],
-  });
 
   useEffect(() => {
     loadData();
@@ -51,21 +54,12 @@ export default function Loans() {
 
   const loadData = async () => {
     try {
-      const [loansData, borrowersData] = await Promise.all([
-        getLoans(),
+      const [loansWithCalculatedBalances, borrowersData] = await Promise.all([
+        getLoansWithCalculatedBalances(),
         getBorrowers()
       ]);
 
-      // Combine loan data with borrower names
-      const loansWithBorrowers: LoanWithBorrower[] = loansData.map(loan => {
-        const borrower = borrowersData.find(b => b.id === loan.borrower_id);
-        return {
-          ...loan,
-          borrower_name: borrower?.name || 'Unknown Borrower'
-        };
-      });
-
-      setLoans(loansWithBorrowers);
+      setLoans(loansWithCalculatedBalances);
       setBorrowers(borrowersData);
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -74,23 +68,57 @@ export default function Loans() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const loanData = {
-        ...formData,
-        current_balance: formData.principal_amount, // Initial balance equals principal
-        status: 'active' as const
-      };
-      
-      await createLoan(loanData);
-      setIsAddDialogOpen(false);
-      resetForm();
-      await loadData();
-    } catch (error) {
-      console.error('Failed to create loan:', error);
-    }
-  };
+  const loanForm = useForm({
+    defaultValues: {
+      borrower_id: '',
+      loan_type: 'installment' as const,
+      principal_amount: 0,
+      interest_rate: 0,
+      start_date: new Date().toISOString().split('T')[0],
+      hasEndDate: false,
+      end_date: '',
+      repayment_interval_unit: 'months' as const,
+      repayment_interval_value: 1,
+    } as LoanFormData,
+    validators: {
+      onChange: loanSchema,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        let term_months: number;
+        if (value.end_date) {
+          const start = new Date(value.start_date);
+          const end = new Date(value.end_date);
+          const diffMs = end.getTime() - start.getTime();
+          term_months = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30)); // Approximate months
+        } else if (value.term_months) {
+          term_months = value.term_months;
+        } else {
+          term_months = 12; // Default term
+        }
+
+        const loanData = {
+          borrower_id: value.borrower_id,
+          loan_type: value.loan_type,
+          principal_amount: value.principal_amount,
+          interest_rate: value.interest_rate,
+          term_months,
+          start_date: value.start_date,
+          repayment_interval_unit: value.repayment_interval_unit,
+          repayment_interval_value: value.repayment_interval_value,
+          current_balance: value.principal_amount,
+          status: 'active' as const
+        };
+
+        await createLoan(loanData);
+        setIsAddDialogOpen(false);
+        loanForm.reset();
+        await loadData();
+      } catch (error) {
+        console.error('Failed to create loan:', error);
+      }
+    },
+  });
 
   const handleStatusChange = async (loanId: string, newStatus: Loan['status']) => {
     try {
@@ -112,64 +140,16 @@ export default function Loans() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      borrower_id: '',
-      principal_amount: 0,
-      interest_rate: 0,
-      term_months: 12,
-      start_date: new Date().toISOString().split('T')[0],
-    });
-  };
 
   const filteredLoans = loans.filter(loan => {
-    const matchesSearch = 
+    const matchesSearch =
       loan.borrower_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       loan.id.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === 'all' || loan.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const getStatusBadge = (status: Loan['status']) => {
-    const variants = {
-      active: 'default',
-      paid_off: 'secondary',
-      defaulted: 'destructive'
-    } as const;
-
-    const labels = {
-      active: 'Active',
-      paid_off: 'Paid Off',
-      defaulted: 'Defaulted'
-    };
-
-    return (
-      <Badge variant={variants[status]}>
-        {labels[status]}
-      </Badge>
-    );
-  };
-
-  const calculateMonthlyPayment = (principal: number, rate: number, months: number) => {
-    if (rate === 0) return principal / months;
-    const monthlyRate = rate / 100 / 12;
-    const payment = principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / 
-                   (Math.pow(1 + monthlyRate, months) - 1);
-    return payment;
-  };
 
   if (loading) {
     return (
@@ -186,7 +166,7 @@ export default function Loans() {
           <h1 className="text-3xl font-bold text-gray-900">Loans</h1>
           <p className="text-gray-600 mt-2">Manage your loans</p>
         </div>
-        
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setIsAddDialogOpen(true)}>
@@ -194,104 +174,369 @@ export default function Loans() {
               Create Loan
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Create New Loan</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="loan-borrower">Borrower *</Label>
-                <Select 
-                  value={formData.borrower_id} 
-                  onValueChange={(value) => setFormData({ ...formData, borrower_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a borrower" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {borrowers.map((borrower) => (
-                      <SelectItem key={borrower.id} value={borrower.id}>
-                        {borrower.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="loan-principal">Principal Amount *</Label>
-                <Input
-                  id="loan-principal"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={formData.principal_amount || ''}
-                  onChange={(e) => setFormData({ ...formData, principal_amount: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="loan-rate">Interest Rate (% annual) *</Label>
-                <Input
-                  id="loan-rate"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  max="100"
-                  value={formData.interest_rate || ''}
-                  onChange={(e) => setFormData({ ...formData, interest_rate: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="loan-term">Term (months) *</Label>
-                <Input
-                  id="loan-term"
-                  type="number"
-                  min="1"
-                  value={formData.term_months || ''}
-                  onChange={(e) => setFormData({ ...formData, term_months: parseInt(e.target.value) || 12 })}
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="loan-startDate">Start Date *</Label>
-                <Input
-                  id="loan-startDate"
-                  type="date"
-                  value={formData.start_date}
-                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                  required
-                />
-              </div>
-
-              {formData.principal_amount > 0 && formData.interest_rate >= 0 && formData.term_months > 0 && (
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700">
-                    Estimated Monthly Payment: {formatCurrency(
-                      calculateMonthlyPayment(formData.principal_amount, formData.interest_rate, formData.term_months)
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                loanForm.handleSubmit();
+              }}
+              className="grid grid-cols-1 md:grid-cols-2 gap-6"
+            >
+              <loanForm.Field
+                name="borrower_id"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="loan-borrower">Borrower *</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a borrower" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {borrowers.map((borrower) => (
+                          <SelectItem key={borrower.id} value={borrower.id}>
+                            {borrower.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
                     )}
-                  </p>
-                </div>
-              )}
-              
-              <div className="flex justify-end space-x-2 pt-4">
+                  </div>
+                )}
+              />
+
+              <loanForm.Field
+                name="loan_type"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="loan-type">Loan Type *</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value as LoanFormData['loan_type'])}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a loan type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(() => {
+                          const { traditional_loan, fixed_income } = getLoanTypesByCategory();
+                          return (
+                            <>
+                              <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                {LOAN_CATEGORY_LABELS.traditional_loan}
+                              </div>
+                              {traditional_loan.map(type => (
+                                <SelectItem key={type} value={type}>
+                                  {getLoanTypeLabel(type)}
+                                </SelectItem>
+                              ))}
+                              <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide mt-2">
+                                {LOAN_CATEGORY_LABELS.fixed_income}
+                              </div>
+                              {fixed_income.map(type => (
+                                <SelectItem key={type} value={type}>
+                                  {getLoanTypeLabel(type)}
+                                </SelectItem>
+                              ))}
+                            </>
+                          );
+                        })()}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              />
+
+              <loanForm.Field
+                name="principal_amount"
+                children={(field) => {
+                  return (
+                    <div className="space-y-2">
+                      <Label htmlFor="loan-principal">Principal Amount *</Label>
+                      <Input
+                        id="loan-principal"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={field.state.value || ''}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          field.handleChange(value);
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      )}
+                    </div>
+                  );
+                }}
+              />
+
+              <loanForm.Field
+                name="interest_rate"
+                children={(field) => {
+                  return (
+                    <div className="space-y-2">
+                      <Label htmlFor="loan-rate">Interest Rate (%)</Label>
+                      <Input
+                        id="loan-rate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={field.state.value || ''}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0;
+                          field.handleChange(value);
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      )}
+                    </div>
+                  );
+                }}
+              />
+
+              <loanForm.Field
+                name="repayment_interval_unit"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="repayment-unit">Repayment Unit *</Label>
+                    <Select
+                      value={field.state.value}
+                      onValueChange={(value) => field.handleChange(value as LoanFormData['repayment_interval_unit'])}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="days">Days</SelectItem>
+                        <SelectItem value="weeks">Weeks</SelectItem>
+                        <SelectItem value="months">Months</SelectItem>
+                        <SelectItem value="years">Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              />
+
+              <loanForm.Subscribe
+                selector={(state) => state.values.repayment_interval_unit}
+                children={(unit) => {
+                  const unitName = unit || 'interval';
+                  const capitalizedUnit = unitName.charAt(0).toUpperCase() + unitName.slice(1);
+                  const labelText = `Number of ${capitalizedUnit}`;
+
+                  return (
+                    <loanForm.Field
+                      name="repayment_interval_value"
+                      children={(field) => (
+                        <div className="space-y-2">
+                          <Label htmlFor="repayment-value">{labelText} *</Label>
+                          <Input
+                            id="repayment-value"
+                            type="number"
+                            min="1"
+                            value={field.state.value || ''}
+                            onChange={(e) => field.handleChange(parseInt(e.target.value) || 1)}
+                            onBlur={field.handleBlur}
+                          />
+                        </div>
+                      )}
+                    />
+                  );
+                }}
+              />
+
+              <loanForm.Subscribe
+                selector={(state) => state.values.end_date}
+                children={(endDate) => {
+                  if (!endDate || endDate === '') {
+                    return (
+                      <loanForm.Field
+                        name="term_months"
+                        children={(field) => {
+                          return (
+                            <div className="space-y-2 md:col-span-2">
+                              <Label htmlFor="loan-term">Term (months)</Label>
+                              <Input
+                                id="loan-term"
+                                type="number"
+                                min="1"
+                                value={field.state.value || ''}
+                                onChange={(e) => {
+                                  const value = parseInt(e.target.value) || 12;
+                                  field.handleChange(value);
+                                }}
+                                onBlur={field.handleBlur}
+                              />
+                              {field.state.meta.errors.length > 0 && (
+                                <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                              )}
+                            </div>
+                          );
+                        }}
+                      />
+                    );
+                  }
+                  return null;
+                }}
+              />
+
+              <loanForm.Field
+                name="start_date"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="loan-startDate">Start Date *</Label>
+                    <Input
+                      id="loan-startDate"
+                      type="date"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
+
+              <loanForm.Field
+                name="hasEndDate"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        id="loan-hasEndDate"
+                        type="checkbox"
+                        checked={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.checked)}
+                        className="rounded border-gray-300"
+                      />
+                      <Label htmlFor="loan-hasEndDate">Has End Date</Label>
+                    </div>
+                  </div>
+                )}
+              />
+
+              <loanForm.Subscribe
+                selector={(state) => state.values.hasEndDate}
+                children={(hasEndDate) => {
+                  if (hasEndDate) {
+                    return (
+                      <loanForm.Field
+                        name="end_date"
+                        children={(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor="loan-endDate">End Date *</Label>
+                            <Input
+                              id="loan-endDate"
+                              type="date"
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                            )}
+                          </div>
+                        )}
+                      />
+                    );
+                  }
+                  return null;
+                }}
+              />
+
+              <loanForm.Subscribe
+                selector={(state) => state.values}
+                children={(values) => {
+                  if (values.principal_amount > 0 && values.interest_rate > 0) {
+                    // Calculate interest per interval period using rate per interval
+                    let intervalLabel = 'month';
+                    if (values.repayment_interval_unit && values.repayment_interval_value) {
+                      switch (values.repayment_interval_unit) {
+                        case 'days':
+                          intervalLabel = `${values.repayment_interval_value} day${values.repayment_interval_value > 1 ? 's' : ''}`;
+                          break;
+                        case 'weeks':
+                          intervalLabel = `${values.repayment_interval_value} week${values.repayment_interval_value > 1 ? 's' : ''}`;
+                          break;
+                        case 'months':
+                          intervalLabel = `${values.repayment_interval_value} month${values.repayment_interval_value > 1 ? 's' : ''}`;
+                          break;
+                        case 'years':
+                          intervalLabel = `${values.repayment_interval_value} year${values.repayment_interval_value > 1 ? 's' : ''}`;
+                          break;
+                      }
+                    }
+
+                    const intervalInterest = values.principal_amount * (values.interest_rate / 100);
+
+                    // Calculate term preview
+                    let term_preview = 0;
+                    if (values.hasEndDate && values.end_date && values.start_date) {
+                      const start = new Date(values.start_date);
+                      const end = new Date(values.end_date);
+                      const diffMs = end.getTime() - start.getTime();
+                      term_preview = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30));
+                    } else if (!values.hasEndDate) {
+                      term_preview = values.term_months || 0;
+                    }
+
+                    return (
+                      <div className="p-3 bg-gray-50 rounded-lg space-y-1 md:col-span-2">
+                        <p className="text-sm font-medium text-gray-700">
+                          Expected Interest per {intervalLabel}: {formatCurrency(intervalInterest)}
+                        </p>
+                        {isTraditionalLoanType(values.loan_type) && term_preview > 0 && (
+                          <p className="text-xs text-gray-500">
+                            Total Loan Period: {term_preview} months
+                          </p>
+                        )}
+                        {isFixedIncomeType(values.loan_type) && (
+                          <p className="text-xs text-gray-500">
+                            Fixed Income: Interest-only payments, no principal reduction by default
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+
+              <div className="flex justify-end space-x-2 pt-4 md:col-span-2">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    resetForm();
+                    loanForm.reset();
                     setIsAddDialogOpen(false);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={!formData.borrower_id || formData.principal_amount <= 0}>
-                  Create Loan
-                </Button>
+                <loanForm.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                  children={([canSubmit, isSubmitting]) => (
+                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                      {isSubmitting ? 'Creating...' : 'Create Loan'}
+                    </Button>
+                  )}
+                />
               </div>
             </form>
           </DialogContent>
@@ -336,21 +581,21 @@ export default function Loans() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center">
-              <DollarSign className="h-8 w-8 text-green-600" />
+              <IndianRupee className="h-8 w-8 text-green-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Active</p>
                 <p className="text-lg font-bold">
                   {formatCurrency(
                     filteredLoans
                       .filter(loan => loan.status === 'active')
-                      .reduce((sum, loan) => sum + loan.current_balance, 0)
+                      .reduce((sum, loan) => sum + loan.real_remaining_principal, 0)
                   )}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center">
@@ -372,7 +617,7 @@ export default function Loans() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Avg. Interest</p>
                 <p className="text-lg font-bold">
-                  {filteredLoans.length > 0 
+                  {filteredLoans.length > 0
                     ? (filteredLoans.reduce((sum, loan) => sum + loan.interest_rate, 0) / filteredLoans.length).toFixed(1) + '%'
                     : '0%'
                   }
@@ -405,11 +650,11 @@ export default function Loans() {
         <CardContent>
           {filteredLoans.length === 0 ? (
             <div className="text-center py-8">
-              <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <IndianRupee className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">No loans found</p>
               <p className="text-sm text-gray-400">
-                {searchTerm || statusFilter !== 'all' 
-                  ? 'Try adjusting your search or filter' 
+                {searchTerm || statusFilter !== 'all'
+                  ? 'Try adjusting your search or filter'
                   : 'Create your first loan to get started'
                 }
               </p>
@@ -419,10 +664,11 @@ export default function Loans() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Borrower</TableHead>
+                  <TableHead>Loan Type</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Rate</TableHead>
                   <TableHead>Term</TableHead>
-                  <TableHead>Balance</TableHead>
+                  <TableHead>Remaining Principal</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Start Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -437,13 +683,18 @@ export default function Loans() {
                         <span className="font-medium">{loan.borrower_name}</span>
                       </div>
                     </TableCell>
+                    <TableCell>{getLoanTypeLabel(loan.loan_type)}</TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(loan.principal_amount)}
                     </TableCell>
                     <TableCell>{loan.interest_rate}%</TableCell>
-                    <TableCell>{loan.term_months} months</TableCell>
+                    <TableCell>
+                      {isTraditionalLoanType(loan.loan_type) && loan.loan_type === 'installment' && `${loan.term_months} months`}
+                      {isTraditionalLoanType(loan.loan_type) && loan.loan_type === 'bullet' && `Matures in ${loan.term_months} months`}
+                      {isFixedIncomeType(loan.loan_type) && `Every ${loan.repayment_interval_value} ${loan.repayment_interval_unit}`}
+                    </TableCell>
                     <TableCell className="font-medium">
-                      {formatCurrency(loan.current_balance)}
+                      {formatCurrency(loan.real_remaining_principal)}
                     </TableCell>
                     <TableCell>
                       <Select
@@ -465,6 +716,13 @@ export default function Loans() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/loans/${loan.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

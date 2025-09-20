@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { 
-  Home, 
-  Users, 
-  Banknote, 
+import {
+  Home,
+  Users,
+  Banknote,
   Receipt,
-  DollarSign
+  IndianRupee,
+  TrendingUp
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -16,6 +17,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Borrowers', href: '/borrowers', icon: Users },
   { name: 'Loans', href: '/loans', icon: Banknote },
+  { name: 'Fixed Income', href: '/fixed-income', icon: TrendingUp },
   { name: 'Payments', href: '/payments', icon: Receipt },
 ];
 
@@ -27,7 +29,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar */}
       <div className="w-64 bg-white shadow-sm border-r">
         <div className="flex items-center gap-2 p-6 border-b">
-          <DollarSign className="h-8 w-8 text-primary" />
+          <IndianRupee className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-bold text-gray-900">LendTracker</h1>
         </div>
         

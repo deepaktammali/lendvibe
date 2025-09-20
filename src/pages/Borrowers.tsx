@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, User, Mail, Phone, MapPin } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, User, Phone, MapPin } from 'lucide-react';
+import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,14 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { getBorrowers, createBorrower, updateBorrower, deleteBorrower } from '@/lib/database';
+import { borrowerSchema, type BorrowerFormData } from '@/lib/validation';
 import type { Borrower } from '@/types/database';
 
-interface BorrowerFormData {
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-}
 
 export default function Borrowers() {
   const [borrowers, setBorrowers] = useState<Borrower[]>([]);
@@ -23,12 +19,6 @@ export default function Borrowers() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingBorrower, setEditingBorrower] = useState<Borrower | null>(null);
-  const [formData, setFormData] = useState<BorrowerFormData>({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-  });
 
   useEffect(() => {
     loadBorrowers();
@@ -45,33 +35,56 @@ export default function Borrowers() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingBorrower) {
-        await updateBorrower(editingBorrower.id, formData);
-        setIsEditDialogOpen(false);
-        setEditingBorrower(null);
-      } else {
-        await createBorrower(formData);
+  const createForm = useForm({
+    defaultValues: {
+      name: '',
+      phone: '',
+      address: '',
+    } as BorrowerFormData,
+    validators: {
+      onChange: borrowerSchema,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        await createBorrower(value);
         setIsAddDialogOpen(false);
+        createForm.reset();
+        await loadBorrowers();
+      } catch (error) {
+        console.error('Failed to create borrower:', error);
       }
-      
-      resetForm();
-      await loadBorrowers();
-    } catch (error) {
-      console.error('Failed to save borrower:', error);
-    }
-  };
+    },
+  });
+
+  const editForm = useForm({
+    defaultValues: {
+      name: '',
+      phone: '',
+      address: '',
+    } as BorrowerFormData,
+    validators: {
+      onChange: borrowerSchema,
+    },
+    onSubmit: async ({ value }) => {
+      try {
+        if (editingBorrower) {
+          await updateBorrower(editingBorrower.id, value);
+          setIsEditDialogOpen(false);
+          setEditingBorrower(null);
+          editForm.reset();
+          await loadBorrowers();
+        }
+      } catch (error) {
+        console.error('Failed to update borrower:', error);
+      }
+    },
+  });
 
   const handleEdit = (borrower: Borrower) => {
     setEditingBorrower(borrower);
-    setFormData({
-      name: borrower.name,
-      email: borrower.email || '',
-      phone: borrower.phone || '',
-      address: borrower.address || '',
-    });
+    editForm.setFieldValue('name', borrower.name);
+    editForm.setFieldValue('phone', borrower.phone || '');
+    editForm.setFieldValue('address', borrower.address || '');
     setIsEditDialogOpen(true);
   };
 
@@ -86,18 +99,9 @@ export default function Borrowers() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-    });
-  };
 
   const filteredBorrowers = borrowers.filter(borrower =>
     borrower.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (borrower.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
     (borrower.phone || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -133,62 +137,91 @@ export default function Borrowers() {
             <DialogHeader>
               <DialogTitle>Add New Borrower</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="add-name">Name *</Label>
-                <Input
-                  id="add-name"
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                createForm.handleSubmit();
+              }}
+              className="space-y-4"
+            >
+              <createForm.Field
+                name="name"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="add-name">Name *</Label>
+                    <Input
+                      id="add-name"
+                      type="text"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
               
-              <div className="space-y-2">
-                <Label htmlFor="add-email">Email</Label>
-                <Input
-                  id="add-email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="add-phone">Phone</Label>
-                <Input
-                  id="add-phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
+              <createForm.Field
+                name="phone"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="add-phone">Phone</Label>
+                    <Input
+                      id="add-phone"
+                      type="tel"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
               
-              <div className="space-y-2">
-                <Label htmlFor="add-address">Address</Label>
-                <Input
-                  id="add-address"
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                />
-              </div>
+              <createForm.Field
+                name="address"
+                children={(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="add-address">Address</Label>
+                    <Input
+                      id="add-address"
+                      type="text"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              />
               
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    resetForm();
+                    createForm.reset();
                     setIsAddDialogOpen(false);
                   }}
                 >
                   Cancel
                 </Button>
-                <Button type="submit">
-                  Create Borrower
-                </Button>
+                <createForm.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                  children={([canSubmit, isSubmitting]) => (
+                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                      {isSubmitting ? 'Creating...' : 'Create Borrower'}
+                    </Button>
+                  )}
+                />
               </div>
             </form>
           </DialogContent>
@@ -204,7 +237,7 @@ export default function Borrowers() {
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search by name, email, or phone..."
+              placeholder="Search by name or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -248,20 +281,12 @@ export default function Borrowers() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="space-y-1">
-                        {borrower.email && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Mail className="h-3 w-3 text-gray-400" />
-                            {borrower.email}
-                          </div>
-                        )}
-                        {borrower.phone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="h-3 w-3 text-gray-400" />
-                            {borrower.phone}
-                          </div>
-                        )}
-                      </div>
+                      {borrower.phone && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-3 w-3 text-gray-400" />
+                          {borrower.phone}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       {borrower.address && (
@@ -306,63 +331,92 @@ export default function Borrowers() {
           <DialogHeader>
             <DialogTitle>Edit Borrower</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-name">Name *</Label>
-              <Input
-                id="edit-name"
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              editForm.handleSubmit();
+            }}
+            className="space-y-4"
+          >
+            <editForm.Field
+              name="name"
+              children={(field) => (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-name">Name *</Label>
+                  <Input
+                    id="edit-name"
+                    type="text"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                  )}
+                </div>
+              )}
+            />
             
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">Email</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="edit-phone">Phone</Label>
-              <Input
-                id="edit-phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </div>
+            <editForm.Field
+              name="phone"
+              children={(field) => (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-phone">Phone</Label>
+                  <Input
+                    id="edit-phone"
+                    type="tel"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                  )}
+                </div>
+              )}
+            />
             
-            <div className="space-y-2">
-              <Label htmlFor="edit-address">Address</Label>
-              <Input
-                id="edit-address"
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              />
-            </div>
+            <editForm.Field
+              name="address"
+              children={(field) => (
+                <div className="space-y-2">
+                  <Label htmlFor="edit-address">Address</Label>
+                  <Input
+                    id="edit-address"
+                    type="text"
+                    value={field.state.value}
+                    onChange={(e) => field.handleChange(e.target.value)}
+                    onBlur={field.handleBlur}
+                  />
+                  {field.state.meta.errors.length > 0 && (
+                    <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                  )}
+                </div>
+              )}
+            />
             
             <div className="flex justify-end space-x-2 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  resetForm();
+                  editForm.reset();
                   setIsEditDialogOpen(false);
                   setEditingBorrower(null);
                 }}
               >
                 Cancel
               </Button>
-              <Button type="submit">
-                Update Borrower
-              </Button>
+              <editForm.Subscribe
+                selector={(state) => [state.canSubmit, state.isSubmitting]}
+                children={([canSubmit, isSubmitting]) => (
+                  <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                    {isSubmitting ? 'Updating...' : 'Update Borrower'}
+                  </Button>
+                )}
+              />
             </div>
           </form>
         </DialogContent>
