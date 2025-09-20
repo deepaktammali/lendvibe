@@ -15,20 +15,8 @@ pub fn run() {
                     vec![
                         tauri_plugin_sql::Migration {
                             version: 1,
-                            description: "create initial tables",
-                            sql: include_str!("../migrations/001_initial.sql"),
-                            kind: tauri_plugin_sql::MigrationKind::Up,
-                        },
-                        tauri_plugin_sql::Migration {
-                            version: 2,
-                            description: "add loan type",
-                            sql: include_str!("../migrations/002_add_loan_type.sql"),
-                            kind: tauri_plugin_sql::MigrationKind::Up,
-                        },
-                        tauri_plugin_sql::Migration {
-                            version: 3,
-                            description: "create fixed income tables",
-                            sql: include_str!("../migrations/003_create_fixed_income.sql"),
+                            description: "create complete database schema",
+                            sql: include_str!("../migrations/001_initial_schema.sql"),
                             kind: tauri_plugin_sql::MigrationKind::Up,
                         },
                     ],

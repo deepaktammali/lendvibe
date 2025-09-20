@@ -191,9 +191,8 @@ export default function FixedIncome() {
               className="space-y-4"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <fixedIncomeForm.Field
-                  name="tenant_id"
-                  children={(field) => (
+                <fixedIncomeForm.Field name="tenant_id">
+                  {(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="tenant">Tenant *</Label>
                       <Select
@@ -218,11 +217,10 @@ export default function FixedIncome() {
                       )}
                     </div>
                   )}
-                />
+                </fixedIncomeForm.Field>
 
-                <fixedIncomeForm.Field
-                  name="income_type"
-                  children={(field) => (
+                <fixedIncomeForm.Field name="income_type">
+                  {(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="income-type">Income Type *</Label>
                       <Select
@@ -249,11 +247,10 @@ export default function FixedIncome() {
                       )}
                     </div>
                   )}
-                />
+                </fixedIncomeForm.Field>
 
-                <fixedIncomeForm.Field
-                  name="principal_amount"
-                  children={(field) => (
+                <fixedIncomeForm.Field name="principal_amount">
+                  {(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="principal-amount">Asset Value *</Label>
                       <Input
@@ -275,11 +272,10 @@ export default function FixedIncome() {
                       )}
                     </div>
                   )}
-                />
+                </fixedIncomeForm.Field>
 
-                <fixedIncomeForm.Field
-                  name="income_rate"
-                  children={(field) => (
+                <fixedIncomeForm.Field name="income_rate">
+                  {(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="income-rate">Annual Rate (%) *</Label>
                       <Input
@@ -302,11 +298,10 @@ export default function FixedIncome() {
                       )}
                     </div>
                   )}
-                />
+                </fixedIncomeForm.Field>
 
-                <fixedIncomeForm.Field
-                  name="payment_interval_value"
-                  children={(field) => (
+                <fixedIncomeForm.Field name="payment_interval_value">
+                  {(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="interval-value">Payment Every *</Label>
                       <Input
@@ -327,11 +322,10 @@ export default function FixedIncome() {
                       )}
                     </div>
                   )}
-                />
+                </fixedIncomeForm.Field>
 
-                <fixedIncomeForm.Field
-                  name="payment_interval_unit"
-                  children={(field) => (
+                <fixedIncomeForm.Field name="payment_interval_unit">
+                  {(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="interval-unit">Interval Unit *</Label>
                       <Select
@@ -357,11 +351,10 @@ export default function FixedIncome() {
                       )}
                     </div>
                   )}
-                />
+                </fixedIncomeForm.Field>
 
-                <fixedIncomeForm.Field
-                  name="start_date"
-                  children={(field) => (
+                <fixedIncomeForm.Field name="start_date">
+                  {(field) => (
                     <div className="space-y-2">
                       <Label htmlFor="start-date">Start Date *</Label>
                       <Input
@@ -378,11 +371,10 @@ export default function FixedIncome() {
                       )}
                     </div>
                   )}
-                />
+                </fixedIncomeForm.Field>
 
-                <fixedIncomeForm.Field
-                  name="hasEndDate"
-                  children={(field) => (
+                <fixedIncomeForm.Field name="hasEndDate">
+                  {(field) => (
                     <div className="space-y-2">
                       <Label className="flex items-center space-x-2">
                         <input
@@ -394,17 +386,15 @@ export default function FixedIncome() {
                       </Label>
                     </div>
                   )}
-                />
+                </fixedIncomeForm.Field>
               </div>
 
-              <fixedIncomeForm.Subscribe
-                selector={(state) => state.values.hasEndDate}
-                children={(hasEndDate) => {
+              <fixedIncomeForm.Subscribe selector={(state) => state.values.hasEndDate}>
+                {(hasEndDate) => {
                   if (hasEndDate) {
                     return (
-                      <fixedIncomeForm.Field
-                        name="end_date"
-                        children={(field) => (
+                      <fixedIncomeForm.Field name="end_date">
+                        {(field) => (
                           <div className="space-y-2">
                             <Label htmlFor="end-date">End Date</Label>
                             <Input
@@ -421,12 +411,12 @@ export default function FixedIncome() {
                             )}
                           </div>
                         )}
-                      />
+                      </fixedIncomeForm.Field>
                     )
                   }
                   return null
                 }}
-              />
+              </fixedIncomeForm.Subscribe>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
@@ -439,14 +429,13 @@ export default function FixedIncome() {
                 >
                   Cancel
                 </Button>
-                <fixedIncomeForm.Subscribe
-                  selector={(state) => [state.canSubmit, state.isSubmitting]}
-                  children={([canSubmit, isSubmitting]) => (
+                <fixedIncomeForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                  {([canSubmit, isSubmitting]) => (
                     <Button type="submit" disabled={!canSubmit || isSubmitting}>
                       {isSubmitting ? 'Creating...' : 'Create Fixed Income'}
                     </Button>
                   )}
-                />
+                </fixedIncomeForm.Subscribe>
               </div>
             </form>
           </DialogContent>

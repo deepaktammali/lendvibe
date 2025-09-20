@@ -155,9 +155,8 @@ export default function Borrowers() {
               }}
               className="space-y-4"
             >
-              <createForm.Field
-                name="name"
-                children={(field) => (
+              <createForm.Field name="name">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="add-name">Name *</Label>
                     <Input
@@ -172,11 +171,10 @@ export default function Borrowers() {
                     )}
                   </div>
                 )}
-              />
+              </createForm.Field>
 
-              <createForm.Field
-                name="phone"
-                children={(field) => (
+              <createForm.Field name="phone">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="add-phone">Phone</Label>
                     <Input
@@ -191,11 +189,10 @@ export default function Borrowers() {
                     )}
                   </div>
                 )}
-              />
+              </createForm.Field>
 
-              <createForm.Field
-                name="address"
-                children={(field) => (
+              <createForm.Field name="address">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="add-address">Address</Label>
                     <Input
@@ -210,7 +207,7 @@ export default function Borrowers() {
                     )}
                   </div>
                 )}
-              />
+              </createForm.Field>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
@@ -223,14 +220,13 @@ export default function Borrowers() {
                 >
                   Cancel
                 </Button>
-                <createForm.Subscribe
-                  selector={(state) => [state.canSubmit, state.isSubmitting]}
-                  children={([canSubmit, isSubmitting]) => (
+                <createForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                  {([canSubmit, isSubmitting]) => (
                     <Button type="submit" disabled={!canSubmit || isSubmitting}>
                       {isSubmitting ? 'Creating...' : 'Create Borrower'}
                     </Button>
                   )}
-                />
+                </createForm.Subscribe>
               </div>
             </form>
           </DialogContent>
@@ -346,9 +342,8 @@ export default function Borrowers() {
             }}
             className="space-y-4"
           >
-            <editForm.Field
-              name="name"
-              children={(field) => (
+            <editForm.Field name="name">
+              {(field) => (
                 <div className="space-y-2">
                   <Label htmlFor="edit-name">Name *</Label>
                   <Input
@@ -363,11 +358,10 @@ export default function Borrowers() {
                   )}
                 </div>
               )}
-            />
+            </editForm.Field>
 
-            <editForm.Field
-              name="phone"
-              children={(field) => (
+            <editForm.Field name="phone">
+              {(field) => (
                 <div className="space-y-2">
                   <Label htmlFor="edit-phone">Phone</Label>
                   <Input
@@ -382,11 +376,10 @@ export default function Borrowers() {
                   )}
                 </div>
               )}
-            />
+            </editForm.Field>
 
-            <editForm.Field
-              name="address"
-              children={(field) => (
+            <editForm.Field name="address">
+              {(field) => (
                 <div className="space-y-2">
                   <Label htmlFor="edit-address">Address</Label>
                   <Input
@@ -401,7 +394,7 @@ export default function Borrowers() {
                   )}
                 </div>
               )}
-            />
+            </editForm.Field>
 
             <div className="flex justify-end space-x-2 pt-4">
               <Button
@@ -415,14 +408,13 @@ export default function Borrowers() {
               >
                 Cancel
               </Button>
-              <editForm.Subscribe
-                selector={(state) => [state.canSubmit, state.isSubmitting]}
-                children={([canSubmit, isSubmitting]) => (
+              <editForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                {([canSubmit, isSubmitting]) => (
                   <Button type="submit" disabled={!canSubmit || isSubmitting}>
                     {isSubmitting ? 'Updating...' : 'Update Borrower'}
                   </Button>
                 )}
-              />
+              </editForm.Subscribe>
             </div>
           </form>
         </DialogContent>

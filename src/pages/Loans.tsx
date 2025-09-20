@@ -1,17 +1,3 @@
-import { useForm } from '@tanstack/react-form'
-import {
-  AlertCircle,
-  Calendar,
-  Eye,
-  IndianRupee,
-  Percent,
-  Plus,
-  Search,
-  Trash2,
-  User,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -54,6 +40,20 @@ import {
 } from '@/lib/loans'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
+import { useForm } from '@tanstack/react-form'
+import {
+  AlertCircle,
+  Calendar,
+  Eye,
+  IndianRupee,
+  Percent,
+  Plus,
+  Search,
+  Trash2,
+  User,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -92,29 +92,17 @@ export default function Loans() {
       repayment_interval_value: 1,
     } as LoanFormData,
     validators: {
-      onChange: loanSchema,
+      onBlur: loanSchema,
     },
     onSubmit: async ({ value }) => {
       try {
-        let term_months: number
-        if (value.end_date) {
-          const start = new Date(value.start_date)
-          const end = new Date(value.end_date)
-          const diffMs = end.getTime() - start.getTime()
-          term_months = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30)) // Approximate months
-        } else if (value.term_months) {
-          term_months = value.term_months
-        } else {
-          term_months = 12 // Default term
-        }
-
         const loanData = {
           borrower_id: value.borrower_id,
           loan_type: value.loan_type,
           principal_amount: value.principal_amount,
           interest_rate: value.interest_rate,
-          term_months,
           start_date: value.start_date,
+          end_date: value.end_date || undefined,
           repayment_interval_unit: value.repayment_interval_unit,
           repayment_interval_value: value.repayment_interval_value,
         }
@@ -191,9 +179,8 @@ export default function Loans() {
               }}
               className="grid grid-cols-1 md:grid-cols-2 gap-6"
             >
-              <loanForm.Field
-                name="borrower_id"
-                children={(field) => (
+              <loanForm.Field name="borrower_id">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="loan-borrower">Borrower *</Label>
                     <Select
@@ -216,11 +203,10 @@ export default function Loans() {
                     )}
                   </div>
                 )}
-              />
+              </loanForm.Field>
 
-              <loanForm.Field
-                name="loan_type"
-                children={(field) => (
+              <loanForm.Field name="loan_type">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="loan-type">Loan Type *</Label>
                     <Select
@@ -260,68 +246,61 @@ export default function Loans() {
                     </Select>
                   </div>
                 )}
-              />
+              </loanForm.Field>
 
-              <loanForm.Field
-                name="principal_amount"
-                children={(field) => {
-                  return (
-                    <div className="space-y-2">
-                      <Label htmlFor="loan-principal">Principal Amount *</Label>
-                      <Input
-                        id="loan-principal"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={field.state.value || ''}
-                        onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0
-                          field.handleChange(value)
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
-                          {field.state.meta.errors[0]?.message}
-                        </p>
-                      )}
-                    </div>
-                  )
-                }}
-              />
+              <loanForm.Field name="principal_amount">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="loan-principal">Principal Amount *</Label>
+                    <Input
+                      id="loan-principal"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={field.state.value || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        field.handleChange(value)
+                      }}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </loanForm.Field>
 
-              <loanForm.Field
-                name="interest_rate"
-                children={(field) => {
-                  return (
-                    <div className="space-y-2">
-                      <Label htmlFor="loan-rate">Interest Rate (%)</Label>
-                      <Input
-                        id="loan-rate"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={field.state.value || ''}
-                        onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0
-                          field.handleChange(value)
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
-                          {field.state.meta.errors[0]?.message}
-                        </p>
-                      )}
-                    </div>
-                  )
-                }}
-              />
+              <loanForm.Field name="interest_rate">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="loan-rate">Interest Rate (%)</Label>
+                    <Input
+                      id="loan-rate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={field.state.value || ''}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0
+                        field.handleChange(value)
+                      }}
+                      onBlur={field.handleBlur}
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </loanForm.Field>
 
-              <loanForm.Field
-                name="repayment_interval_unit"
-                children={(field) => (
+              <loanForm.Field name="repayment_interval_unit">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="repayment-unit">Repayment Unit *</Label>
                     <Select
@@ -342,19 +321,17 @@ export default function Loans() {
                     </Select>
                   </div>
                 )}
-              />
+              </loanForm.Field>
 
-              <loanForm.Subscribe
-                selector={(state) => state.values.repayment_interval_unit}
-                children={(unit) => {
+              <loanForm.Subscribe selector={(state) => state.values.repayment_interval_unit}>
+                {(unit) => {
                   const unitName = unit || 'interval'
                   const capitalizedUnit = unitName.charAt(0).toUpperCase() + unitName.slice(1)
                   const labelText = `Number of ${capitalizedUnit}`
 
                   return (
-                    <loanForm.Field
-                      name="repayment_interval_value"
-                      children={(field) => (
+                    <loanForm.Field name="repayment_interval_value">
+                      {(field) => (
                         <div className="space-y-2">
                           <Label htmlFor="repayment-value">{labelText} *</Label>
                           <Input
@@ -367,51 +344,13 @@ export default function Loans() {
                           />
                         </div>
                       )}
-                    />
+                    </loanForm.Field>
                   )
                 }}
-              />
+              </loanForm.Subscribe>
 
-              <loanForm.Subscribe
-                selector={(state) => state.values.end_date}
-                children={(endDate) => {
-                  if (!endDate || endDate === '') {
-                    return (
-                      <loanForm.Field
-                        name="term_months"
-                        children={(field) => {
-                          return (
-                            <div className="space-y-2 md:col-span-2">
-                              <Label htmlFor="loan-term">Term (months)</Label>
-                              <Input
-                                id="loan-term"
-                                type="number"
-                                min="1"
-                                value={field.state.value || ''}
-                                onChange={(e) => {
-                                  const value = parseInt(e.target.value, 10) || 12
-                                  field.handleChange(value)
-                                }}
-                                onBlur={field.handleBlur}
-                              />
-                              {field.state.meta.errors.length > 0 && (
-                                <p className="text-sm text-red-600">
-                                  {field.state.meta.errors[0]?.message}
-                                </p>
-                              )}
-                            </div>
-                          )
-                        }}
-                      />
-                    )
-                  }
-                  return null
-                }}
-              />
-
-              <loanForm.Field
-                name="start_date"
-                children={(field) => (
+              <loanForm.Field name="start_date">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="loan-startDate">Start Date *</Label>
                     <Input
@@ -426,11 +365,10 @@ export default function Loans() {
                     )}
                   </div>
                 )}
-              />
+              </loanForm.Field>
 
-              <loanForm.Field
-                name="hasEndDate"
-                children={(field) => (
+              <loanForm.Field name="hasEndDate">
+                {(field) => (
                   <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <input
@@ -444,16 +382,14 @@ export default function Loans() {
                     </div>
                   </div>
                 )}
-              />
+              </loanForm.Field>
 
-              <loanForm.Subscribe
-                selector={(state) => state.values.hasEndDate}
-                children={(hasEndDate) => {
+              <loanForm.Subscribe selector={(state) => state.values.hasEndDate}>
+                {(hasEndDate) => {
                   if (hasEndDate) {
                     return (
-                      <loanForm.Field
-                        name="end_date"
-                        children={(field) => (
+                      <loanForm.Field name="end_date">
+                        {(field) => (
                           <div className="space-y-2">
                             <Label htmlFor="loan-endDate">End Date *</Label>
                             <Input
@@ -470,16 +406,15 @@ export default function Loans() {
                             )}
                           </div>
                         )}
-                      />
+                      </loanForm.Field>
                     )
                   }
                   return null
                 }}
-              />
+              </loanForm.Subscribe>
 
-              <loanForm.Subscribe
-                selector={(state) => state.values}
-                children={(values) => {
+              <loanForm.Subscribe selector={(state) => state.values}>
+                {(values) => {
                   if (values.principal_amount > 0 && values.interest_rate > 0) {
                     // Calculate interest per interval period using rate per interval
                     let intervalLabel = 'month'
@@ -509,8 +444,6 @@ export default function Loans() {
                       const end = new Date(values.end_date)
                       const diffMs = end.getTime() - start.getTime()
                       term_preview = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30))
-                    } else if (!values.hasEndDate) {
-                      term_preview = values.term_months || 0
                     }
 
                     return (
@@ -533,7 +466,7 @@ export default function Loans() {
                   }
                   return null
                 }}
-              />
+              </loanForm.Subscribe>
 
               <div className="flex justify-end space-x-2 pt-4 md:col-span-2">
                 <Button
@@ -546,14 +479,13 @@ export default function Loans() {
                 >
                   Cancel
                 </Button>
-                <loanForm.Subscribe
-                  selector={(state) => [state.canSubmit, state.isSubmitting]}
-                  children={([canSubmit, isSubmitting]) => (
+                <loanForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                  {([canSubmit, isSubmitting]) => (
                     <Button type="submit" disabled={!canSubmit || isSubmitting}>
                       {isSubmitting ? 'Creating...' : 'Create Loan'}
                     </Button>
                   )}
-                />
+                </loanForm.Subscribe>
               </div>
             </form>
           </DialogContent>
@@ -707,14 +639,24 @@ export default function Loans() {
                     </TableCell>
                     <TableCell>{loan.interest_rate}%</TableCell>
                     <TableCell>
-                      {isTraditionalLoanType(loan.loan_type) &&
-                        loan.loan_type === 'installment' &&
-                        `${loan.term_months} months`}
-                      {isTraditionalLoanType(loan.loan_type) &&
-                        loan.loan_type === 'bullet' &&
-                        `Matures in ${loan.term_months} months`}
-                      {isFixedIncomeType(loan.loan_type) &&
-                        `Every ${loan.repayment_interval_value} ${loan.repayment_interval_unit}`}
+                      {loan.end_date ? (
+                        <div className="text-sm">
+                          <div>Ends: {formatDate(loan.end_date)}</div>
+                          {(() => {
+                            const start = new Date(loan.start_date)
+                            const end = new Date(loan.end_date!)
+                            const diffMs = end.getTime() - start.getTime()
+                            const months = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30))
+                            return <div className="text-gray-500">({months} months)</div>
+                          })()}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">
+                          {isFixedIncomeType(loan.loan_type)
+                            ? `Every ${loan.repayment_interval_value} ${loan.repayment_interval_unit}`
+                            : 'No end date'}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(loan.real_remaining_principal)}

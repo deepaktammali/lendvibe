@@ -4,13 +4,12 @@ export interface Loan {
   loan_type: 'installment' | 'bullet'
   principal_amount: number
   interest_rate: number
-  term_months: number
   start_date: string // YYYY-MM-DD format
+  end_date?: string // YYYY-MM-DD format
   status: 'active' | 'paid_off' | 'defaulted'
   current_balance: number
   repayment_interval_unit?: 'days' | 'weeks' | 'months' | 'years'
   repayment_interval_value?: number
-  end_date?: string // YYYY-MM-DD format
   created_at: string
 }
 
@@ -64,7 +63,6 @@ namespace CreateLoan {
     loan_type: Loan['loan_type']
     principal_amount: number
     interest_rate: number
-    term_months: number
     start_date: string
     repayment_interval_unit?: Loan['repayment_interval_unit']
     repayment_interval_value?: number

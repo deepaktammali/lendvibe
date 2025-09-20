@@ -19,7 +19,8 @@ export const loanSchema = z
       .number()
       .int()
       .min(1, 'Term must be at least 1 month')
-      .max(360, 'Term cannot exceed 360 months'),
+      .max(360, 'Term cannot exceed 360 months')
+      .optional(),
     start_date: z.string().min(1, 'Start date is required'),
     repayment_interval_unit: z.enum(['days', 'weeks', 'months', 'years']).optional(),
     repayment_interval_value: z.number().int().min(1).optional(),

@@ -261,9 +261,8 @@ export default function Payments() {
               }}
               className="space-y-4"
             >
-              <paymentForm.Field
-                name="loan_id"
-                children={(field) => (
+              <paymentForm.Field name="loan_id">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="payment-loan">Loan *</Label>
                     <Select
@@ -289,11 +288,10 @@ export default function Payments() {
                     )}
                   </div>
                 )}
-              />
+              </paymentForm.Field>
 
-              <paymentForm.Field
-                name="principal_amount"
-                children={(field) => (
+              <paymentForm.Field name="principal_amount">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="payment-principal">Principal Amount</Label>
                     <Input
@@ -314,11 +312,10 @@ export default function Payments() {
                     )}
                   </div>
                 )}
-              />
+              </paymentForm.Field>
 
-              <paymentForm.Field
-                name="interest_amount"
-                children={(field) => (
+              <paymentForm.Field name="interest_amount">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="payment-interest">Interest Amount</Label>
                     <Input
@@ -339,11 +336,10 @@ export default function Payments() {
                     )}
                   </div>
                 )}
-              />
+              </paymentForm.Field>
 
-              <paymentForm.Field
-                name="payment_date"
-                children={(field) => (
+              <paymentForm.Field name="payment_date">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="payment-date">Payment Date *</Label>
                     <Input
@@ -358,7 +354,7 @@ export default function Payments() {
                     )}
                   </div>
                 )}
-              />
+              </paymentForm.Field>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
@@ -371,14 +367,13 @@ export default function Payments() {
                 >
                   Cancel
                 </Button>
-                <paymentForm.Subscribe
-                  selector={(state) => [state.canSubmit, state.isSubmitting]}
-                  children={([canSubmit, isSubmitting]) => (
+                <paymentForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                  {([canSubmit, isSubmitting]) => (
                     <Button type="submit" disabled={!canSubmit || isSubmitting}>
                       {isSubmitting ? 'Recording...' : 'Record Payment'}
                     </Button>
                   )}
-                />
+                </paymentForm.Subscribe>
               </div>
             </form>
           </DialogContent>
@@ -398,9 +393,8 @@ export default function Payments() {
               }}
               className="space-y-4"
             >
-              <editForm.Field
-                name="loan_id"
-                children={(field) => (
+              <editForm.Field name="loan_id">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="edit-loan">Loan *</Label>
                     <Select
@@ -426,11 +420,10 @@ export default function Payments() {
                     )}
                   </div>
                 )}
-              />
+              </editForm.Field>
 
-              <editForm.Field
-                name="principal_amount"
-                children={(field) => (
+              <editForm.Field name="principal_amount">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="edit-principal">Principal Amount</Label>
                     <Input
@@ -451,11 +444,10 @@ export default function Payments() {
                     )}
                   </div>
                 )}
-              />
+              </editForm.Field>
 
-              <editForm.Field
-                name="interest_amount"
-                children={(field) => (
+              <editForm.Field name="interest_amount">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="edit-interest">Interest Amount</Label>
                     <Input
@@ -476,11 +468,10 @@ export default function Payments() {
                     )}
                   </div>
                 )}
-              />
+              </editForm.Field>
 
-              <editForm.Field
-                name="payment_date"
-                children={(field) => (
+              <editForm.Field name="payment_date">
+                {(field) => (
                   <div className="space-y-2">
                     <Label htmlFor="edit-date">Payment Date *</Label>
                     <Input
@@ -495,7 +486,7 @@ export default function Payments() {
                     )}
                   </div>
                 )}
-              />
+              </editForm.Field>
 
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
@@ -509,14 +500,13 @@ export default function Payments() {
                 >
                   Cancel
                 </Button>
-                <editForm.Subscribe
-                  selector={(state) => [state.canSubmit, state.isSubmitting]}
-                  children={([canSubmit, isSubmitting]) => (
+                <editForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                  {([canSubmit, isSubmitting]) => (
                     <Button type="submit" disabled={!canSubmit || isSubmitting}>
                       {isSubmitting ? 'Updating...' : 'Update Payment'}
                     </Button>
                   )}
-                />
+                </editForm.Subscribe>
               </div>
             </form>
           </DialogContent>
