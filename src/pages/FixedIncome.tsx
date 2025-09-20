@@ -1,43 +1,76 @@
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useGetBorrowers } from '@/hooks/api/useBorrowers';
-import { useCreateFixedIncome, useDeleteFixedIncome, useGetFixedIncomesWithTenants } from '@/hooks/api/useFixedIncome';
-import { fixedIncomeSchema, type FixedIncomeFormData } from '@/lib/validation';
-import type { FixedIncome } from '@/types/api/fixedIncome';
-import { FIXED_INCOME_TYPE_LABELS } from '@/types/database';
-import { useForm } from '@tanstack/react-form';
-import { Calendar, Clock, Eye, IndianRupee, Plus, Search, Trash2, TrendingUp, User } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { useGetBorrowers } from '@/hooks/api/useBorrowers'
+import {
+  useCreateFixedIncome,
+  useDeleteFixedIncome,
+  useGetFixedIncomesWithTenants,
+} from '@/hooks/api/useFixedIncome'
+import { fixedIncomeSchema, type FixedIncomeFormData } from '@/lib/validation'
+import type { FixedIncome } from '@/types/api/fixedIncome'
+import { FIXED_INCOME_TYPE_LABELS } from '@/types/database'
+import { useForm } from '@tanstack/react-form'
+import {
+  Calendar,
+  Clock,
+  Eye,
+  IndianRupee,
+  Plus,
+  Search,
+  Trash2,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export default function FixedIncome() {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const navigate = useNavigate()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: fixedIncomes = [], isLoading: loading, error } = useGetFixedIncomesWithTenants();
-  const { data: borrowers = [] } = useGetBorrowers();
-  const createFixedIncomeMutation = useCreateFixedIncome();
-  const deleteFixedIncomeMutation = useDeleteFixedIncome();
+  const { data: fixedIncomes = [], isLoading: loading, error } = useGetFixedIncomesWithTenants()
+  const { data: borrowers = [] } = useGetBorrowers()
+  const createFixedIncomeMutation = useCreateFixedIncome()
+  const deleteFixedIncomeMutation = useDeleteFixedIncome()
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-    }).format(amount);
-  };
+    }).format(amount)
+  }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+    return new Date(dateString).toLocaleDateString()
+  }
 
   const fixedIncomeForm = useForm({
     defaultValues: {
@@ -65,71 +98,69 @@ export default function FixedIncome() {
           payment_interval_value: value.payment_interval_value,
           start_date: value.start_date,
           end_date: value.hasEndDate ? value.end_date : undefined,
-        };
+        }
 
-        await createFixedIncomeMutation.mutateAsync(fixedIncomeData);
-        setIsAddDialogOpen(false);
-        fixedIncomeForm.reset();
+        await createFixedIncomeMutation.mutateAsync(fixedIncomeData)
+        setIsAddDialogOpen(false)
+        fixedIncomeForm.reset()
       } catch (error) {
-        console.error('Failed to create fixed income:', error);
+        console.error('Failed to create fixed income:', error)
       }
     },
-  });
+  })
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Are you sure you want to delete this fixed income? This action cannot be undone.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to delete this fixed income? This action cannot be undone.'
+      )
+    ) {
       try {
-        await deleteFixedIncomeMutation.mutateAsync(id);
+        await deleteFixedIncomeMutation.mutateAsync(id)
       } catch (error) {
-        console.error('Failed to delete fixed income:', error);
+        console.error('Failed to delete fixed income:', error)
       }
     }
-  };
+  }
 
-  const filteredFixedIncomes = fixedIncomes.filter(item => {
+  const filteredFixedIncomes = fixedIncomes.filter((item) => {
     const matchesSearch =
       item.tenant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.income_type.toLowerCase().includes(searchTerm.toLowerCase());
+      item.income_type.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || item.status === statusFilter
 
-    return matchesSearch && matchesStatus;
-  });
+    return matchesSearch && matchesStatus
+  })
 
   const getIncomeTypeBadge = (type: FixedIncome['income_type']) => {
     const variants = {
       land_lease: 'default',
       rent_agreement: 'secondary',
-      fixed_deposit_income: 'outline'
-    } as const;
+      fixed_deposit_income: 'outline',
+    } as const
 
-    return (
-      <Badge variant={variants[type]}>
-        {FIXED_INCOME_TYPE_LABELS[type]}
-      </Badge>
-    );
-  };
+    return <Badge variant={variants[type]}>{FIXED_INCOME_TYPE_LABELS[type]}</Badge>
+  }
 
   const getStatusBadge = (status: FixedIncome['status']) => {
     const variants = {
       active: 'default',
       terminated: 'destructive',
-      expired: 'secondary'
-    } as const;
+      expired: 'secondary',
+    } as const
 
     return (
-      <Badge variant={variants[status]}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
-      </Badge>
-    );
-  };
+      <Badge variant={variants[status]}>{status.charAt(0).toUpperCase() + status.slice(1)}</Badge>
+    )
+  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg">Loading fixed income...</div>
       </div>
-    );
+    )
   }
 
   return (
@@ -153,9 +184,9 @@ export default function FixedIncome() {
             </DialogHeader>
             <form
               onSubmit={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                fixedIncomeForm.handleSubmit();
+                e.preventDefault()
+                e.stopPropagation()
+                fixedIncomeForm.handleSubmit()
               }}
               className="space-y-4"
             >
@@ -181,7 +212,9 @@ export default function FixedIncome() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
                   )}
@@ -194,7 +227,9 @@ export default function FixedIncome() {
                       <Label htmlFor="income-type">Income Type *</Label>
                       <Select
                         value={field.state.value}
-                        onValueChange={(value) => field.handleChange(value as FixedIncomeFormData['income_type'])}
+                        onValueChange={(value) =>
+                          field.handleChange(value as FixedIncomeFormData['income_type'])
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select income type" />
@@ -208,7 +243,9 @@ export default function FixedIncome() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
                   )}
@@ -226,13 +263,15 @@ export default function FixedIncome() {
                         min="0"
                         value={field.state.value || ''}
                         onChange={(e) => {
-                          const amount = parseFloat(e.target.value) || 0;
-                          field.handleChange(amount);
+                          const amount = parseFloat(e.target.value) || 0
+                          field.handleChange(amount)
                         }}
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
                   )}
@@ -251,13 +290,15 @@ export default function FixedIncome() {
                         max="100"
                         value={field.state.value || ''}
                         onChange={(e) => {
-                          const rate = parseFloat(e.target.value) || 0;
-                          field.handleChange(rate);
+                          const rate = parseFloat(e.target.value) || 0
+                          field.handleChange(rate)
                         }}
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
                   )}
@@ -274,13 +315,15 @@ export default function FixedIncome() {
                         min="1"
                         value={field.state.value || ''}
                         onChange={(e) => {
-                          const value = parseInt(e.target.value) || 1;
-                          field.handleChange(value);
+                          const value = parseInt(e.target.value) || 1
+                          field.handleChange(value)
                         }}
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
                   )}
@@ -293,7 +336,9 @@ export default function FixedIncome() {
                       <Label htmlFor="interval-unit">Interval Unit *</Label>
                       <Select
                         value={field.state.value}
-                        onValueChange={(value) => field.handleChange(value as FixedIncomeFormData['payment_interval_unit'])}
+                        onValueChange={(value) =>
+                          field.handleChange(value as FixedIncomeFormData['payment_interval_unit'])
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -306,7 +351,9 @@ export default function FixedIncome() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
                   )}
@@ -325,7 +372,9 @@ export default function FixedIncome() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
                   )}
@@ -366,14 +415,16 @@ export default function FixedIncome() {
                               onBlur={field.handleBlur}
                             />
                             {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                              <p className="text-sm text-red-600">
+                                {field.state.meta.errors[0]?.message}
+                              </p>
                             )}
                           </div>
                         )}
                       />
-                    );
+                    )
                   }
-                  return null;
+                  return null
                 }}
               />
 
@@ -382,8 +433,8 @@ export default function FixedIncome() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    fixedIncomeForm.reset();
-                    setIsAddDialogOpen(false);
+                    fixedIncomeForm.reset()
+                    setIsAddDialogOpen(false)
                   }}
                 >
                   Cancel
@@ -446,7 +497,7 @@ export default function FixedIncome() {
                 <p className="text-lg font-bold">
                   {formatCurrency(
                     filteredFixedIncomes
-                      .filter(item => item.status === 'active')
+                      .filter((item) => item.status === 'active')
                       .reduce((sum, item) => sum + item.principal_amount, 0)
                   )}
                 </p>
@@ -462,7 +513,7 @@ export default function FixedIncome() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Count</p>
                 <p className="text-lg font-bold">
-                  {filteredFixedIncomes.filter(item => item.status === 'active').length}
+                  {filteredFixedIncomes.filter((item) => item.status === 'active').length}
                 </p>
               </div>
             </div>
@@ -477,9 +528,12 @@ export default function FixedIncome() {
                 <p className="text-sm font-medium text-gray-600">Average Rate</p>
                 <p className="text-lg font-bold">
                   {filteredFixedIncomes.length > 0
-                    ? (filteredFixedIncomes.reduce((sum, item) => sum + item.income_rate, 0) / filteredFixedIncomes.length).toFixed(2)
-                    : '0.00'
-                  }%
+                    ? (
+                        filteredFixedIncomes.reduce((sum, item) => sum + item.income_rate, 0) /
+                        filteredFixedIncomes.length
+                      ).toFixed(2)
+                    : '0.00'}
+                  %
                 </p>
               </div>
             </div>
@@ -512,8 +566,7 @@ export default function FixedIncome() {
               <p className="text-sm text-gray-400">
                 {searchTerm || statusFilter !== 'all'
                   ? 'Try adjusting your search or filter'
-                  : 'Create your first fixed income asset to get started'
-                }
+                  : 'Create your first fixed income asset to get started'}
               </p>
             </div>
           ) : (
@@ -560,11 +613,7 @@ export default function FixedIncome() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(item.id)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(item.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -577,5 +626,5 @@ export default function FixedIncome() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

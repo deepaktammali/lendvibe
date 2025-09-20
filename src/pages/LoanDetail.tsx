@@ -1,60 +1,75 @@
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useGetBorrower } from '@/hooks/api/useBorrowers';
-import { useGetLoan } from '@/hooks/api/useLoans';
-import { useGetPaymentsByLoan } from '@/hooks/api/usePayments';
-import { calculateAccruedInterest, getDaysSinceLastPayment, getNextPaymentDate } from '@/lib/finance';
-import { getLoanTypeLabel } from '@/lib/loans';
-import type { Loan } from '@/types/api/loans';
-import type { Payment } from '@/types/api/payments';
-import { AlertTriangle, ArrowLeft, Calendar, Clock, IndianRupee, TrendingUp, User } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { useGetBorrower } from '@/hooks/api/useBorrowers'
+import { useGetLoan } from '@/hooks/api/useLoans'
+import { useGetPaymentsByLoan } from '@/hooks/api/usePayments'
+import {
+  calculateAccruedInterest,
+  getDaysSinceLastPayment,
+  getNextPaymentDate,
+} from '@/lib/finance'
+import { getLoanTypeLabel } from '@/lib/loans'
+import type { Loan } from '@/types/api/loans'
+import type { Payment } from '@/types/api/payments'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  Clock,
+  IndianRupee,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export default function LoanDetail() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
 
   // Use the new TanStack Query hooks
-  const { data: loan, isLoading: loanLoading, error: loanError } = useGetLoan(id || '');
-  const { data: borrower, isLoading: borrowerLoading } = useGetBorrower(loan?.borrower_id || '');
-  const { data: payments = [], isLoading: paymentsLoading } = useGetPaymentsByLoan(id || '');
+  const { data: loan, isLoading: loanLoading, error: loanError } = useGetLoan(id || '')
+  const { data: borrower, isLoading: borrowerLoading } = useGetBorrower(loan?.borrower_id || '')
+  const { data: payments = [], isLoading: paymentsLoading } = useGetPaymentsByLoan(id || '')
 
-  const loading = loanLoading || borrowerLoading || paymentsLoading;
-  const error = loanError;
+  const loading = loanLoading || borrowerLoading || paymentsLoading
+  const error = loanError
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-    }).format(amount);
-  };
+    }).format(amount)
+  }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+    return new Date(dateString).toLocaleDateString()
+  }
 
   const getPaymentTypeBadge = (type: Payment['payment_type']) => {
     const variants = {
       principal: 'default',
       interest: 'secondary',
-      mixed: 'outline'
-    } as const;
+      mixed: 'outline',
+    } as const
 
     const labels = {
       principal: 'Principal',
       interest: 'Interest',
-      mixed: 'Mixed'
-    };
+      mixed: 'Mixed',
+    }
 
-    return (
-      <Badge variant={variants[type]}>
-        {labels[type]}
-      </Badge>
-    );
-  };
+    return <Badge variant={variants[type]}>{labels[type]}</Badge>
+  }
 
   const getLoanTypeBadge = (type: string) => {
     const variants = {
@@ -62,22 +77,22 @@ export default function LoanDetail() {
       bullet: 'secondary',
       land_lease: 'outline',
       rent_agreement: 'outline',
-      fixed_deposit_income: 'outline'
-    } as const;
+      fixed_deposit_income: 'outline',
+    } as const
 
     return (
       <Badge variant={variants[type as keyof typeof variants] || 'default'}>
         {getLoanTypeLabel(type as Loan['loan_type'])}
       </Badge>
-    );
-  };
+    )
+  }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg">Loading loan details...</div>
       </div>
-    );
+    )
   }
 
   if (error || !loan) {
@@ -85,7 +100,7 @@ export default function LoanDetail() {
       <div className="flex items-center justify-center h-full">
         <div className="text-lg text-red-600">Failed to load loan details</div>
       </div>
-    );
+    )
   }
 
   if (!borrower) {
@@ -93,19 +108,19 @@ export default function LoanDetail() {
       <div className="flex items-center justify-center h-full">
         <div className="text-lg text-red-600">Borrower not found</div>
       </div>
-    );
+    )
   }
 
   // Calculate loan statistics
-  const totalPrincipalPaid = payments.reduce((sum, payment) => sum + payment.principal_amount, 0);
-  const totalInterestPaid = payments.reduce((sum, payment) => sum + payment.interest_amount, 0);
-  const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
-  const remainingPrincipal = loan.principal_amount - totalPrincipalPaid;
-  const accruedInterest = calculateAccruedInterest(loan);
-  const lastPayment = payments[0]; // Payments are ordered by date DESC
-  const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date);
-  const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date);
-  const isOverdue = nextDueDate < new Date().toISOString().split('T')[0];
+  const totalPrincipalPaid = payments.reduce((sum, payment) => sum + payment.principal_amount, 0)
+  const totalInterestPaid = payments.reduce((sum, payment) => sum + payment.interest_amount, 0)
+  const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0)
+  const remainingPrincipal = loan.principal_amount - totalPrincipalPaid
+  const accruedInterest = calculateAccruedInterest(loan)
+  const lastPayment = payments[0] // Payments are ordered by date DESC
+  const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date)
+  const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date)
+  const isOverdue = nextDueDate < new Date().toISOString().split('T')[0]
 
   return (
     <div className="space-y-6">
@@ -142,12 +157,8 @@ export default function LoanDetail() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-2">
-              {getLoanTypeBadge(loan.loan_type)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {loan.interest_rate}% annual rate
-            </p>
+            <div className="flex items-center gap-2">{getLoanTypeBadge(loan.loan_type)}</div>
+            <p className="text-xs text-muted-foreground mt-1">{loan.interest_rate}% annual rate</p>
           </CardContent>
         </Card>
 
@@ -208,7 +219,9 @@ export default function LoanDetail() {
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalInterestPaid)}</div>
+            <div className="text-2xl font-bold text-green-600">
+              {formatCurrency(totalInterestPaid)}
+            </div>
             <p className="text-xs text-muted-foreground">Interest collected</p>
           </CardContent>
         </Card>
@@ -289,18 +302,16 @@ export default function LoanDetail() {
                     <TableCell className="font-medium">
                       {formatDate(payment.payment_date)}
                     </TableCell>
-                    <TableCell className="font-medium">
-                      {formatCurrency(payment.amount)}
-                    </TableCell>
+                    <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
                     <TableCell>
-                      {payment.principal_amount > 0 ? formatCurrency(payment.principal_amount) : '-'}
+                      {payment.principal_amount > 0
+                        ? formatCurrency(payment.principal_amount)
+                        : '-'}
                     </TableCell>
                     <TableCell>
                       {payment.interest_amount > 0 ? formatCurrency(payment.interest_amount) : '-'}
                     </TableCell>
-                    <TableCell>
-                      {getPaymentTypeBadge(payment.payment_type)}
-                    </TableCell>
+                    <TableCell>{getPaymentTypeBadge(payment.payment_type)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -309,5 +320,5 @@ export default function LoanDetail() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

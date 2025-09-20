@@ -1,101 +1,108 @@
-import Database from '@tauri-apps/plugin-sql';
-import type { Borrower, Loan, Payment, FixedIncome, IncomePayment } from '../types/database';
+import Database from '@tauri-apps/plugin-sql'
+import type { Borrower, Loan, Payment, FixedIncome, IncomePayment } from '../types/database'
 
-let db: Database | null = null;
+let db: Database | null = null
 
 export async function initDatabase(): Promise<Database> {
-  if (db) return db;
-  db = await Database.load('sqlite:lending.db');
-  return db;
+  if (db) return db
+  db = await Database.load('sqlite:lending.db')
+  return db
 }
 
 export function generateId(): string {
-  return crypto.randomUUID();
+  return crypto.randomUUID()
 }
 
 export function getCurrentTimestamp(): string {
-  return new Date().toISOString();
+  return new Date().toISOString()
 }
 
 // Borrower operations
-export async function createBorrower(borrower: Omit<Borrower, 'id' | 'created_at'>): Promise<Borrower> {
-  const database = await initDatabase();
+export async function createBorrower(
+  borrower: Omit<Borrower, 'id' | 'created_at'>
+): Promise<Borrower> {
+  const database = await initDatabase()
   const newBorrower: Borrower = {
     id: generateId(),
     created_at: getCurrentTimestamp(),
     ...borrower,
-  };
+  }
 
   await database.execute(
     'INSERT INTO borrowers (id, name, email, phone, address, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
-    [newBorrower.id, newBorrower.name, newBorrower.email, newBorrower.phone, newBorrower.address, newBorrower.created_at]
-  );
+    [
+      newBorrower.id,
+      newBorrower.name,
+      newBorrower.email,
+      newBorrower.phone,
+      newBorrower.address,
+      newBorrower.created_at,
+    ]
+  )
 
-  return newBorrower;
+  return newBorrower
 }
 
 export async function getBorrowers(): Promise<Borrower[]> {
-  const database = await initDatabase();
-  const result = await database.select<Borrower[]>(
-    'SELECT * FROM borrowers ORDER BY name'
-  );
-  return result;
+  const database = await initDatabase()
+  const result = await database.select<Borrower[]>('SELECT * FROM borrowers ORDER BY name')
+  return result
 }
 
 export async function getBorrower(id: string): Promise<Borrower | null> {
-  const database = await initDatabase();
-  const result = await database.select<Borrower[]>(
-    'SELECT * FROM borrowers WHERE id = $1',
-    [id]
-  );
-  return result.length > 0 ? result[0] : null;
+  const database = await initDatabase()
+  const result = await database.select<Borrower[]>('SELECT * FROM borrowers WHERE id = $1', [id])
+  return result.length > 0 ? result[0] : null
 }
 
-export async function updateBorrower(id: string, updates: Partial<Omit<Borrower, 'id' | 'created_at'>>): Promise<void> {
-  const database = await initDatabase();
-  const fields = [];
-  const values = [];
-  let paramIndex = 1;
+export async function updateBorrower(
+  id: string,
+  updates: Partial<Omit<Borrower, 'id' | 'created_at'>>
+): Promise<void> {
+  const database = await initDatabase()
+  const fields = []
+  const values = []
+  let paramIndex = 1
 
   if (updates.name !== undefined) {
-    fields.push(`name = $${paramIndex++}`);
-    values.push(updates.name);
+    fields.push(`name = $${paramIndex++}`)
+    values.push(updates.name)
   }
   if (updates.email !== undefined) {
-    fields.push(`email = $${paramIndex++}`);
-    values.push(updates.email);
+    fields.push(`email = $${paramIndex++}`)
+    values.push(updates.email)
   }
   if (updates.phone !== undefined) {
-    fields.push(`phone = $${paramIndex++}`);
-    values.push(updates.phone);
+    fields.push(`phone = $${paramIndex++}`)
+    values.push(updates.phone)
   }
   if (updates.address !== undefined) {
-    fields.push(`address = $${paramIndex++}`);
-    values.push(updates.address);
+    fields.push(`address = $${paramIndex++}`)
+    values.push(updates.address)
   }
 
   if (fields.length > 0) {
-    values.push(id);
+    values.push(id)
     await database.execute(
       `UPDATE borrowers SET ${fields.join(', ')} WHERE id = $${paramIndex}`,
       values
-    );
+    )
   }
 }
 
 export async function deleteBorrower(id: string): Promise<void> {
-  const database = await initDatabase();
-  await database.execute('DELETE FROM borrowers WHERE id = $1', [id]);
+  const database = await initDatabase()
+  await database.execute('DELETE FROM borrowers WHERE id = $1', [id])
 }
 
 // Loan operations
 export async function createLoan(loan: Omit<Loan, 'id' | 'created_at'>): Promise<Loan> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const newLoan: Loan = {
     id: generateId(),
     created_at: getCurrentTimestamp(),
     ...loan,
-  };
+  }
 
   await database.execute(
     'INSERT INTO loans (id, borrower_id, principal_amount, interest_rate, term_months, start_date, status, current_balance, created_at, loan_type, repayment_interval_unit, repayment_interval_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
@@ -113,66 +120,55 @@ export async function createLoan(loan: Omit<Loan, 'id' | 'created_at'>): Promise
       newLoan.repayment_interval_unit,
       newLoan.repayment_interval_value,
     ]
-  );
+  )
 
-  return newLoan;
+  return newLoan
 }
 
 export async function getLoans(): Promise<Loan[]> {
-  const database = await initDatabase();
-  const result = await database.select<Loan[]>(
-    'SELECT * FROM loans ORDER BY start_date DESC'
-  );
-  return result;
+  const database = await initDatabase()
+  const result = await database.select<Loan[]>('SELECT * FROM loans ORDER BY start_date DESC')
+  return result
 }
 
 export async function getLoan(id: string): Promise<Loan | null> {
-  const database = await initDatabase();
-  const result = await database.select<Loan[]>(
-    'SELECT * FROM loans WHERE id = $1',
-    [id]
-  );
-  return result.length > 0 ? result[0] : null;
+  const database = await initDatabase()
+  const result = await database.select<Loan[]>('SELECT * FROM loans WHERE id = $1', [id])
+  return result.length > 0 ? result[0] : null
 }
 
 export async function getLoansByBorrower(borrowerId: string): Promise<Loan[]> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const result = await database.select<Loan[]>(
     'SELECT * FROM loans WHERE borrower_id = $1 ORDER BY start_date DESC',
     [borrowerId]
-  );
-  return result;
+  )
+  return result
 }
 
 export async function updateLoanBalance(id: string, newBalance: number): Promise<void> {
-  const database = await initDatabase();
-  await database.execute(
-    'UPDATE loans SET current_balance = $1 WHERE id = $2',
-    [newBalance, id]
-  );
+  const database = await initDatabase()
+  await database.execute('UPDATE loans SET current_balance = $1 WHERE id = $2', [newBalance, id])
 }
 
 export async function updateLoanStatus(id: string, status: Loan['status']): Promise<void> {
-  const database = await initDatabase();
-  await database.execute(
-    'UPDATE loans SET status = $1 WHERE id = $2',
-    [status, id]
-  );
+  const database = await initDatabase()
+  await database.execute('UPDATE loans SET status = $1 WHERE id = $2', [status, id])
 }
 
 export async function deleteLoan(id: string): Promise<void> {
-  const database = await initDatabase();
-  await database.execute('DELETE FROM loans WHERE id = $1', [id]);
+  const database = await initDatabase()
+  await database.execute('DELETE FROM loans WHERE id = $1', [id])
 }
 
 // Payment operations
 export async function createPayment(payment: Omit<Payment, 'id' | 'created_at'>): Promise<Payment> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const newPayment: Payment = {
     id: generateId(),
     created_at: getCurrentTimestamp(),
     ...payment,
-  };
+  }
 
   await database.execute(
     'INSERT INTO payments (id, loan_id, amount, payment_type, principal_amount, interest_amount, payment_date, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
@@ -186,42 +182,42 @@ export async function createPayment(payment: Omit<Payment, 'id' | 'created_at'>)
       newPayment.payment_date,
       newPayment.created_at,
     ]
-  );
+  )
 
-  return newPayment;
+  return newPayment
 }
 
 export async function getPaymentsByLoan(loanId: string): Promise<Payment[]> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const result = await database.select<Payment[]>(
     'SELECT * FROM payments WHERE loan_id = $1 ORDER BY payment_date DESC',
     [loanId]
-  );
-  return result;
+  )
+  return result
 }
 
 export async function getPayments(): Promise<Payment[]> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const result = await database.select<Payment[]>(
     'SELECT * FROM payments ORDER BY payment_date DESC'
-  );
-  return result;
+  )
+  return result
 }
 
 export async function getLastPaymentByLoan(loanId: string): Promise<Payment | null> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const result = await database.select<Payment[]>(
     'SELECT * FROM payments WHERE loan_id = $1 ORDER BY payment_date DESC LIMIT 1',
     [loanId]
-  );
-  return result.length > 0 ? result[0] : null;
+  )
+  return result.length > 0 ? result[0] : null
 }
 
 export async function getLastPaymentsByLoans(loanIds: string[]): Promise<Map<string, Payment>> {
-  if (loanIds.length === 0) return new Map();
+  if (loanIds.length === 0) return new Map()
 
-  const database = await initDatabase();
-  const placeholders = loanIds.map((_, i) => `$${i + 1}`).join(',');
+  const database = await initDatabase()
+  const placeholders = loanIds.map((_, i) => `$${i + 1}`).join(',')
   const result = await database.select<Payment[]>(
     `SELECT p1.* FROM payments p1
      INNER JOIN (
@@ -232,93 +228,100 @@ export async function getLastPaymentsByLoans(loanIds: string[]): Promise<Map<str
      ) p2 ON p1.loan_id = p2.loan_id AND p1.payment_date = p2.max_date
      WHERE p1.loan_id IN (${placeholders})`,
     [...loanIds, ...loanIds]
-  );
+  )
 
-  const lastPayments = new Map<string, Payment>();
-  result.forEach(payment => {
-    lastPayments.set(payment.loan_id, payment);
-  });
+  const lastPayments = new Map<string, Payment>()
+  result.forEach((payment) => {
+    lastPayments.set(payment.loan_id, payment)
+  })
 
-  return lastPayments;
+  return lastPayments
 }
 
-export async function updatePayment(id: string, updates: Partial<Omit<Payment, 'id' | 'created_at'>>): Promise<void> {
-  const database = await initDatabase();
-  const fields = [];
-  const values = [];
-  let paramIndex = 1;
+export async function updatePayment(
+  id: string,
+  updates: Partial<Omit<Payment, 'id' | 'created_at'>>
+): Promise<void> {
+  const database = await initDatabase()
+  const fields = []
+  const values = []
+  let paramIndex = 1
 
   if (updates.loan_id !== undefined) {
-    fields.push(`loan_id = $${paramIndex++}`);
-    values.push(updates.loan_id);
+    fields.push(`loan_id = $${paramIndex++}`)
+    values.push(updates.loan_id)
   }
   if (updates.amount !== undefined) {
-    fields.push(`amount = $${paramIndex++}`);
-    values.push(updates.amount);
+    fields.push(`amount = $${paramIndex++}`)
+    values.push(updates.amount)
   }
   if (updates.payment_type !== undefined) {
-    fields.push(`payment_type = $${paramIndex++}`);
-    values.push(updates.payment_type);
+    fields.push(`payment_type = $${paramIndex++}`)
+    values.push(updates.payment_type)
   }
   if (updates.principal_amount !== undefined) {
-    fields.push(`principal_amount = $${paramIndex++}`);
-    values.push(updates.principal_amount);
+    fields.push(`principal_amount = $${paramIndex++}`)
+    values.push(updates.principal_amount)
   }
   if (updates.interest_amount !== undefined) {
-    fields.push(`interest_amount = $${paramIndex++}`);
-    values.push(updates.interest_amount);
+    fields.push(`interest_amount = $${paramIndex++}`)
+    values.push(updates.interest_amount)
   }
   if (updates.payment_date !== undefined) {
-    fields.push(`payment_date = $${paramIndex++}`);
-    values.push(updates.payment_date);
+    fields.push(`payment_date = $${paramIndex++}`)
+    values.push(updates.payment_date)
   }
 
   if (fields.length > 0) {
-    values.push(id);
+    values.push(id)
     await database.execute(
       `UPDATE payments SET ${fields.join(', ')} WHERE id = $${paramIndex}`,
       values
-    );
+    )
   }
 }
 
 export async function deletePayment(id: string): Promise<void> {
-  const database = await initDatabase();
-  await database.execute('DELETE FROM payments WHERE id = $1', [id]);
+  const database = await initDatabase()
+  await database.execute('DELETE FROM payments WHERE id = $1', [id])
 }
 
 export async function getRealRemainingPrincipal(loanId: string): Promise<number> {
-  const database = await initDatabase();
+  const database = await initDatabase()
 
   // Get the loan's original principal amount
-  const loan = await getLoan(loanId);
-  if (!loan) return 0;
+  const loan = await getLoan(loanId)
+  if (!loan) return 0
 
   // Get sum of all principal payments for this loan
   const result = await database.select<{ total_principal_paid: number }[]>(
     'SELECT COALESCE(SUM(principal_amount), 0) as total_principal_paid FROM payments WHERE loan_id = $1',
     [loanId]
-  );
+  )
 
-  const totalPrincipalPaid = result[0]?.total_principal_paid || 0;
-  const remainingPrincipal = loan.principal_amount - totalPrincipalPaid;
+  const totalPrincipalPaid = result[0]?.total_principal_paid || 0
+  const remainingPrincipal = loan.principal_amount - totalPrincipalPaid
 
-  return Math.max(0, remainingPrincipal);
+  return Math.max(0, remainingPrincipal)
 }
 
 export async function getLoansWithBorrowers(): Promise<(Loan & { borrower_name: string })[]> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const result = await database.select<(Loan & { borrower_name: string })[]>(
     'SELECT l.*, b.name as borrower_name FROM loans l JOIN borrowers b ON l.borrower_id = b.id WHERE l.status = "active" ORDER BY l.start_date DESC'
-  );
-  return result;
+  )
+  return result
 }
 
-export async function getLoansWithCalculatedBalances(): Promise<(Loan & { borrower_name: string, real_remaining_principal: number })[]> {
-  const database = await initDatabase();
+export async function getLoansWithCalculatedBalances(): Promise<
+  (Loan & { borrower_name: string; real_remaining_principal: number })[]
+> {
+  const database = await initDatabase()
 
   // Get loans with borrower names and calculated remaining principal
-  const result = await database.select<(Loan & { borrower_name: string, total_principal_paid: number })[]>(
+  const result = await database.select<
+    (Loan & { borrower_name: string; total_principal_paid: number })[]
+  >(
     `SELECT
       l.*,
       b.name as borrower_name,
@@ -332,16 +335,16 @@ export async function getLoansWithCalculatedBalances(): Promise<(Loan & { borrow
     ) p ON l.id = p.loan_id
     WHERE l.status = "active"
     ORDER BY l.start_date DESC`
-  );
+  )
 
-  return result.map(loan => ({
+  return result.map((loan) => ({
     ...loan,
-    real_remaining_principal: Math.max(0, loan.principal_amount - (loan.total_principal_paid || 0))
-  }));
+    real_remaining_principal: Math.max(0, loan.principal_amount - (loan.total_principal_paid || 0)),
+  }))
 }
 
 export async function syncAllLoanBalances(): Promise<void> {
-  const database = await initDatabase();
+  const database = await initDatabase()
 
   // Get all loans with their calculated remaining principal
   const result = await database.select<(Loan & { total_principal_paid: number })[]>(
@@ -355,23 +358,28 @@ export async function syncAllLoanBalances(): Promise<void> {
       GROUP BY loan_id
     ) p ON l.id = p.loan_id
     WHERE l.status = "active"`
-  );
+  )
 
   // Update each loan's current_balance to match the calculated remaining principal
   for (const loan of result) {
-    const realRemainingPrincipal = Math.max(0, loan.principal_amount - (loan.total_principal_paid || 0));
-    await updateLoanBalance(loan.id, realRemainingPrincipal);
+    const realRemainingPrincipal = Math.max(
+      0,
+      loan.principal_amount - (loan.total_principal_paid || 0)
+    )
+    await updateLoanBalance(loan.id, realRemainingPrincipal)
   }
 }
 
 // Fixed Income operations
-export async function createFixedIncome(fixedIncome: Omit<FixedIncome, 'id' | 'created_at'>): Promise<FixedIncome> {
-  const database = await initDatabase();
+export async function createFixedIncome(
+  fixedIncome: Omit<FixedIncome, 'id' | 'created_at'>
+): Promise<FixedIncome> {
+  const database = await initDatabase()
   const newFixedIncome: FixedIncome = {
     id: generateId(),
     created_at: getCurrentTimestamp(),
     ...fixedIncome,
-  };
+  }
 
   await database.execute(
     'INSERT INTO fixed_income (id, tenant_id, income_type, principal_amount, income_rate, payment_interval_unit, payment_interval_value, start_date, end_date, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
@@ -388,66 +396,69 @@ export async function createFixedIncome(fixedIncome: Omit<FixedIncome, 'id' | 'c
       newFixedIncome.status,
       newFixedIncome.created_at,
     ]
-  );
+  )
 
-  return newFixedIncome;
+  return newFixedIncome
 }
 
 export async function getFixedIncomes(): Promise<FixedIncome[]> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const result = await database.select<FixedIncome[]>(
     'SELECT * FROM fixed_income ORDER BY start_date DESC'
-  );
-  return result;
+  )
+  return result
 }
 
 export async function getFixedIncome(id: string): Promise<FixedIncome | null> {
-  const database = await initDatabase();
-  const result = await database.select<FixedIncome[]>(
-    'SELECT * FROM fixed_income WHERE id = $1',
-    [id]
-  );
-  return result.length > 0 ? result[0] : null;
+  const database = await initDatabase()
+  const result = await database.select<FixedIncome[]>('SELECT * FROM fixed_income WHERE id = $1', [
+    id,
+  ])
+  return result.length > 0 ? result[0] : null
 }
 
 export async function getFixedIncomesByTenant(tenantId: string): Promise<FixedIncome[]> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const result = await database.select<FixedIncome[]>(
     'SELECT * FROM fixed_income WHERE tenant_id = $1 ORDER BY start_date DESC',
     [tenantId]
-  );
-  return result;
+  )
+  return result
 }
 
-export async function updateFixedIncomeStatus(id: string, status: FixedIncome['status']): Promise<void> {
-  const database = await initDatabase();
-  await database.execute(
-    'UPDATE fixed_income SET status = $1 WHERE id = $2',
-    [status, id]
-  );
+export async function updateFixedIncomeStatus(
+  id: string,
+  status: FixedIncome['status']
+): Promise<void> {
+  const database = await initDatabase()
+  await database.execute('UPDATE fixed_income SET status = $1 WHERE id = $2', [status, id])
 }
 
 export async function deleteFixedIncome(id: string): Promise<void> {
-  const database = await initDatabase();
-  await database.execute('DELETE FROM fixed_income WHERE id = $1', [id]);
+  const database = await initDatabase()
+  await database.execute('DELETE FROM fixed_income WHERE id = $1', [id])
 }
 
-export async function getFixedIncomesWithTenants(): Promise<(FixedIncome & { tenant_name: string })[]> {
-  const database = await initDatabase();
+export async function getFixedIncomesWithTenants(): Promise<
+  (FixedIncome & { tenant_name: string })[]
+> {
+  const database = await initDatabase()
   const result = await database.select<(FixedIncome & { tenant_name: string })[]>(
     'SELECT f.*, b.name as tenant_name FROM fixed_income f JOIN borrowers b ON f.tenant_id = b.id WHERE f.status = "active" ORDER BY f.start_date DESC'
-  );
-  return result;
+  )
+  return result
 }
 
 // Income Payment operations
-export async function createIncomePayment(payment: Omit<IncomePayment, 'id' | 'created_at'>): Promise<IncomePayment> {
-  const database = await initDatabase();
+export async function createIncomePayment(
+  payment: Omit<IncomePayment, 'id' | 'created_at'>
+): Promise<IncomePayment> {
+  const database = await initDatabase()
   const newPayment: IncomePayment = {
     id: generateId(),
     created_at: getCurrentTimestamp(),
     ...payment,
-  };
+  }
 
   await database.execute(
     'INSERT INTO income_payments (id, fixed_income_id, amount, payment_date, created_at) VALUES ($1, $2, $3, $4, $5)',
@@ -458,42 +469,48 @@ export async function createIncomePayment(payment: Omit<IncomePayment, 'id' | 'c
       newPayment.payment_date,
       newPayment.created_at,
     ]
-  );
+  )
 
-  return newPayment;
+  return newPayment
 }
 
-export async function getIncomePaymentsByFixedIncome(fixedIncomeId: string): Promise<IncomePayment[]> {
-  const database = await initDatabase();
+export async function getIncomePaymentsByFixedIncome(
+  fixedIncomeId: string
+): Promise<IncomePayment[]> {
+  const database = await initDatabase()
   const result = await database.select<IncomePayment[]>(
     'SELECT * FROM income_payments WHERE fixed_income_id = $1 ORDER BY payment_date DESC',
     [fixedIncomeId]
-  );
-  return result;
+  )
+  return result
 }
 
 export async function getIncomePayments(): Promise<IncomePayment[]> {
-  const database = await initDatabase();
+  const database = await initDatabase()
   const result = await database.select<IncomePayment[]>(
     'SELECT * FROM income_payments ORDER BY payment_date DESC'
-  );
-  return result;
+  )
+  return result
 }
 
-export async function getLastIncomePaymentByFixedIncome(fixedIncomeId: string): Promise<IncomePayment | null> {
-  const database = await initDatabase();
+export async function getLastIncomePaymentByFixedIncome(
+  fixedIncomeId: string
+): Promise<IncomePayment | null> {
+  const database = await initDatabase()
   const result = await database.select<IncomePayment[]>(
     'SELECT * FROM income_payments WHERE fixed_income_id = $1 ORDER BY payment_date DESC LIMIT 1',
     [fixedIncomeId]
-  );
-  return result.length > 0 ? result[0] : null;
+  )
+  return result.length > 0 ? result[0] : null
 }
 
-export async function getLastIncomePaymentsByFixedIncomes(fixedIncomeIds: string[]): Promise<Map<string, IncomePayment>> {
-  if (fixedIncomeIds.length === 0) return new Map();
+export async function getLastIncomePaymentsByFixedIncomes(
+  fixedIncomeIds: string[]
+): Promise<Map<string, IncomePayment>> {
+  if (fixedIncomeIds.length === 0) return new Map()
 
-  const database = await initDatabase();
-  const placeholders = fixedIncomeIds.map((_, i) => `$${i + 1}`).join(',');
+  const database = await initDatabase()
+  const placeholders = fixedIncomeIds.map((_, i) => `$${i + 1}`).join(',')
   const result = await database.select<IncomePayment[]>(
     `SELECT p1.* FROM income_payments p1
      INNER JOIN (
@@ -504,45 +521,48 @@ export async function getLastIncomePaymentsByFixedIncomes(fixedIncomeIds: string
      ) p2 ON p1.fixed_income_id = p2.fixed_income_id AND p1.payment_date = p2.max_date
      WHERE p1.fixed_income_id IN (${placeholders})`,
     [...fixedIncomeIds, ...fixedIncomeIds]
-  );
+  )
 
-  const lastPayments = new Map<string, IncomePayment>();
-  result.forEach(payment => {
-    lastPayments.set(payment.fixed_income_id, payment);
-  });
+  const lastPayments = new Map<string, IncomePayment>()
+  result.forEach((payment) => {
+    lastPayments.set(payment.fixed_income_id, payment)
+  })
 
-  return lastPayments;
+  return lastPayments
 }
 
-export async function updateIncomePayment(id: string, updates: Partial<Omit<IncomePayment, 'id' | 'created_at'>>): Promise<void> {
-  const database = await initDatabase();
-  const fields = [];
-  const values = [];
-  let paramIndex = 1;
+export async function updateIncomePayment(
+  id: string,
+  updates: Partial<Omit<IncomePayment, 'id' | 'created_at'>>
+): Promise<void> {
+  const database = await initDatabase()
+  const fields = []
+  const values = []
+  let paramIndex = 1
 
   if (updates.fixed_income_id !== undefined) {
-    fields.push(`fixed_income_id = $${paramIndex++}`);
-    values.push(updates.fixed_income_id);
+    fields.push(`fixed_income_id = $${paramIndex++}`)
+    values.push(updates.fixed_income_id)
   }
   if (updates.amount !== undefined) {
-    fields.push(`amount = $${paramIndex++}`);
-    values.push(updates.amount);
+    fields.push(`amount = $${paramIndex++}`)
+    values.push(updates.amount)
   }
   if (updates.payment_date !== undefined) {
-    fields.push(`payment_date = $${paramIndex++}`);
-    values.push(updates.payment_date);
+    fields.push(`payment_date = $${paramIndex++}`)
+    values.push(updates.payment_date)
   }
 
   if (fields.length > 0) {
-    values.push(id);
+    values.push(id)
     await database.execute(
       `UPDATE income_payments SET ${fields.join(', ')} WHERE id = $${paramIndex}`,
       values
-    );
+    )
   }
 }
 
 export async function deleteIncomePayment(id: string): Promise<void> {
-  const database = await initDatabase();
-  await database.execute('DELETE FROM income_payments WHERE id = $1', [id]);
+  const database = await initDatabase()
+  await database.execute('DELETE FROM income_payments WHERE id = $1', [id])
 }

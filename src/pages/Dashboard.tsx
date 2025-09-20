@@ -1,102 +1,137 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertTriangle, Banknote, Clock, IndianRupee, TrendingUp, Users, Building2 } from 'lucide-react';
-import { useMemo, useCallback } from 'react';
-import { useGetDashboardSummary, useGetDashboardStats, useGetRecentActivity } from '@/hooks/api/useDashboard';
-import type { DashboardSummary, DashboardStats } from '@/services/api/dashboard.service';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  AlertTriangle,
+  Banknote,
+  Clock,
+  IndianRupee,
+  TrendingUp,
+  Users,
+  Building2,
+} from 'lucide-react'
+import { useMemo, useCallback } from 'react'
+import {
+  useGetDashboardSummary,
+  useGetDashboardStats,
+  useGetRecentActivity,
+} from '@/hooks/api/useDashboard'
+import type { DashboardSummary, DashboardStats } from '@/services/api/dashboard.service'
 
 interface UpcomingPayment {
-  id: string;
-  type: 'loan' | 'fixed_income';
-  borrowerName: string;
-  assetType: string;
-  dueDate: string;
-  daysSinceLastPayment: number;
-  accruedInterest: number;
-  realRemainingPrincipal?: number;
-  assetValue?: number;
-  currentBalance?: number;
+  id: string
+  type: 'loan' | 'fixed_income'
+  borrowerName: string
+  assetType: string
+  dueDate: string
+  daysSinceLastPayment: number
+  accruedInterest: number
+  realRemainingPrincipal?: number
+  assetValue?: number
+  currentBalance?: number
 }
 
 export default function Dashboard() {
   // Use the new TanStack Query hooks
-  const { data: summary, isLoading: summaryLoading, error: summaryError } = useGetDashboardSummary();
-  const { data: stats, isLoading: statsLoading, error: statsError } = useGetDashboardStats();
-  const { data: recentActivity, isLoading: activityLoading, error: activityError } = useGetRecentActivity();
+  const { data: summary, isLoading: summaryLoading, error: summaryError } = useGetDashboardSummary()
+  const { data: stats, isLoading: statsLoading, error: statsError } = useGetDashboardStats()
+  const {
+    data: recentActivity,
+    isLoading: activityLoading,
+    error: activityError,
+  } = useGetRecentActivity()
 
-  const loading = summaryLoading || statsLoading || activityLoading;
-  const error = summaryError || statsError || activityError;
+  const loading = summaryLoading || statsLoading || activityLoading
+  const error = summaryError || statsError || activityError
 
   const formatCurrency = useMemo(() => {
     const formatter = new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-    });
-    return (amount: number) => formatter.format(amount);
-  }, []);
+    })
+    return (amount: number) => formatter.format(amount)
+  }, [])
 
-  const renderPaymentsTable = useCallback((payments: UpcomingPayment[], emptyMessage: string) => {
-    if (!payments || payments.length === 0) {
-      return <p className="text-muted-foreground">{emptyMessage}</p>;
-    }
+  const renderPaymentsTable = useCallback(
+    (payments: UpcomingPayment[], emptyMessage: string) => {
+      if (!payments || payments.length === 0) {
+        return <p className="text-muted-foreground">{emptyMessage}</p>
+      }
 
-    return (
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[120px]">Party</TableHead>
-              <TableHead className="min-w-[100px]">Type</TableHead>
-              <TableHead className="min-w-[120px]">Due Date</TableHead>
-              <TableHead className="min-w-[100px] hidden sm:table-cell">Days Since Last Payment</TableHead>
-              <TableHead className="min-w-[120px]">Principal/Value</TableHead>
-              <TableHead className="min-w-[120px]">Accrued Amount</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {payments.slice(0, 5).map((payment) => {
-              const today = new Date().toISOString().split('T')[0];
-              const isOverdue = payment.dueDate < today;
-              const dueDateObj = new Date(payment.dueDate);
-              const isDueSoon = !isOverdue && dueDateObj.getTime() - Date.now() <= 7 * 24 * 60 * 60 * 1000;
+      return (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[120px]">Party</TableHead>
+                <TableHead className="min-w-[100px]">Type</TableHead>
+                <TableHead className="min-w-[120px]">Due Date</TableHead>
+                <TableHead className="min-w-[100px] hidden sm:table-cell">
+                  Days Since Last Payment
+                </TableHead>
+                <TableHead className="min-w-[120px]">Principal/Value</TableHead>
+                <TableHead className="min-w-[120px]">Accrued Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {payments.slice(0, 5).map((payment) => {
+                const today = new Date().toISOString().split('T')[0]
+                const isOverdue = payment.dueDate < today
+                const dueDateObj = new Date(payment.dueDate)
+                const isDueSoon =
+                  !isOverdue && dueDateObj.getTime() - Date.now() <= 7 * 24 * 60 * 60 * 1000
 
-              return (
-                <TableRow key={`${payment.type}-${payment.id}`} className={isOverdue ? 'bg-red-50' : isDueSoon ? 'bg-yellow-50' : ''}>
-                  <TableCell className="font-medium">{payment.borrowerName}</TableCell>
-                  <TableCell>{payment.assetType}</TableCell>
-                  <TableCell>
-                    <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-yellow-600' : ''}`}>
-                      {isOverdue && <AlertTriangle className="h-4 w-4" />}
-                      {dueDateObj.toLocaleDateString()}
-                      {isOverdue && <span className="text-xs">(Overdue)</span>}
-                      {isDueSoon && <span className="text-xs">(Due Soon)</span>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">{payment.daysSinceLastPayment || 0} days</TableCell>
-                  <TableCell>
-                    {payment.type === 'loan' && payment.realRemainingPrincipal !== undefined
-                      ? formatCurrency(payment.realRemainingPrincipal)
-                      : formatCurrency(payment.assetValue || payment.currentBalance)
-                    }
-                  </TableCell>
-                  <TableCell className="font-medium text-green-600">
-                    {formatCurrency(payment.accruedInterest)}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-    );
-  }, [formatCurrency]);
+                return (
+                  <TableRow
+                    key={`${payment.type}-${payment.id}`}
+                    className={isOverdue ? 'bg-red-50' : isDueSoon ? 'bg-yellow-50' : ''}
+                  >
+                    <TableCell className="font-medium">{payment.borrowerName}</TableCell>
+                    <TableCell>{payment.assetType}</TableCell>
+                    <TableCell>
+                      <div
+                        className={`flex items-center gap-1 ${isOverdue ? 'text-red-600' : isDueSoon ? 'text-yellow-600' : ''}`}
+                      >
+                        {isOverdue && <AlertTriangle className="h-4 w-4" />}
+                        {dueDateObj.toLocaleDateString()}
+                        {isOverdue && <span className="text-xs">(Overdue)</span>}
+                        {isDueSoon && <span className="text-xs">(Due Soon)</span>}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {payment.daysSinceLastPayment || 0} days
+                    </TableCell>
+                    <TableCell>
+                      {payment.type === 'loan' && payment.realRemainingPrincipal !== undefined
+                        ? formatCurrency(payment.realRemainingPrincipal)
+                        : formatCurrency(payment.assetValue || payment.currentBalance)}
+                    </TableCell>
+                    <TableCell className="font-medium text-green-600">
+                      {formatCurrency(payment.accruedInterest)}
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )
+    },
+    [formatCurrency]
+  )
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg">Loading dashboard...</div>
       </div>
-    );
+    )
   }
 
   if (error) {
@@ -104,7 +139,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center h-full">
         <div className="text-lg text-red-600">Failed to load dashboard: {error.message}</div>
       </div>
-    );
+    )
   }
 
   if (!summary || !stats) {
@@ -112,7 +147,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center h-full">
         <div className="text-lg">No dashboard data available</div>
       </div>
-    );
+    )
   }
 
   return (
@@ -150,7 +185,10 @@ export default function Dashboard() {
             <IndianRupee className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(summary.totalOutstandingBalance)}>
+            <div
+              className="text-sm sm:text-base lg:text-lg font-bold break-words"
+              title={formatCurrency(summary.totalOutstandingBalance)}
+            >
               {formatCurrency(summary.totalOutstandingBalance)}
             </div>
           </CardContent>
@@ -162,7 +200,10 @@ export default function Dashboard() {
             <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(summary.totalPaidAmount)}>
+            <div
+              className="text-sm sm:text-base lg:text-lg font-bold break-words"
+              title={formatCurrency(summary.totalPaidAmount)}
+            >
               {formatCurrency(summary.totalPaidAmount)}
             </div>
           </CardContent>
@@ -184,10 +225,14 @@ export default function Dashboard() {
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-xs font-medium">Overdue Items</CardTitle>
-            <AlertTriangle className={`h-4 w-4 flex-shrink-0 ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`} />
+            <AlertTriangle
+              className={`h-4 w-4 flex-shrink-0 ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
+            />
           </CardHeader>
           <CardContent>
-            <div className={`text-xl font-bold ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-600' : ''}`}>
+            <div
+              className={`text-xl font-bold ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-600' : ''}`}
+            >
               {stats?.loanStats?.defaulted || 0}
             </div>
           </CardContent>
@@ -195,11 +240,16 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium leading-tight">This Month's Payments</CardTitle>
+            <CardTitle className="text-xs font-medium leading-tight">
+              This Month's Payments
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
-            <div className="text-sm sm:text-base lg:text-lg font-bold break-words" title={formatCurrency(summary.totalPaidAmount)}>
+            <div
+              className="text-sm sm:text-base lg:text-lg font-bold break-words"
+              title={formatCurrency(summary.totalPaidAmount)}
+            >
               {formatCurrency(summary.totalPaidAmount)}
             </div>
           </CardContent>
@@ -217,10 +267,14 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {renderPaymentsTable(summary.upcomingPayments || [], "No active loans with upcoming payments.")}
+            {renderPaymentsTable(
+              summary.upcomingPayments || [],
+              'No active loans with upcoming payments.'
+            )}
             {(summary.upcomingPayments?.length || 0) > 5 && (
               <p className="text-sm text-muted-foreground mt-4">
-                Showing 5 of {(summary.upcomingPayments?.length || 0)} items. View loans page for complete list.
+                Showing 5 of {summary.upcomingPayments?.length || 0} items. View loans page for
+                complete list.
               </p>
             )}
           </CardContent>
@@ -235,7 +289,7 @@ export default function Dashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {renderPaymentsTable([], "No active fixed income assets with upcoming payments.")}
+            {renderPaymentsTable([], 'No active fixed income assets with upcoming payments.')}
             {0 > 5 && (
               <p className="text-sm text-muted-foreground mt-4">
                 Showing 5 of {0} items. View fixed income page for complete list.
@@ -245,5 +299,5 @@ export default function Dashboard() {
         </Card>
       </div>
     </div>
-  );
+  )
 }

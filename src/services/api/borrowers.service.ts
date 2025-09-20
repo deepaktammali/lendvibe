@@ -4,35 +4,35 @@ import {
   getBorrower as dbGetBorrower,
   getBorrowers as dbGetBorrowers,
   updateBorrower as dbUpdateBorrower,
-} from '@/lib/database';
-import type { Borrower } from '@/types/api/borrowers';
-import type { CreateBorrower } from '@/types/api/borrowers';
+} from '@/lib/database'
+import type { Borrower } from '@/types/api/borrowers'
+import type { CreateBorrower } from '@/types/api/borrowers'
 
-export type CreateBorrowerData = CreateBorrower.Payload;
+export type CreateBorrowerData = CreateBorrower.Payload
 export type UpdateBorrowerData = {
-  name?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-};
+  name?: string
+  email?: string
+  phone?: string
+  address?: string
+}
 
 export const borrowerService = {
   async getBorrowers(): Promise<Borrower[]> {
-    const dbBorrowers = await dbGetBorrowers();
+    const dbBorrowers = await dbGetBorrowers()
     // Transform database types to API types
-    return dbBorrowers.map(dbBorrower => ({
+    return dbBorrowers.map((dbBorrower) => ({
       id: dbBorrower.id,
       name: dbBorrower.name,
       email: dbBorrower.email,
       phone: dbBorrower.phone,
       address: dbBorrower.address,
       created_at: dbBorrower.created_at,
-    }));
+    }))
   },
 
   async getBorrower(id: string): Promise<Borrower | null> {
-    const dbBorrower = await dbGetBorrower(id);
-    if (!dbBorrower) return null;
+    const dbBorrower = await dbGetBorrower(id)
+    if (!dbBorrower) return null
 
     // Transform database type to API type
     return {
@@ -42,11 +42,11 @@ export const borrowerService = {
       phone: dbBorrower.phone,
       address: dbBorrower.address,
       created_at: dbBorrower.created_at,
-    };
+    }
   },
 
   async createBorrower(data: CreateBorrowerData): Promise<Borrower> {
-    const dbBorrower = await dbCreateBorrower(data);
+    const dbBorrower = await dbCreateBorrower(data)
     // Transform database type to API type
     return {
       id: dbBorrower.id,
@@ -55,17 +55,17 @@ export const borrowerService = {
       phone: dbBorrower.phone,
       address: dbBorrower.address,
       created_at: dbBorrower.created_at,
-    };
+    }
   },
 
   async updateBorrower(id: string, data: UpdateBorrowerData): Promise<void> {
-    return await dbUpdateBorrower(id, data);
+    return await dbUpdateBorrower(id, data)
   },
 
   async deleteBorrower(id: string): Promise<void> {
-    return await dbDeleteBorrower(id);
+    return await dbDeleteBorrower(id)
   },
-};
+}
 
 export const borrowerKeys = {
   all: ['borrowers'] as const,
@@ -73,4 +73,4 @@ export const borrowerKeys = {
   list: (filters: string) => [...borrowerKeys.lists(), { filters }] as const,
   details: () => [...borrowerKeys.all, 'detail'] as const,
   detail: (id: string) => [...borrowerKeys.details(), id] as const,
-};
+}

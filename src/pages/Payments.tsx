@@ -1,42 +1,84 @@
-import { useState } from 'react';
-import { Plus, Search, IndianRupee, Receipt, Calendar, TrendingUp, User, Edit, Trash2 } from 'lucide-react';
-import { useForm } from '@tanstack/react-form';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useGetPaymentsWithDetails, useCreatePayment, useUpdatePayment, useDeletePayment } from '@/hooks/api/usePayments';
-import { useGetLoans } from '@/hooks/api/useLoans';
-import { useGetBorrowers } from '@/hooks/api/useBorrowers';
-import { paymentFormSchema, type PaymentFormInput } from '@/lib/validation';
-import type { Payment } from '@/types/api/payments';
-
+import { useState } from 'react'
+import {
+  Plus,
+  Search,
+  IndianRupee,
+  Receipt,
+  Calendar,
+  TrendingUp,
+  User,
+  Edit,
+  Trash2,
+} from 'lucide-react'
+import { useForm } from '@tanstack/react-form'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  useGetPaymentsWithDetails,
+  useCreatePayment,
+  useUpdatePayment,
+  useDeletePayment,
+} from '@/hooks/api/usePayments'
+import { useGetLoans } from '@/hooks/api/useLoans'
+import { useGetBorrowers } from '@/hooks/api/useBorrowers'
+import { paymentFormSchema, type PaymentFormInput } from '@/lib/validation'
+import type { Payment } from '@/types/api/payments'
 
 interface PaymentWithDetails extends Payment {
-  borrower_name: string;
-  loan_principal: number;
+  borrower_name: string
+  loan_principal: number
 }
 
 export default function Payments() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<PaymentWithDetails | null>(null);
-  const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingPayment, setEditingPayment] = useState<PaymentWithDetails | null>(null)
+  const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null)
 
   // Use the new TanStack Query hooks
-  const { data: payments = [], isLoading: loading, error } = useGetPaymentsWithDetails();
-  const { data: loans = [] } = useGetLoans();
-  const { data: borrowers = [] } = useGetBorrowers();
-  const createPaymentMutation = useCreatePayment();
-  const updatePaymentMutation = useUpdatePayment();
-  const deletePaymentMutation = useDeletePayment();
+  const { data: payments = [], isLoading: loading, error } = useGetPaymentsWithDetails()
+  const { data: loans = [] } = useGetLoans()
+  const { data: borrowers = [] } = useGetBorrowers()
+  const createPaymentMutation = useCreatePayment()
+  const updatePaymentMutation = useUpdatePayment()
+  const deletePaymentMutation = useDeletePayment()
 
   const editForm = useForm({
     defaultValues: {
@@ -49,10 +91,10 @@ export default function Payments() {
       onChange: paymentFormSchema,
     },
     onSubmit: async ({ value }) => {
-      if (!editingPayment) return;
+      if (!editingPayment) return
 
       try {
-        const totalAmount = value.principal_amount + value.interest_amount;
+        const totalAmount = value.principal_amount + value.interest_amount
 
         const updateData = {
           loan_id: value.loan_id,
@@ -62,23 +104,25 @@ export default function Payments() {
           interest_amount: value.interest_amount,
           payment_type: (value.principal_amount > 0 && value.interest_amount > 0
             ? 'mixed'
-            : value.principal_amount > 0 ? 'principal' : 'interest') as Payment['payment_type'],
-        };
+            : value.principal_amount > 0
+              ? 'principal'
+              : 'interest') as Payment['payment_type'],
+        }
 
         await updatePaymentMutation.mutateAsync({
           id: editingPayment.id,
           data: updateData,
-          originalPayment: editingPayment
-        });
+          originalPayment: editingPayment,
+        })
 
-        setIsEditDialogOpen(false);
-        setEditingPayment(null);
-        editForm.reset();
+        setIsEditDialogOpen(false)
+        setEditingPayment(null)
+        editForm.reset()
       } catch (error) {
-        console.error('Failed to update payment:', error);
+        console.error('Failed to update payment:', error)
       }
     },
-  });
+  })
 
   const paymentForm = useForm({
     defaultValues: {
@@ -97,98 +141,97 @@ export default function Payments() {
           principal_amount: value.principal_amount,
           interest_amount: value.interest_amount,
           payment_date: value.payment_date,
-        };
+        }
 
-        await createPaymentMutation.mutateAsync(paymentData);
-        setIsAddDialogOpen(false);
-        paymentForm.reset();
+        await createPaymentMutation.mutateAsync(paymentData)
+        setIsAddDialogOpen(false)
+        paymentForm.reset()
       } catch (error) {
-        console.error('Failed to record payment:', error);
+        console.error('Failed to record payment:', error)
       }
     },
-  });
+  })
 
   const handleEditPayment = (payment: PaymentWithDetails) => {
-    setEditingPayment(payment);
-    editForm.setFieldValue('loan_id', payment.loan_id);
-    editForm.setFieldValue('principal_amount', payment.principal_amount);
-    editForm.setFieldValue('interest_amount', payment.interest_amount);
-    editForm.setFieldValue('payment_date', payment.payment_date);
-    setIsEditDialogOpen(true);
-  };
+    setEditingPayment(payment)
+    editForm.setFieldValue('loan_id', payment.loan_id)
+    editForm.setFieldValue('principal_amount', payment.principal_amount)
+    editForm.setFieldValue('interest_amount', payment.interest_amount)
+    editForm.setFieldValue('payment_date', payment.payment_date)
+    setIsEditDialogOpen(true)
+  }
 
   const handleDeletePayment = async (paymentId: string) => {
     try {
-      const payment = payments.find(p => p.id === paymentId);
-      if (!payment) return;
+      const payment = payments.find((p) => p.id === paymentId)
+      if (!payment) return
 
       await deletePaymentMutation.mutateAsync({
         id: paymentId,
-        payment: payment
-      });
+        payment: payment,
+      })
 
-      setDeletePaymentId(null);
+      setDeletePaymentId(null)
     } catch (error) {
-      console.error('Failed to delete payment:', error);
+      console.error('Failed to delete payment:', error)
     }
-  };
+  }
 
-  const filteredPayments = payments.filter(payment => {
-    const matchesSearch = 
+  const filteredPayments = payments.filter((payment) => {
+    const matchesSearch =
       payment.borrower_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.loan_id.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = typeFilter === 'all' || payment.payment_type === typeFilter;
-    
-    return matchesSearch && matchesType;
-  });
+      payment.loan_id.toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesType = typeFilter === 'all' || payment.payment_type === typeFilter
+
+    return matchesSearch && matchesType
+  })
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-    }).format(amount);
-  };
+    }).format(amount)
+  }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+    return new Date(dateString).toLocaleDateString()
+  }
 
   const getPaymentTypeBadge = (type: Payment['payment_type']) => {
     const variants = {
       principal: 'default',
       interest: 'secondary',
-      mixed: 'outline'
-    } as const;
+      mixed: 'outline',
+    } as const
 
     const labels = {
       principal: 'Principal',
       interest: 'Interest',
-      mixed: 'Mixed'
-    };
+      mixed: 'Mixed',
+    }
 
-    return (
-      <Badge variant={variants[type]}>
-        {labels[type]}
-      </Badge>
-    );
-  };
+    return <Badge variant={variants[type]}>{labels[type]}</Badge>
+  }
 
-  const totalPayments = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0);
-  const totalPrincipal = filteredPayments.reduce((sum, payment) => sum + payment.principal_amount, 0);
-  const totalInterest = filteredPayments.reduce((sum, payment) => sum + payment.interest_amount, 0);
-  
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const totalPayments = filteredPayments.reduce((sum, payment) => sum + payment.amount, 0)
+  const totalPrincipal = filteredPayments.reduce(
+    (sum, payment) => sum + payment.principal_amount,
+    0
+  )
+  const totalInterest = filteredPayments.reduce((sum, payment) => sum + payment.interest_amount, 0)
+
+  const currentMonth = new Date().toISOString().slice(0, 7)
   const monthlyPayments = filteredPayments
-    .filter(payment => payment.payment_date.startsWith(currentMonth))
-    .reduce((sum, payment) => sum + payment.amount, 0);
+    .filter((payment) => payment.payment_date.startsWith(currentMonth))
+    .reduce((sum, payment) => sum + payment.amount, 0)
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg">Loading payments...</div>
       </div>
-    );
+    )
   }
 
   return (
@@ -198,7 +241,7 @@ export default function Payments() {
           <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
           <p className="text-gray-600 mt-2">Track and record payments</p>
         </div>
-        
+
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setIsAddDialogOpen(true)}>
@@ -212,9 +255,9 @@ export default function Payments() {
             </DialogHeader>
             <form
               onSubmit={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                paymentForm.handleSubmit();
+                e.preventDefault()
+                e.stopPropagation()
+                paymentForm.handleSubmit()
               }}
               className="space-y-4"
             >
@@ -232,12 +275,12 @@ export default function Payments() {
                       </SelectTrigger>
                       <SelectContent>
                         {loans.map((loan) => {
-                          const borrower = borrowers.find(b => b.id === loan.borrower_id);
+                          const borrower = borrowers.find((b) => b.id === loan.borrower_id)
                           return (
                             <SelectItem key={loan.id} value={loan.id}>
                               {borrower?.name} - {formatCurrency(loan.current_balance)} remaining
                             </SelectItem>
-                          );
+                          )
                         })}
                       </SelectContent>
                     </Select>
@@ -247,7 +290,7 @@ export default function Payments() {
                   </div>
                 )}
               />
-              
+
               <paymentForm.Field
                 name="principal_amount"
                 children={(field) => (
@@ -260,8 +303,8 @@ export default function Payments() {
                       min="0"
                       value={field.state.value || ''}
                       onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        field.handleChange(amount);
+                        const amount = parseFloat(e.target.value) || 0
+                        field.handleChange(amount)
                       }}
                       onBlur={field.handleBlur}
                       placeholder="0.00"
@@ -285,8 +328,8 @@ export default function Payments() {
                       min="0"
                       value={field.state.value || ''}
                       onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        field.handleChange(amount);
+                        const amount = parseFloat(e.target.value) || 0
+                        field.handleChange(amount)
                       }}
                       onBlur={field.handleBlur}
                       placeholder="0.00"
@@ -297,7 +340,7 @@ export default function Payments() {
                   </div>
                 )}
               />
-              
+
               <paymentForm.Field
                 name="payment_date"
                 children={(field) => (
@@ -316,14 +359,14 @@ export default function Payments() {
                   </div>
                 )}
               />
-              
+
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    paymentForm.reset();
-                    setIsAddDialogOpen(false);
+                    paymentForm.reset()
+                    setIsAddDialogOpen(false)
                   }}
                 >
                   Cancel
@@ -349,9 +392,9 @@ export default function Payments() {
             </DialogHeader>
             <form
               onSubmit={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                editForm.handleSubmit();
+                e.preventDefault()
+                e.stopPropagation()
+                editForm.handleSubmit()
               }}
               className="space-y-4"
             >
@@ -369,12 +412,12 @@ export default function Payments() {
                       </SelectTrigger>
                       <SelectContent>
                         {loans.map((loan) => {
-                          const borrower = borrowers.find(b => b.id === loan.borrower_id);
+                          const borrower = borrowers.find((b) => b.id === loan.borrower_id)
                           return (
                             <SelectItem key={loan.id} value={loan.id}>
                               {borrower?.name} - {formatCurrency(loan.current_balance)} remaining
                             </SelectItem>
-                          );
+                          )
                         })}
                       </SelectContent>
                     </Select>
@@ -397,8 +440,8 @@ export default function Payments() {
                       min="0"
                       value={field.state.value || ''}
                       onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        field.handleChange(amount);
+                        const amount = parseFloat(e.target.value) || 0
+                        field.handleChange(amount)
                       }}
                       onBlur={field.handleBlur}
                       placeholder="0.00"
@@ -422,8 +465,8 @@ export default function Payments() {
                       min="0"
                       value={field.state.value || ''}
                       onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0;
-                        field.handleChange(amount);
+                        const amount = parseFloat(e.target.value) || 0
+                        field.handleChange(amount)
                       }}
                       onBlur={field.handleBlur}
                       placeholder="0.00"
@@ -459,9 +502,9 @@ export default function Payments() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    editForm.reset();
-                    setIsEditDialogOpen(false);
-                    setEditingPayment(null);
+                    editForm.reset()
+                    setIsEditDialogOpen(false)
+                    setEditingPayment(null)
                   }}
                 >
                   Cancel
@@ -486,21 +529,32 @@ export default function Payments() {
               <AlertDialogTitle>Delete Payment</AlertDialogTitle>
               <AlertDialogDescription>
                 Are you sure you want to delete this payment? This action cannot be undone.
-                {deletePaymentId && (() => {
-                  const payment = payments.find(p => p.id === deletePaymentId);
-                  if (payment) {
-                    return (
-                      <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                        <p><strong>Borrower:</strong> {payment.borrower_name}</p>
-                        <p><strong>Amount:</strong> {formatCurrency(payment.amount)}</p>
-                        <p><strong>Principal:</strong> {formatCurrency(payment.principal_amount)}</p>
-                        <p><strong>Interest:</strong> {formatCurrency(payment.interest_amount)}</p>
-                        <p><strong>Date:</strong> {formatDate(payment.payment_date)}</p>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+                {deletePaymentId &&
+                  (() => {
+                    const payment = payments.find((p) => p.id === deletePaymentId)
+                    if (payment) {
+                      return (
+                        <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                          <p>
+                            <strong>Borrower:</strong> {payment.borrower_name}
+                          </p>
+                          <p>
+                            <strong>Amount:</strong> {formatCurrency(payment.amount)}
+                          </p>
+                          <p>
+                            <strong>Principal:</strong> {formatCurrency(payment.principal_amount)}
+                          </p>
+                          <p>
+                            <strong>Interest:</strong> {formatCurrency(payment.interest_amount)}
+                          </p>
+                          <p>
+                            <strong>Date:</strong> {formatDate(payment.payment_date)}
+                          </p>
+                        </div>
+                      )
+                    }
+                    return null
+                  })()}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -562,7 +616,7 @@ export default function Payments() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center">
@@ -611,10 +665,9 @@ export default function Payments() {
               <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <p className="text-gray-500">No payments found</p>
               <p className="text-sm text-gray-400">
-                {searchTerm || typeFilter !== 'all' 
-                  ? 'Try adjusting your search or filter' 
-                  : 'Record your first payment to get started'
-                }
+                {searchTerm || typeFilter !== 'all'
+                  ? 'Try adjusting your search or filter'
+                  : 'Record your first payment to get started'}
               </p>
             </div>
           ) : (
@@ -640,18 +693,16 @@ export default function Payments() {
                         <span className="font-medium">{payment.borrower_name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      {formatCurrency(payment.amount)}
-                    </TableCell>
+                    <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
                     <TableCell>
-                      {payment.principal_amount > 0 ? formatCurrency(payment.principal_amount) : '-'}
+                      {payment.principal_amount > 0
+                        ? formatCurrency(payment.principal_amount)
+                        : '-'}
                     </TableCell>
                     <TableCell>
                       {payment.interest_amount > 0 ? formatCurrency(payment.interest_amount) : '-'}
                     </TableCell>
-                    <TableCell>
-                      {getPaymentTypeBadge(payment.payment_type)}
-                    </TableCell>
+                    <TableCell>{getPaymentTypeBadge(payment.payment_type)}</TableCell>
                     <TableCell className="text-sm text-gray-500">
                       {formatDate(payment.payment_date)}
                     </TableCell>
@@ -685,5 +736,5 @@ export default function Payments() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

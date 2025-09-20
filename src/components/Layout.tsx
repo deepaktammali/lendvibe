@@ -1,16 +1,9 @@
-import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import {
-  Home,
-  Users,
-  Banknote,
-  Receipt,
-  IndianRupee,
-  TrendingUp
-} from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom'
+import { cn } from '@/lib/utils'
+import { Home, Users, Banknote, Receipt, IndianRupee, TrendingUp } from 'lucide-react'
 
 interface LayoutProps {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
 const navigation = [
@@ -19,10 +12,10 @@ const navigation = [
   { name: 'Loans', href: '/loans', icon: Banknote },
   { name: 'Fixed Income', href: '/fixed-income', icon: TrendingUp },
   { name: 'Payments', href: '/payments', icon: Receipt },
-];
+]
 
 export default function Layout({ children }: LayoutProps) {
-  const location = useLocation();
+  const location = useLocation()
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -32,11 +25,11 @@ export default function Layout({ children }: LayoutProps) {
           <IndianRupee className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-bold text-gray-900">LendTracker</h1>
         </div>
-        
+
         <nav className="mt-6">
           <div className="px-3">
             {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isActive = location.pathname === item.href
               return (
                 <Link
                   key={item.name}
@@ -51,7 +44,7 @@ export default function Layout({ children }: LayoutProps) {
                   <item.icon className="h-5 w-5" />
                   {item.name}
                 </Link>
-              );
+              )
             })}
           </div>
         </nav>
@@ -59,10 +52,8 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-auto p-6">
-          {children}
-        </main>
+        <main className="flex-1 overflow-auto p-6">{children}</main>
       </div>
     </div>
-  );
+  )
 }

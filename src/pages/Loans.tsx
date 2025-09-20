@@ -1,43 +1,83 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { useGetBorrowers } from '@/hooks/api/useBorrowers';
-import { useCreateLoan, useDeleteLoan, useGetLoansWithCalculatedBalances, useUpdateLoanStatus } from '@/hooks/api/useLoans';
-import { getLoanTypeLabel, getLoanTypesByCategory, isFixedIncomeType, isTraditionalLoanType, LOAN_CATEGORY_LABELS } from '@/lib/loans';
-import { loanSchema, type LoanFormData } from '@/lib/validation';
-import type { Loan } from '@/types/api/loans';
-import { useForm } from '@tanstack/react-form';
-import { AlertCircle, Calendar, Eye, IndianRupee, Percent, Plus, Search, Trash2, User } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import { useGetBorrowers } from '@/hooks/api/useBorrowers'
+import {
+  useCreateLoan,
+  useDeleteLoan,
+  useGetLoansWithCalculatedBalances,
+  useUpdateLoanStatus,
+} from '@/hooks/api/useLoans'
+import {
+  getLoanTypeLabel,
+  getLoanTypesByCategory,
+  isFixedIncomeType,
+  isTraditionalLoanType,
+  LOAN_CATEGORY_LABELS,
+} from '@/lib/loans'
+import { loanSchema, type LoanFormData } from '@/lib/validation'
+import type { Loan } from '@/types/api/loans'
+import { useForm } from '@tanstack/react-form'
+import {
+  AlertCircle,
+  Calendar,
+  Eye,
+  IndianRupee,
+  Percent,
+  Plus,
+  Search,
+  Trash2,
+  User,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-  }).format(amount);
-};
+  }).format(amount)
+}
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString();
-};
+  return new Date(dateString).toLocaleDateString()
+}
 
 export default function Loans() {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const navigate = useNavigate()
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: loans = [], isLoading: loading, error } = useGetLoansWithCalculatedBalances();
-  const { data: borrowers = [] } = useGetBorrowers();
-  const createLoanMutation = useCreateLoan();
-  const deleteLoanMutation = useDeleteLoan();
-  const updateLoanStatusMutation = useUpdateLoanStatus();
+  const { data: loans = [], isLoading: loading, error } = useGetLoansWithCalculatedBalances()
+  const { data: borrowers = [] } = useGetBorrowers()
+  const createLoanMutation = useCreateLoan()
+  const deleteLoanMutation = useDeleteLoan()
+  const updateLoanStatusMutation = useUpdateLoanStatus()
 
   const loanForm = useForm({
     defaultValues: {
@@ -56,16 +96,16 @@ export default function Loans() {
     },
     onSubmit: async ({ value }) => {
       try {
-        let term_months: number;
+        let term_months: number
         if (value.end_date) {
-          const start = new Date(value.start_date);
-          const end = new Date(value.end_date);
-          const diffMs = end.getTime() - start.getTime();
-          term_months = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30)); // Approximate months
+          const start = new Date(value.start_date)
+          const end = new Date(value.end_date)
+          const diffMs = end.getTime() - start.getTime()
+          term_months = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30)) // Approximate months
         } else if (value.term_months) {
-          term_months = value.term_months;
+          term_months = value.term_months
         } else {
-          term_months = 12; // Default term
+          term_months = 12 // Default term
         }
 
         const loanData = {
@@ -77,52 +117,51 @@ export default function Loans() {
           start_date: value.start_date,
           repayment_interval_unit: value.repayment_interval_unit,
           repayment_interval_value: value.repayment_interval_value,
-        };
+        }
 
-        await createLoanMutation.mutateAsync(loanData);
-        setIsAddDialogOpen(false);
-        loanForm.reset();
+        await createLoanMutation.mutateAsync(loanData)
+        setIsAddDialogOpen(false)
+        loanForm.reset()
       } catch (error) {
-        console.error('Failed to create loan:', error);
+        console.error('Failed to create loan:', error)
       }
     },
-  });
+  })
 
   const handleStatusChange = async (loanId: string, newStatus: Loan['status']) => {
     try {
-      await updateLoanStatusMutation.mutateAsync({ id: loanId, status: newStatus });
+      await updateLoanStatusMutation.mutateAsync({ id: loanId, status: newStatus })
     } catch (error) {
-      console.error('Failed to update loan status:', error);
+      console.error('Failed to update loan status:', error)
     }
-  };
+  }
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this loan? This action cannot be undone.')) {
       try {
-        await deleteLoanMutation.mutateAsync(id);
+        await deleteLoanMutation.mutateAsync(id)
       } catch (error) {
-        console.error('Failed to delete loan:', error);
+        console.error('Failed to delete loan:', error)
       }
     }
-  };
+  }
 
-
-  const filteredLoans = loans.filter(loan => {
+  const filteredLoans = loans.filter((loan) => {
     const matchesSearch =
       loan.borrower_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loan.id.toLowerCase().includes(searchTerm.toLowerCase());
+      loan.id.toLowerCase().includes(searchTerm.toLowerCase())
 
-    const matchesStatus = statusFilter === 'all' || loan.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || loan.status === statusFilter
 
-    return matchesSearch && matchesStatus;
-  });
+    return matchesSearch && matchesStatus
+  })
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg">Loading loans...</div>
       </div>
-    );
+    )
   }
 
   return (
@@ -146,9 +185,9 @@ export default function Loans() {
             </DialogHeader>
             <form
               onSubmit={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                loanForm.handleSubmit();
+                e.preventDefault()
+                e.stopPropagation()
+                loanForm.handleSubmit()
               }}
               className="grid grid-cols-1 md:grid-cols-2 gap-6"
             >
@@ -186,20 +225,22 @@ export default function Loans() {
                     <Label htmlFor="loan-type">Loan Type *</Label>
                     <Select
                       value={field.state.value}
-                      onValueChange={(value) => field.handleChange(value as LoanFormData['loan_type'])}
+                      onValueChange={(value) =>
+                        field.handleChange(value as LoanFormData['loan_type'])
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a loan type" />
                       </SelectTrigger>
                       <SelectContent>
                         {(() => {
-                          const { traditional_loan, fixed_income } = getLoanTypesByCategory();
+                          const { traditional_loan, fixed_income } = getLoanTypesByCategory()
                           return (
                             <>
                               <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
                                 {LOAN_CATEGORY_LABELS.traditional_loan}
                               </div>
-                              {traditional_loan.map(type => (
+                              {traditional_loan.map((type) => (
                                 <SelectItem key={type} value={type}>
                                   {getLoanTypeLabel(type)}
                                 </SelectItem>
@@ -207,13 +248,13 @@ export default function Loans() {
                               <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide mt-2">
                                 {LOAN_CATEGORY_LABELS.fixed_income}
                               </div>
-                              {fixed_income.map(type => (
+                              {fixed_income.map((type) => (
                                 <SelectItem key={type} value={type}>
                                   {getLoanTypeLabel(type)}
                                 </SelectItem>
                               ))}
                             </>
-                          );
+                          )
                         })()}
                       </SelectContent>
                     </Select>
@@ -234,16 +275,18 @@ export default function Loans() {
                         min="0"
                         value={field.state.value || ''}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
-                          field.handleChange(value);
+                          const value = parseFloat(e.target.value) || 0
+                          field.handleChange(value)
                         }}
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
-                  );
+                  )
                 }}
               />
 
@@ -261,16 +304,18 @@ export default function Loans() {
                         max="100"
                         value={field.state.value || ''}
                         onChange={(e) => {
-                          const value = parseFloat(e.target.value) || 0;
-                          field.handleChange(value);
+                          const value = parseFloat(e.target.value) || 0
+                          field.handleChange(value)
                         }}
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
                       )}
                     </div>
-                  );
+                  )
                 }}
               />
 
@@ -281,7 +326,9 @@ export default function Loans() {
                     <Label htmlFor="repayment-unit">Repayment Unit *</Label>
                     <Select
                       value={field.state.value}
-                      onValueChange={(value) => field.handleChange(value as LoanFormData['repayment_interval_unit'])}
+                      onValueChange={(value) =>
+                        field.handleChange(value as LoanFormData['repayment_interval_unit'])
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select a unit" />
@@ -300,9 +347,9 @@ export default function Loans() {
               <loanForm.Subscribe
                 selector={(state) => state.values.repayment_interval_unit}
                 children={(unit) => {
-                  const unitName = unit || 'interval';
-                  const capitalizedUnit = unitName.charAt(0).toUpperCase() + unitName.slice(1);
-                  const labelText = `Number of ${capitalizedUnit}`;
+                  const unitName = unit || 'interval'
+                  const capitalizedUnit = unitName.charAt(0).toUpperCase() + unitName.slice(1)
+                  const labelText = `Number of ${capitalizedUnit}`
 
                   return (
                     <loanForm.Field
@@ -321,7 +368,7 @@ export default function Loans() {
                         </div>
                       )}
                     />
-                  );
+                  )
                 }}
               />
 
@@ -342,21 +389,23 @@ export default function Loans() {
                                 min="1"
                                 value={field.state.value || ''}
                                 onChange={(e) => {
-                                  const value = parseInt(e.target.value) || 12;
-                                  field.handleChange(value);
+                                  const value = parseInt(e.target.value) || 12
+                                  field.handleChange(value)
                                 }}
                                 onBlur={field.handleBlur}
                               />
                               {field.state.meta.errors.length > 0 && (
-                                <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                                <p className="text-sm text-red-600">
+                                  {field.state.meta.errors[0]?.message}
+                                </p>
                               )}
                             </div>
-                          );
+                          )
                         }}
                       />
-                    );
+                    )
                   }
-                  return null;
+                  return null
                 }}
               />
 
@@ -415,14 +464,16 @@ export default function Loans() {
                               onBlur={field.handleBlur}
                             />
                             {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                              <p className="text-sm text-red-600">
+                                {field.state.meta.errors[0]?.message}
+                              </p>
                             )}
                           </div>
                         )}
                       />
-                    );
+                    )
                   }
-                  return null;
+                  return null
                 }}
               />
 
@@ -431,35 +482,35 @@ export default function Loans() {
                 children={(values) => {
                   if (values.principal_amount > 0 && values.interest_rate > 0) {
                     // Calculate interest per interval period using rate per interval
-                    let intervalLabel = 'month';
+                    let intervalLabel = 'month'
                     if (values.repayment_interval_unit && values.repayment_interval_value) {
                       switch (values.repayment_interval_unit) {
                         case 'days':
-                          intervalLabel = `${values.repayment_interval_value} day${values.repayment_interval_value > 1 ? 's' : ''}`;
-                          break;
+                          intervalLabel = `${values.repayment_interval_value} day${values.repayment_interval_value > 1 ? 's' : ''}`
+                          break
                         case 'weeks':
-                          intervalLabel = `${values.repayment_interval_value} week${values.repayment_interval_value > 1 ? 's' : ''}`;
-                          break;
+                          intervalLabel = `${values.repayment_interval_value} week${values.repayment_interval_value > 1 ? 's' : ''}`
+                          break
                         case 'months':
-                          intervalLabel = `${values.repayment_interval_value} month${values.repayment_interval_value > 1 ? 's' : ''}`;
-                          break;
+                          intervalLabel = `${values.repayment_interval_value} month${values.repayment_interval_value > 1 ? 's' : ''}`
+                          break
                         case 'years':
-                          intervalLabel = `${values.repayment_interval_value} year${values.repayment_interval_value > 1 ? 's' : ''}`;
-                          break;
+                          intervalLabel = `${values.repayment_interval_value} year${values.repayment_interval_value > 1 ? 's' : ''}`
+                          break
                       }
                     }
 
-                    const intervalInterest = values.principal_amount * (values.interest_rate / 100);
+                    const intervalInterest = values.principal_amount * (values.interest_rate / 100)
 
                     // Calculate term preview
-                    let term_preview = 0;
+                    let term_preview = 0
                     if (values.hasEndDate && values.end_date && values.start_date) {
-                      const start = new Date(values.start_date);
-                      const end = new Date(values.end_date);
-                      const diffMs = end.getTime() - start.getTime();
-                      term_preview = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30));
+                      const start = new Date(values.start_date)
+                      const end = new Date(values.end_date)
+                      const diffMs = end.getTime() - start.getTime()
+                      term_preview = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30))
                     } else if (!values.hasEndDate) {
-                      term_preview = values.term_months || 0;
+                      term_preview = values.term_months || 0
                     }
 
                     return (
@@ -478,9 +529,9 @@ export default function Loans() {
                           </p>
                         )}
                       </div>
-                    );
+                    )
                   }
-                  return null;
+                  return null
                 }}
               />
 
@@ -489,8 +540,8 @@ export default function Loans() {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    loanForm.reset();
-                    setIsAddDialogOpen(false);
+                    loanForm.reset()
+                    setIsAddDialogOpen(false)
                   }}
                 >
                   Cancel
@@ -553,7 +604,7 @@ export default function Loans() {
                 <p className="text-lg font-bold">
                   {formatCurrency(
                     filteredLoans
-                      .filter(loan => loan.status === 'active')
+                      .filter((loan) => loan.status === 'active')
                       .reduce((sum, loan) => sum + loan.real_remaining_principal, 0)
                   )}
                 </p>
@@ -569,7 +620,7 @@ export default function Loans() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Active Loans</p>
                 <p className="text-lg font-bold">
-                  {filteredLoans.filter(loan => loan.status === 'active').length}
+                  {filteredLoans.filter((loan) => loan.status === 'active').length}
                 </p>
               </div>
             </div>
@@ -584,9 +635,11 @@ export default function Loans() {
                 <p className="text-sm font-medium text-gray-600">Avg. Interest</p>
                 <p className="text-lg font-bold">
                   {filteredLoans.length > 0
-                    ? (filteredLoans.reduce((sum, loan) => sum + loan.interest_rate, 0) / filteredLoans.length).toFixed(1) + '%'
-                    : '0%'
-                  }
+                    ? (
+                        filteredLoans.reduce((sum, loan) => sum + loan.interest_rate, 0) /
+                        filteredLoans.length
+                      ).toFixed(1) + '%'
+                    : '0%'}
                 </p>
               </div>
             </div>
@@ -600,7 +653,7 @@ export default function Loans() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Defaulted</p>
                 <p className="text-lg font-bold">
-                  {filteredLoans.filter(loan => loan.status === 'defaulted').length}
+                  {filteredLoans.filter((loan) => loan.status === 'defaulted').length}
                 </p>
               </div>
             </div>
@@ -621,8 +674,7 @@ export default function Loans() {
               <p className="text-sm text-gray-400">
                 {searchTerm || statusFilter !== 'all'
                   ? 'Try adjusting your search or filter'
-                  : 'Create your first loan to get started'
-                }
+                  : 'Create your first loan to get started'}
               </p>
             </div>
           ) : (
@@ -655,9 +707,14 @@ export default function Loans() {
                     </TableCell>
                     <TableCell>{loan.interest_rate}%</TableCell>
                     <TableCell>
-                      {isTraditionalLoanType(loan.loan_type) && loan.loan_type === 'installment' && `${loan.term_months} months`}
-                      {isTraditionalLoanType(loan.loan_type) && loan.loan_type === 'bullet' && `Matures in ${loan.term_months} months`}
-                      {isFixedIncomeType(loan.loan_type) && `Every ${loan.repayment_interval_value} ${loan.repayment_interval_unit}`}
+                      {isTraditionalLoanType(loan.loan_type) &&
+                        loan.loan_type === 'installment' &&
+                        `${loan.term_months} months`}
+                      {isTraditionalLoanType(loan.loan_type) &&
+                        loan.loan_type === 'bullet' &&
+                        `Matures in ${loan.term_months} months`}
+                      {isFixedIncomeType(loan.loan_type) &&
+                        `Every ${loan.repayment_interval_value} ${loan.repayment_interval_unit}`}
                     </TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(loan.real_remaining_principal)}
@@ -665,7 +722,9 @@ export default function Loans() {
                     <TableCell>
                       <Select
                         value={loan.status}
-                        onValueChange={(value: Loan['status']) => handleStatusChange(loan.id, value)}
+                        onValueChange={(value: Loan['status']) =>
+                          handleStatusChange(loan.id, value)
+                        }
                       >
                         <SelectTrigger className="w-32">
                           <SelectValue />
@@ -689,11 +748,7 @@ export default function Loans() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(loan.id)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleDelete(loan.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -706,5 +761,5 @@ export default function Loans() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

@@ -10,17 +10,17 @@ import {
   getLoansWithCalculatedBalances as dbGetLoansWithCalculatedBalances,
   getRealRemainingPrincipal as dbGetRealRemainingPrincipal,
   syncAllLoanBalances as dbSyncAllLoanBalances,
-} from '@/lib/database';
-import type { Loan, LoanWithBorrower, LoanWithCalculatedBalance } from '@/types/api/loans';
-import type { CreateLoan } from '@/types/api/loans';
+} from '@/lib/database'
+import type { Loan, LoanWithBorrower, LoanWithCalculatedBalance } from '@/types/api/loans'
+import type { CreateLoan } from '@/types/api/loans'
 
-export type CreateLoanData = CreateLoan.Payload;
+export type CreateLoanData = CreateLoan.Payload
 
 export const loanService = {
   async getLoans(): Promise<Loan[]> {
-    const dbLoans = await dbGetLoans();
+    const dbLoans = await dbGetLoans()
     // Transform database types to API types
-    return dbLoans.map(dbLoan => ({
+    return dbLoans.map((dbLoan) => ({
       id: dbLoan.id,
       borrower_id: dbLoan.borrower_id,
       loan_type: dbLoan.loan_type,
@@ -34,12 +34,12 @@ export const loanService = {
       repayment_interval_value: dbLoan.repayment_interval_value,
       end_date: dbLoan.end_date,
       created_at: dbLoan.created_at,
-    }));
+    }))
   },
 
   async getLoan(id: string): Promise<Loan | null> {
-    const dbLoan = await dbGetLoan(id);
-    if (!dbLoan) return null;
+    const dbLoan = await dbGetLoan(id)
+    if (!dbLoan) return null
 
     // Transform database type to API type
     return {
@@ -56,13 +56,13 @@ export const loanService = {
       repayment_interval_value: dbLoan.repayment_interval_value,
       end_date: dbLoan.end_date,
       created_at: dbLoan.created_at,
-    };
+    }
   },
 
   async getLoansByBorrower(borrowerId: string): Promise<Loan[]> {
-    const dbLoans = await dbGetLoansByBorrower(borrowerId);
+    const dbLoans = await dbGetLoansByBorrower(borrowerId)
     // Transform database types to API types
-    return dbLoans.map(dbLoan => ({
+    return dbLoans.map((dbLoan) => ({
       id: dbLoan.id,
       borrower_id: dbLoan.borrower_id,
       loan_type: dbLoan.loan_type,
@@ -76,13 +76,13 @@ export const loanService = {
       repayment_interval_value: dbLoan.repayment_interval_value,
       end_date: dbLoan.end_date,
       created_at: dbLoan.created_at,
-    }));
+    }))
   },
 
   async getLoansWithBorrowers(): Promise<LoanWithBorrower[]> {
-    const dbLoansWithBorrowers = await dbGetLoansWithBorrowers();
+    const dbLoansWithBorrowers = await dbGetLoansWithBorrowers()
     // Transform database types to API types
-    return dbLoansWithBorrowers.map(dbLoan => ({
+    return dbLoansWithBorrowers.map((dbLoan) => ({
       id: dbLoan.id,
       borrower_id: dbLoan.borrower_id,
       loan_type: dbLoan.loan_type,
@@ -97,13 +97,13 @@ export const loanService = {
       end_date: dbLoan.end_date,
       created_at: dbLoan.created_at,
       borrower_name: dbLoan.borrower_name,
-    }));
+    }))
   },
 
   async getLoansWithCalculatedBalances(): Promise<LoanWithCalculatedBalance[]> {
-    const dbLoansWithBalances = await dbGetLoansWithCalculatedBalances();
+    const dbLoansWithBalances = await dbGetLoansWithCalculatedBalances()
     // Transform database types to API types
-    return dbLoansWithBalances.map(dbLoan => ({
+    return dbLoansWithBalances.map((dbLoan) => ({
       id: dbLoan.id,
       borrower_id: dbLoan.borrower_id,
       loan_type: dbLoan.loan_type,
@@ -119,11 +119,11 @@ export const loanService = {
       created_at: dbLoan.created_at,
       borrower_name: dbLoan.borrower_name,
       real_remaining_principal: dbLoan.real_remaining_principal,
-    }));
+    }))
   },
 
   async getRealRemainingPrincipal(loanId: string): Promise<number> {
-    return await dbGetRealRemainingPrincipal(loanId);
+    return await dbGetRealRemainingPrincipal(loanId)
   },
 
   async createLoan(data: CreateLoanData): Promise<Loan> {
@@ -131,8 +131,8 @@ export const loanService = {
       ...data,
       status: 'active' as const,
       current_balance: data.principal_amount,
-    };
-    const dbLoan = await dbCreateLoan(loanData);
+    }
+    const dbLoan = await dbCreateLoan(loanData)
 
     // Transform database type to API type
     return {
@@ -149,25 +149,25 @@ export const loanService = {
       repayment_interval_value: dbLoan.repayment_interval_value,
       end_date: dbLoan.end_date,
       created_at: dbLoan.created_at,
-    };
+    }
   },
 
   async updateLoanBalance(id: string, newBalance: number): Promise<void> {
-    return await dbUpdateLoanBalance(id, newBalance);
+    return await dbUpdateLoanBalance(id, newBalance)
   },
 
   async updateLoanStatus(id: string, status: Loan['status']): Promise<void> {
-    return await dbUpdateLoanStatus(id, status);
+    return await dbUpdateLoanStatus(id, status)
   },
 
   async deleteLoan(id: string): Promise<void> {
-    return await dbDeleteLoan(id);
+    return await dbDeleteLoan(id)
   },
 
   async syncAllLoanBalances(): Promise<void> {
-    return await dbSyncAllLoanBalances();
+    return await dbSyncAllLoanBalances()
   },
-};
+}
 
 export const loanKeys = {
   all: ['loans'] as const,
@@ -178,5 +178,6 @@ export const loanKeys = {
   byBorrower: (borrowerId: string) => [...loanKeys.all, 'byBorrower', borrowerId] as const,
   withBorrowers: () => [...loanKeys.all, 'withBorrowers'] as const,
   withCalculatedBalances: () => [...loanKeys.all, 'withCalculatedBalances'] as const,
-  realRemainingPrincipal: (loanId: string) => [...loanKeys.all, 'realRemainingPrincipal', loanId] as const,
-};
+  realRemainingPrincipal: (loanId: string) =>
+    [...loanKeys.all, 'realRemainingPrincipal', loanId] as const,
+}
