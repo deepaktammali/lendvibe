@@ -1,13 +1,36 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { borrowerKeys } from '@/services/api/borrowers.service'
+import { borrowerKeys } from './useBorrowers'
 import {
   type CreateFixedIncomeData,
   type CreateIncomePaymentData,
-  fixedIncomeKeys,
   fixedIncomeService,
   type UpdateIncomePaymentData,
 } from '@/services/api/fixed-incomes.service'
+import { dashboardKeys } from './useDashboard'
 import type { FixedIncome, IncomePayment } from '@/types/api/fixedIncome'
+
+export const fixedIncomeKeys = {
+  all: ['fixedIncomes'] as const,
+  lists: () => [...fixedIncomeKeys.all, 'list'] as const,
+  list: (filters: string) => [...fixedIncomeKeys.lists(), { filters }] as const,
+  details: () => [...fixedIncomeKeys.all, 'detail'] as const,
+  detail: (id: string) => [...fixedIncomeKeys.details(), id] as const,
+  byTenant: (tenantId: string) => [...fixedIncomeKeys.all, 'byTenant', tenantId] as const,
+  withTenants: () => [...fixedIncomeKeys.all, 'withTenants'] as const,
+
+  // Income payment keys
+  incomePayments: {
+    all: ['incomePayments'] as const,
+    lists: () => [...fixedIncomeKeys.incomePayments.all, 'list'] as const,
+    list: (filters: string) => [...fixedIncomeKeys.incomePayments.lists(), { filters }] as const,
+    byFixedIncome: (fixedIncomeId: string) =>
+      [...fixedIncomeKeys.incomePayments.all, 'byFixedIncome', fixedIncomeId] as const,
+    lastByFixedIncome: (fixedIncomeId: string) =>
+      [...fixedIncomeKeys.incomePayments.all, 'lastByFixedIncome', fixedIncomeId] as const,
+    lastByFixedIncomes: (fixedIncomeIds: string[]) =>
+      [...fixedIncomeKeys.incomePayments.all, 'lastByFixedIncomes', { fixedIncomeIds }] as const,
+  },
+}
 
 export function useGetFixedIncomes() {
   return useQuery({
@@ -63,6 +86,7 @@ export function useCreateFixedIncome() {
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: fixedIncomeKeys.all })
       queryClient.invalidateQueries({ queryKey: borrowerKeys.detail(newFixedIncome.tenant_id) })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to create fixed income:', error)
@@ -96,6 +120,7 @@ export function useUpdateFixedIncomeStatus() {
       // Invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: fixedIncomeKeys.detail(id) })
       queryClient.invalidateQueries({ queryKey: fixedIncomeKeys.withTenants() })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to update fixed income status:', error)

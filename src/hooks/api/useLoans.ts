@@ -1,8 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { borrowerKeys } from '@/services/api/borrowers.service'
-import { type CreateLoanData, loanKeys, loanService } from '@/services/api/loans.service'
-import { paymentKeys } from '@/services/api/payments.service'
+import { borrowerKeys } from './useBorrowers'
+import { type CreateLoanData, loanService } from '@/services/api/loans.service'
+import { paymentKeys } from './usePayments'
+import { dashboardKeys } from './useDashboard'
 import type { Loan } from '@/types/api/loans'
+
+export const loanKeys = {
+  all: ['loans'] as const,
+  lists: () => [...loanKeys.all, 'list'] as const,
+  list: (filters: string) => [...loanKeys.lists(), { filters }] as const,
+  details: () => [...loanKeys.all, 'detail'] as const,
+  detail: (id: string) => [...loanKeys.details(), id] as const,
+  byBorrower: (borrowerId: string) => [...loanKeys.all, 'byBorrower', borrowerId] as const,
+  withBorrowers: () => [...loanKeys.all, 'withBorrowers'] as const,
+  withCalculatedBalances: () => [...loanKeys.all, 'withCalculatedBalances'] as const,
+  realRemainingPrincipal: (loanId: string) =>
+    [...loanKeys.all, 'realRemainingPrincipal', loanId] as const,
+}
 
 export function useGetLoans() {
   return useQuery({
@@ -69,6 +83,7 @@ export function useCreateLoan() {
 
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: loanKeys.all })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
       queryClient.invalidateQueries({ queryKey: borrowerKeys.detail(newLoan.borrower_id) })
     },
     onError: (error) => {
@@ -156,6 +171,7 @@ export function useDeleteLoan() {
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: loanKeys.all })
       queryClient.invalidateQueries({ queryKey: paymentKeys.all })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to delete loan:', error)

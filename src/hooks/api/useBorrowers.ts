@@ -1,11 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  borrowerKeys,
   borrowerService,
   type CreateBorrowerData,
   type UpdateBorrowerData,
 } from '@/services/api/borrowers.service'
+import { dashboardKeys } from './useDashboard'
 import type { Borrower } from '@/types/api/borrowers'
+
+export const borrowerKeys = {
+  all: ['borrowers'] as const,
+  lists: () => [...borrowerKeys.all, 'list'] as const,
+  list: (filters: string) => [...borrowerKeys.lists(), { filters }] as const,
+  details: () => [...borrowerKeys.all, 'detail'] as const,
+  detail: (id: string) => [...borrowerKeys.details(), id] as const,
+}
 
 export function useGetBorrowers() {
   return useQuery({
@@ -36,6 +44,7 @@ export function useCreateBorrower() {
 
       // Invalidate and refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: borrowerKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to create borrower:', error)
@@ -65,6 +74,7 @@ export function useUpdateBorrower() {
       // Invalidate queries to ensure consistency
       queryClient.invalidateQueries({ queryKey: borrowerKeys.detail(id) })
       queryClient.invalidateQueries({ queryKey: borrowerKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to update borrower:', error)
@@ -89,6 +99,7 @@ export function useDeleteBorrower() {
 
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: borrowerKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to delete borrower:', error)

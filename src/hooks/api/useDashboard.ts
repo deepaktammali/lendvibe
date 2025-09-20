@@ -2,10 +2,16 @@ import { useQuery } from '@tanstack/react-query'
 import {
   type DashboardStats,
   type DashboardSummary,
-  dashboardKeys,
   dashboardService,
 } from '@/services/api/dashboard.service'
 import type { RecentActivity } from '@/types/api/dashboard'
+
+export const dashboardKeys = {
+  all: ['dashboard'] as const,
+  summary: () => [...dashboardKeys.all, 'summary'] as const,
+  stats: () => [...dashboardKeys.all, 'stats'] as const,
+  recentActivity: () => [...dashboardKeys.all, 'recentActivity'] as const,
+}
 
 export function useGetDashboardSummary() {
   return useQuery<DashboardSummary>({

@@ -166,16 +166,3 @@ export const loanService = {
     return await dbSyncAllLoanBalances()
   },
 }
-
-export const loanKeys = {
-  all: ['loans'] as const,
-  lists: () => [...loanKeys.all, 'list'] as const,
-  list: (filters: string) => [...loanKeys.lists(), { filters }] as const,
-  details: () => [...loanKeys.all, 'detail'] as const,
-  detail: (id: string) => [...loanKeys.details(), id] as const,
-  byBorrower: (borrowerId: string) => [...loanKeys.all, 'byBorrower', borrowerId] as const,
-  withBorrowers: () => [...loanKeys.all, 'withBorrowers'] as const,
-  withCalculatedBalances: () => [...loanKeys.all, 'withCalculatedBalances'] as const,
-  realRemainingPrincipal: (loanId: string) =>
-    [...loanKeys.all, 'realRemainingPrincipal', loanId] as const,
-}

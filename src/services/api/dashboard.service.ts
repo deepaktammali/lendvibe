@@ -189,10 +189,3 @@ export const dashboardService = {
     return []
   },
 }
-
-export const dashboardKeys = {
-  all: ['dashboard'] as const,
-  summary: () => [...dashboardKeys.all, 'summary'] as const,
-  stats: () => [...dashboardKeys.all, 'stats'] as const,
-  recentActivity: () => [...dashboardKeys.all, 'recentActivity'] as const,
-}

@@ -65,11 +65,3 @@ export const borrowerService = {
     return await dbDeleteBorrower(id)
   },
 }
-
-export const borrowerKeys = {
-  all: ['borrowers'] as const,
-  lists: () => [...borrowerKeys.all, 'list'] as const,
-  list: (filters: string) => [...borrowerKeys.lists(), { filters }] as const,
-  details: () => [...borrowerKeys.all, 'detail'] as const,
-  detail: (id: string) => [...borrowerKeys.details(), id] as const,
-}

@@ -244,26 +244,3 @@ export const fixedIncomeService = {
     return await dbDeleteIncomePayment(id)
   },
 }
-
-export const fixedIncomeKeys = {
-  all: ['fixedIncomes'] as const,
-  lists: () => [...fixedIncomeKeys.all, 'list'] as const,
-  list: (filters: string) => [...fixedIncomeKeys.lists(), { filters }] as const,
-  details: () => [...fixedIncomeKeys.all, 'detail'] as const,
-  detail: (id: string) => [...fixedIncomeKeys.details(), id] as const,
-  byTenant: (tenantId: string) => [...fixedIncomeKeys.all, 'byTenant', tenantId] as const,
-  withTenants: () => [...fixedIncomeKeys.all, 'withTenants'] as const,
-
-  // Income payment keys
-  incomePayments: {
-    all: ['incomePayments'] as const,
-    lists: () => [...fixedIncomeKeys.incomePayments.all, 'list'] as const,
-    list: (filters: string) => [...fixedIncomeKeys.incomePayments.lists(), { filters }] as const,
-    byFixedIncome: (fixedIncomeId: string) =>
-      [...fixedIncomeKeys.incomePayments.all, 'byFixedIncome', fixedIncomeId] as const,
-    lastByFixedIncome: (fixedIncomeId: string) =>
-      [...fixedIncomeKeys.incomePayments.all, 'lastByFixedIncome', fixedIncomeId] as const,
-    lastByFixedIncomes: (fixedIncomeIds: string[]) =>
-      [...fixedIncomeKeys.incomePayments.all, 'lastByFixedIncomes', { fixedIncomeIds }] as const,
-  },
-}

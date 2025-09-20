@@ -203,12 +203,3 @@ export const paymentService = {
     await dbDeletePayment(id)
   },
 }
-
-export const paymentKeys = {
-  all: ['payments'] as const,
-  lists: () => [...paymentKeys.all, 'list'] as const,
-  list: (filters: string) => [...paymentKeys.lists(), { filters }] as const,
-  byLoan: (loanId: string) => [...paymentKeys.all, 'byLoan', loanId] as const,
-  lastByLoan: (loanId: string) => [...paymentKeys.all, 'lastByLoan', loanId] as const,
-  lastByLoans: (loanIds: string[]) => [...paymentKeys.all, 'lastByLoans', { loanIds }] as const,
-}

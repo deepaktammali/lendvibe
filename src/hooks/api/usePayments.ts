@@ -1,12 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { loanKeys } from '@/services/api/loans.service'
+import { loanKeys } from './useLoans'
 import {
   type CreatePaymentData,
-  paymentKeys,
   paymentService,
   type UpdatePaymentData,
 } from '@/services/api/payments.service'
+import { dashboardKeys } from './useDashboard'
 import type { Payment } from '@/types/api/payments'
+
+export const paymentKeys = {
+  all: ['payments'] as const,
+  lists: () => [...paymentKeys.all, 'list'] as const,
+  list: (filters: string) => [...paymentKeys.lists(), { filters }] as const,
+  byLoan: (loanId: string) => [...paymentKeys.all, 'byLoan', loanId] as const,
+  lastByLoan: (loanId: string) => [...paymentKeys.all, 'lastByLoan', loanId] as const,
+  lastByLoans: (loanIds: string[]) => [...paymentKeys.all, 'lastByLoans', { loanIds }] as const,
+}
 
 export function useGetPayments() {
   return useQuery({
@@ -72,6 +81,7 @@ export function useCreatePayment() {
       // Invalidate loan queries since balance/status might have changed
       queryClient.invalidateQueries({ queryKey: loanKeys.detail(variables.loan_id) })
       queryClient.invalidateQueries({ queryKey: loanKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to create payment:', error)
@@ -112,6 +122,7 @@ export function useUpdatePayment() {
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: paymentKeys.all })
       queryClient.invalidateQueries({ queryKey: loanKeys.all })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to update payment:', error)
@@ -142,6 +153,7 @@ export function useDeletePayment() {
       queryClient.invalidateQueries({ queryKey: paymentKeys.all })
       queryClient.invalidateQueries({ queryKey: loanKeys.detail(payment.loan_id) })
       queryClient.invalidateQueries({ queryKey: loanKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {
       console.error('Failed to delete payment:', error)
