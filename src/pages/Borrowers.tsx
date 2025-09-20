@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Plus, Search, Edit, Trash2, User, Phone, MapPin } from 'lucide-react';
 import { useForm } from '@tanstack/react-form';
 import { Button } from '@/components/ui/button';
@@ -7,33 +7,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { getBorrowers, createBorrower, updateBorrower, deleteBorrower } from '@/lib/database';
+import { useGetBorrowers, useCreateBorrower, useUpdateBorrower, useDeleteBorrower } from '@/hooks/api/useBorrowers';
 import { borrowerSchema, type BorrowerFormData } from '@/lib/validation';
 import type { Borrower } from '@/types/database';
 
 
 export default function Borrowers() {
-  const [borrowers, setBorrowers] = useState<Borrower[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingBorrower, setEditingBorrower] = useState<Borrower | null>(null);
 
-  useEffect(() => {
-    loadBorrowers();
-  }, []);
-
-  const loadBorrowers = async () => {
-    try {
-      const data = await getBorrowers();
-      setBorrowers(data);
-    } catch (error) {
-      console.error('Failed to load borrowers:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use our new hooks
+  const { data: borrowers = [], isLoading: loading, error } = useGetBorrowers();
+  const createBorrowerMutation = useCreateBorrower();
+  const updateBorrowerMutation = useUpdateBorrower();
+  const deleteBorrowerMutation = useDeleteBorrower();
 
   const createForm = useForm({
     defaultValues: {
@@ -46,10 +35,9 @@ export default function Borrowers() {
     },
     onSubmit: async ({ value }) => {
       try {
-        await createBorrower(value);
+        await createBorrowerMutation.mutateAsync(value);
         setIsAddDialogOpen(false);
         createForm.reset();
-        await loadBorrowers();
       } catch (error) {
         console.error('Failed to create borrower:', error);
       }
@@ -68,11 +56,10 @@ export default function Borrowers() {
     onSubmit: async ({ value }) => {
       try {
         if (editingBorrower) {
-          await updateBorrower(editingBorrower.id, value);
+          await updateBorrowerMutation.mutateAsync({ id: editingBorrower.id, data: value });
           setIsEditDialogOpen(false);
           setEditingBorrower(null);
           editForm.reset();
-          await loadBorrowers();
         }
       } catch (error) {
         console.error('Failed to update borrower:', error);
@@ -91,8 +78,7 @@ export default function Borrowers() {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this borrower?')) {
       try {
-        await deleteBorrower(id);
-        await loadBorrowers();
+        await deleteBorrowerMutation.mutateAsync(id);
       } catch (error) {
         console.error('Failed to delete borrower:', error);
       }
@@ -113,6 +99,14 @@ export default function Borrowers() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-lg">Loading borrowers...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-lg text-red-600">Failed to load borrowers: {error.message}</div>
       </div>
     );
   }
