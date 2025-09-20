@@ -13,6 +13,16 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -72,6 +82,7 @@ export default function Loans() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [deleteLoanId, setDeleteLoanId] = useState<string | null>(null)
 
   // Use the new TanStack Query hooks
   const { data: loans = [], isLoading: loading, refetch: refetchLoans } = useGetLoansWithCalculatedBalances()
@@ -125,13 +136,18 @@ export default function Loans() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this loan? This action cannot be undone.')) {
-      try {
-        await deleteLoanMutation.mutateAsync(id)
-      } catch (error) {
-        console.error('Failed to delete loan:', error)
-      }
+  const handleDelete = (id: string) => {
+    setDeleteLoanId(id)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteLoanId) return
+
+    try {
+      await deleteLoanMutation.mutateAsync(deleteLoanId)
+      setDeleteLoanId(null)
+    } catch (error) {
+      console.error('Failed to delete loan:', error)
     }
   }
 
@@ -712,6 +728,41 @@ export default function Loans() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteLoanId} onOpenChange={() => setDeleteLoanId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Loan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this loan? This action cannot be undone.
+              {deleteLoanId && (() => {
+                const loan = loans.find((l) => l.id === deleteLoanId)
+                if (loan) {
+                  return (
+                    <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                      <p><strong>Borrower:</strong> {loan.borrower_name}</p>
+                      <p><strong>Amount:</strong> {formatCurrency(loan.principal_amount)}</p>
+                      <p><strong>Type:</strong> {getLoanTypeLabel(loan.loan_type)}</p>
+                      <p><strong>Status:</strong> {loan.status}</p>
+                    </div>
+                  )
+                }
+                return null
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete Loan
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
