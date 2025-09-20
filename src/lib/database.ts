@@ -217,6 +217,31 @@ export async function getLastPaymentByLoan(loanId: string): Promise<Payment | nu
   return result.length > 0 ? result[0] : null;
 }
 
+export async function getLastPaymentsByLoans(loanIds: string[]): Promise<Map<string, Payment>> {
+  if (loanIds.length === 0) return new Map();
+
+  const database = await initDatabase();
+  const placeholders = loanIds.map((_, i) => `$${i + 1}`).join(',');
+  const result = await database.select<Payment[]>(
+    `SELECT p1.* FROM payments p1
+     INNER JOIN (
+       SELECT loan_id, MAX(payment_date) as max_date
+       FROM payments
+       WHERE loan_id IN (${placeholders})
+       GROUP BY loan_id
+     ) p2 ON p1.loan_id = p2.loan_id AND p1.payment_date = p2.max_date
+     WHERE p1.loan_id IN (${placeholders})`,
+    [...loanIds, ...loanIds]
+  );
+
+  const lastPayments = new Map<string, Payment>();
+  result.forEach(payment => {
+    lastPayments.set(payment.loan_id, payment);
+  });
+
+  return lastPayments;
+}
+
 export async function updatePayment(id: string, updates: Partial<Omit<Payment, 'id' | 'created_at'>>): Promise<void> {
   const database = await initDatabase();
   const fields = [];
@@ -462,6 +487,31 @@ export async function getLastIncomePaymentByFixedIncome(fixedIncomeId: string): 
     [fixedIncomeId]
   );
   return result.length > 0 ? result[0] : null;
+}
+
+export async function getLastIncomePaymentsByFixedIncomes(fixedIncomeIds: string[]): Promise<Map<string, IncomePayment>> {
+  if (fixedIncomeIds.length === 0) return new Map();
+
+  const database = await initDatabase();
+  const placeholders = fixedIncomeIds.map((_, i) => `$${i + 1}`).join(',');
+  const result = await database.select<IncomePayment[]>(
+    `SELECT p1.* FROM income_payments p1
+     INNER JOIN (
+       SELECT fixed_income_id, MAX(payment_date) as max_date
+       FROM income_payments
+       WHERE fixed_income_id IN (${placeholders})
+       GROUP BY fixed_income_id
+     ) p2 ON p1.fixed_income_id = p2.fixed_income_id AND p1.payment_date = p2.max_date
+     WHERE p1.fixed_income_id IN (${placeholders})`,
+    [...fixedIncomeIds, ...fixedIncomeIds]
+  );
+
+  const lastPayments = new Map<string, IncomePayment>();
+  result.forEach(payment => {
+    lastPayments.set(payment.fixed_income_id, payment);
+  });
+
+  return lastPayments;
 }
 
 export async function updateIncomePayment(id: string, updates: Partial<Omit<IncomePayment, 'id' | 'created_at'>>): Promise<void> {
