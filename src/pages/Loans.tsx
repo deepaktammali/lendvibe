@@ -533,13 +533,13 @@ export default function Loans() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <IndianRupee className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
+              <IndianRupee className="h-6 w-6 text-green-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Total Active</p>
-                <p className="text-lg font-bold">
+                <p className="text-base font-bold">
                   {formatCurrency(
                     filteredLoans
                       .filter((loan) => loan.status === 'active')
@@ -551,13 +551,13 @@ export default function Loans() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
+              <Calendar className="h-6 w-6 text-blue-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Active Loans</p>
-                <p className="text-lg font-bold">
+                <p className="text-base font-bold">
                   {filteredLoans.filter((loan) => loan.status === 'active').length}
                 </p>
               </div>
@@ -565,13 +565,13 @@ export default function Loans() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Percent className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
+              <Percent className="h-6 w-6 text-purple-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Avg. Interest</p>
-                <p className="text-lg font-bold">
+                <p className="text-base font-bold">
                   {filteredLoans.length > 0
                     ? `${(
                         filteredLoans.reduce((sum, loan) => sum + loan.interest_rate, 0) /
@@ -584,13 +584,13 @@ export default function Loans() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <AlertCircle className="h-8 w-8 text-red-600" />
-              <div className="ml-4">
+              <AlertCircle className="h-6 w-6 text-red-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Defaulted</p>
-                <p className="text-lg font-bold">
+                <p className="text-base font-bold">
                   {filteredLoans.filter((loan) => loan.status === 'defaulted').length}
                 </p>
               </div>

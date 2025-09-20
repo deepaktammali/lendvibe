@@ -696,49 +696,49 @@ export default function Payments() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <IndianRupee className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
+              <IndianRupee className="h-6 w-6 text-green-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Total Payments</p>
-                <p className="text-lg font-bold">{formatCurrency(totalPayments)}</p>
+                <p className="text-base font-bold">{formatCurrency(totalPayments)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Receipt className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
+              <Receipt className="h-6 w-6 text-blue-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Principal Paid</p>
-                <p className="text-lg font-bold">{formatCurrency(totalPrincipal)}</p>
+                <p className="text-base font-bold">{formatCurrency(totalPrincipal)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
+              <TrendingUp className="h-6 w-6 text-purple-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Interest Earned</p>
-                <p className="text-lg font-bold">{formatCurrency(totalInterest)}</p>
+                <p className="text-base font-bold">{formatCurrency(totalInterest)}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-orange-600" />
-              <div className="ml-4">
+              <Calendar className="h-6 w-6 text-orange-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">This Month</p>
-                <p className="text-lg font-bold">{formatCurrency(monthlyPayments)}</p>
+                <p className="text-base font-bold">{formatCurrency(monthlyPayments)}</p>
               </div>
             </div>
           </CardContent>

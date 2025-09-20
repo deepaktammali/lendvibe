@@ -473,13 +473,13 @@ export default function FixedIncomePage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Total Active</p>
-                <p className="text-lg font-bold">
+                <p className="text-base font-bold">
                   {formatCurrency(
                     filteredFixedIncomes
                       .filter((item) => item.status === 'active')
@@ -491,13 +491,13 @@ export default function FixedIncomePage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <IndianRupee className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
+              <IndianRupee className="h-6 w-6 text-blue-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Active Count</p>
-                <p className="text-lg font-bold">
+                <p className="text-base font-bold">
                   {filteredFixedIncomes.filter((item) => item.status === 'active').length}
                 </p>
               </div>
@@ -505,13 +505,13 @@ export default function FixedIncomePage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Clock className="h-8 w-8 text-purple-600" />
-              <div className="ml-4">
+              <Clock className="h-6 w-6 text-purple-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Average Rate</p>
-                <p className="text-lg font-bold">
+                <p className="text-base font-bold">
                   {filteredFixedIncomes.length > 0
                     ? (
                         filteredFixedIncomes.reduce((sum, item) => sum + item.income_rate, 0) /
@@ -525,13 +525,13 @@ export default function FixedIncomePage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-4">
+        <Card className="h-20">
+          <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-orange-600" />
-              <div className="ml-4">
+              <Calendar className="h-6 w-6 text-orange-600" />
+              <div className="ml-3">
                 <p className="text-sm font-medium text-gray-600">Total Count</p>
-                <p className="text-lg font-bold">{filteredFixedIncomes.length}</p>
+                <p className="text-base font-bold">{filteredFixedIncomes.length}</p>
               </div>
             </div>
           </CardContent>

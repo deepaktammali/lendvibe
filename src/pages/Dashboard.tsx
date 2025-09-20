@@ -217,7 +217,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium">Total Borrowers</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Borrowers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
@@ -227,7 +227,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium">Active Loans</CardTitle>
+            <CardTitle className="text-sm font-medium">Active Loans</CardTitle>
             <Banknote className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
@@ -237,7 +237,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium">Total Outstanding</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
             <IndianRupee className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
@@ -252,7 +252,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium">Accrued Interest</CardTitle>
+            <CardTitle className="text-sm font-medium">Accrued Interest</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
@@ -267,7 +267,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium leading-tight">Fixed Income Assets</CardTitle>
+            <CardTitle className="text-sm font-medium leading-tight">Fixed Income Assets</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
@@ -280,7 +280,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium">Overdue Items</CardTitle>
+            <CardTitle className="text-sm font-medium">Overdue Items</CardTitle>
             <AlertTriangle
               className={`h-4 w-4 flex-shrink-0 ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
             />
@@ -296,7 +296,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-medium leading-tight">
+            <CardTitle className="text-sm font-medium leading-tight">
               This Month's Payments
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
