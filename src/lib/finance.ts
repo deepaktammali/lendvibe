@@ -2,9 +2,8 @@ import type { FixedIncome, Loan } from '@/types/database'
 import { isFixedIncomeType } from './loans'
 
 /**
- * Calculates accrued interest for one repayment interval period.
- * Interest accrues based on current balance regardless of interval unit.
- * Formula: Current Balance × Annual Rate × (Repayment Interval / 365 days)
+ * Calculates expected interest for the next repayment period.
+ * Formula: Current Balance × Rate (%) ÷ 100
  */
 export function calculateAccruedInterest(
   loan: Pick<
@@ -16,31 +15,10 @@ export function calculateAccruedInterest(
     return 0
   }
 
-  const annualRate = loan.interest_rate / 100 // Convert percentage to decimal
-  const dailyRate = annualRate / 365 // Daily interest rate
+  // Simple calculation: principal × rate ÷ 100
+  const periodInterest = loan.current_balance * (loan.interest_rate / 100)
 
-  // Calculate interest for the repayment interval
-
-  let intervalDays = 30 // Default to monthly
-  if (loan.repayment_interval_unit && loan.repayment_interval_value) {
-    switch (loan.repayment_interval_unit) {
-      case 'days':
-        intervalDays = loan.repayment_interval_value
-        break
-      case 'weeks':
-        intervalDays = loan.repayment_interval_value * 7
-        break
-      case 'months':
-        intervalDays = loan.repayment_interval_value * 30 // Approximate
-        break
-      case 'years':
-        intervalDays = loan.repayment_interval_value * 365
-        break
-    }
-  }
-
-  const accruedInterest = loan.current_balance * dailyRate * intervalDays
-  return Math.round(accruedInterest * 100) / 100 // Round to 2 decimal places
+  return Math.round(periodInterest * 100) / 100 // Round to 2 decimal places
 }
 
 export interface PaymentApplicationResult {

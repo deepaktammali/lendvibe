@@ -1,16 +1,3 @@
-import { useForm } from '@tanstack/react-form'
-import {
-  Calendar,
-  Edit,
-  IndianRupee,
-  Plus,
-  Receipt,
-  Search,
-  Trash2,
-  TrendingUp,
-  User,
-} from 'lucide-react'
-import { useState } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useGetBorrowers } from '@/hooks/api/useBorrowers'
+import { useGetFixedIncomesWithTenants } from '@/hooks/api/useFixedIncome'
 import { useGetLoans } from '@/hooks/api/useLoans'
 import {
   useCreatePayment,
@@ -56,8 +44,30 @@ import {
   useGetPaymentsWithDetails,
   useUpdatePayment,
 } from '@/hooks/api/usePayments'
+import {
+  calculateAccruedIncome,
+  calculateAccruedInterest,
+  getDaysSinceLastIncomePayment,
+  getDaysSinceLastPayment,
+  getNextIncomePaymentDate,
+  getNextPaymentDate,
+  type UpcomingPayment,
+} from '@/lib/finance'
 import { type PaymentFormInput, paymentFormSchema } from '@/lib/validation'
 import type { Payment } from '@/types/api/payments'
+import { useForm } from '@tanstack/react-form'
+import {
+  Calendar,
+  Edit,
+  IndianRupee,
+  Plus,
+  Receipt,
+  Search,
+  Trash2,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useState } from 'react'
 
 interface PaymentWithDetails extends Payment {
   borrower_name: string
@@ -71,11 +81,13 @@ export default function Payments() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingPayment, setEditingPayment] = useState<PaymentWithDetails | null>(null)
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null)
+  const [selectedPeriod, setSelectedPeriod] = useState<number>(1) // months
 
   // Use the new TanStack Query hooks
   const { data: payments = [], isLoading: loading } = useGetPaymentsWithDetails()
   const { data: loans = [] } = useGetLoans()
   const { data: borrowers = [] } = useGetBorrowers()
+  const { data: fixedIncomes = [] } = useGetFixedIncomesWithTenants()
   const createPaymentMutation = useCreatePayment()
   const updatePaymentMutation = useUpdatePayment()
   const deletePaymentMutation = useDeletePayment()
@@ -225,6 +237,101 @@ export default function Payments() {
   const monthlyPayments = filteredPayments
     .filter((payment) => payment.payment_date.startsWith(currentMonth))
     .reduce((sum, payment) => sum + payment.amount, 0)
+
+  // Calculate upcoming payments
+  const calculateUpcomingPayments = (): UpcomingPayment[] => {
+    const upcomingPayments: UpcomingPayment[] = []
+    const today = new Date()
+
+    // Process loans
+    loans.forEach((loan) => {
+      if (loan.status !== 'active') return
+
+      const borrower = borrowers.find((b) => b.id === loan.borrower_id)
+      if (!borrower) return
+
+      // Get last payment for this loan
+      const lastPayment = payments
+        .filter((p) => p.loan_id === loan.id)
+        .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0]
+
+      // Calculate next payment date
+      const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date)
+      const dueDateObj = new Date(nextDueDate)
+
+      // Only include future payments
+      if (dueDateObj >= today) {
+        const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date)
+        const accruedInterest = calculateAccruedInterest(loan)
+
+        upcomingPayments.push({
+          id: loan.id,
+          type: 'loan',
+          borrowerName: borrower.name,
+          assetType: loan.loan_type,
+          dueDate: nextDueDate,
+          accruedInterest,
+          daysSinceLastPayment,
+          currentBalance: loan.current_balance,
+          realRemainingPrincipal: loan.current_balance,
+        })
+      }
+    })
+
+    // Process fixed incomes
+    fixedIncomes.forEach((fixedIncome) => {
+      if (fixedIncome.status !== 'active') return
+
+      // Get last income payment for this fixed income
+      const lastIncomePayment = payments
+        .filter((p) => p.loan_id === fixedIncome.id) // Assuming payments are linked to fixed income via loan_id
+        .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0]
+
+      // Calculate next payment date
+      const nextDueDate = getNextIncomePaymentDate(fixedIncome, lastIncomePayment?.payment_date)
+      const dueDateObj = new Date(nextDueDate)
+
+      // Only include future payments
+      if (dueDateObj >= today) {
+        const daysSinceLastPayment = getDaysSinceLastIncomePayment(fixedIncome, lastIncomePayment?.payment_date)
+        const accruedIncome = calculateAccruedIncome(fixedIncome)
+
+        upcomingPayments.push({
+          id: fixedIncome.id,
+          type: 'fixed_income',
+          borrowerName: fixedIncome.tenant_name,
+          assetType: fixedIncome.income_type,
+          dueDate: nextDueDate,
+          accruedInterest: accruedIncome,
+          daysSinceLastPayment,
+          currentBalance: 0, // Fixed income doesn't have a balance
+          assetValue: fixedIncome.principal_amount,
+        })
+      }
+    })
+
+    return upcomingPayments.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+  }
+
+  const upcomingPayments = calculateUpcomingPayments()
+
+  // Filter upcoming payments by selected period
+  const selectedPeriodPayments = upcomingPayments.filter((payment) => {
+    const today = new Date()
+    const futureDate = new Date(today)
+    futureDate.setMonth(today.getMonth() + selectedPeriod)
+
+    const dueDate = new Date(payment.dueDate)
+    return dueDate >= today && dueDate <= futureDate
+  })
+
+  const getPeriodLabel = (months: number) => {
+    if (months === 1) return 'This Month'
+    if (months === 3) return 'Next 3 Months'
+    if (months === 6) return 'Next 6 Months'
+    if (months === 12) return 'Next Year'
+    return `Next ${months} Months`
+  }
 
   if (loading) {
     return (
@@ -717,6 +824,86 @@ export default function Payments() {
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Upcoming Payments */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Upcoming Payments</CardTitle>
+            <Select value={selectedPeriod.toString()} onValueChange={(value) => setSelectedPeriod(parseInt(value))}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Select period" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">This Month</SelectItem>
+                <SelectItem value="3">Next 3 Months</SelectItem>
+                <SelectItem value="6">Next 6 Months</SelectItem>
+                <SelectItem value="12">Next Year</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {selectedPeriodPayments.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No upcoming payments found</p>
+              <p className="text-sm text-gray-400">
+                All payments are up to date for {getPeriodLabel(selectedPeriod).toLowerCase()}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Borrower/Tenant</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Asset Type</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Accrued Amount</TableHead>
+                  <TableHead>Days Since Last</TableHead>
+                  <TableHead>Balance/Value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {selectedPeriodPayments.map((payment) => (
+                  <TableRow key={`${payment.type}-${payment.id}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-400" />
+                        <span className="font-medium">{payment.borrowerName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={payment.type === 'loan' ? 'default' : 'secondary'}>
+                        {payment.type === 'loan' ? 'Loan' : 'Fixed Income'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="capitalize">
+                      {payment.assetType.replace('_', ' ')}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatDate(payment.dueDate)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {formatCurrency(payment.accruedInterest)}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-500">
+                      {payment.daysSinceLastPayment} days
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {payment.type === 'loan'
+                        ? formatCurrency(payment.currentBalance)
+                        : formatCurrency(payment.assetValue || 0)
+                      }
                     </TableCell>
                   </TableRow>
                 ))}
