@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { borrowerKeys } from './useBorrowers'
 import { type CreateLoanData, loanService } from '@/services/api/loans.service'
-import { paymentKeys } from './usePayments'
-import { dashboardKeys } from './useDashboard'
 import type { Loan } from '@/types/api/loans'
+import { borrowerKeys } from './useBorrowers'
+import { dashboardKeys } from './useDashboard'
+import { paymentKeys } from './usePayments'
 
 export const loanKeys = {
   all: ['loans'] as const,

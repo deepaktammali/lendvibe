@@ -56,7 +56,7 @@ export default function FixedIncomePage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: fixedIncomes = [], isLoading: loading, error } = useGetFixedIncomesWithTenants()
+  const { data: fixedIncomes = [], isLoading: loading } = useGetFixedIncomesWithTenants()
   const { data: borrowers = [] } = useGetBorrowers()
   const createFixedIncomeMutation = useCreateFixedIncome()
   const deleteFixedIncomeMutation = useDeleteFixedIncome()
@@ -429,7 +429,9 @@ export default function FixedIncomePage() {
                 >
                   Cancel
                 </Button>
-                <fixedIncomeForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                <fixedIncomeForm.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                >
                   {([canSubmit, isSubmitting]) => (
                     <Button type="submit" disabled={!canSubmit || isSubmitting}>
                       {isSubmitting ? 'Creating...' : 'Create Fixed Income'}

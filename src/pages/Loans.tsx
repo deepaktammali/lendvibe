@@ -1,3 +1,17 @@
+import { useForm } from '@tanstack/react-form'
+import {
+  AlertCircle,
+  Calendar,
+  Eye,
+  IndianRupee,
+  Percent,
+  Plus,
+  Search,
+  Trash2,
+  User,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -40,20 +54,6 @@ import {
 } from '@/lib/loans'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
-import { useForm } from '@tanstack/react-form'
-import {
-  AlertCircle,
-  Calendar,
-  Eye,
-  IndianRupee,
-  Percent,
-  Plus,
-  Search,
-  Trash2,
-  User,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -73,7 +73,7 @@ export default function Loans() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: loans = [], isLoading: loading, error } = useGetLoansWithCalculatedBalances()
+  const { data: loans = [], isLoading: loading } = useGetLoansWithCalculatedBalances()
   const { data: borrowers = [] } = useGetBorrowers()
   const createLoanMutation = useCreateLoan()
   const deleteLoanMutation = useDeleteLoan()
@@ -265,9 +265,7 @@ export default function Loans() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">
-                        {field.state.meta.errors[0]?.message}
-                      </p>
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
                     )}
                   </div>
                 )}
@@ -291,9 +289,7 @@ export default function Loans() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">
-                        {field.state.meta.errors[0]?.message}
-                      </p>
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
                     )}
                   </div>
                 )}

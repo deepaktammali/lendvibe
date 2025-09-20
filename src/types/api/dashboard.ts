@@ -1,6 +1,6 @@
+import type { FixedIncome } from './fixedIncome'
 import type { Loan } from './loans'
 import type { Payment } from './payments'
-import type { FixedIncome } from './fixedIncome'
 
 // Dashboard-specific types
 export interface PaymentWithBorrowerInfo extends Payment {
@@ -9,13 +9,13 @@ export interface PaymentWithBorrowerInfo extends Payment {
 }
 
 export interface LoanWithBorrowerAndDueDate extends Loan {
-  borrower_name: string;
-  days_until_due: number;
+  borrower_name: string
+  days_until_due: number
 }
 
 export interface FixedIncomeWithTenantAndDueDate extends FixedIncome {
-  tenant_name: string;
-  days_until_due: number;
+  tenant_name: string
+  days_until_due: number
 }
 
 export interface RecentActivity {

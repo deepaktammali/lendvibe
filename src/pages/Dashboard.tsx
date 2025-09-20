@@ -22,7 +22,10 @@ import {
   useGetDashboardSummary,
   useGetRecentActivity,
 } from '@/hooks/api/useDashboard'
-import type { LoanWithBorrowerAndDueDate, FixedIncomeWithTenantAndDueDate } from '@/types/api/dashboard'
+import type {
+  FixedIncomeWithTenantAndDueDate,
+  LoanWithBorrowerAndDueDate,
+} from '@/types/api/dashboard'
 
 export default function Dashboard() {
   // Use the new TanStack Query hooks
@@ -55,9 +58,7 @@ export default function Dashboard() {
                 <TableHead className="min-w-[120px]">Party</TableHead>
                 <TableHead className="min-w-[100px]">Type</TableHead>
                 <TableHead className="min-w-[120px]">Due Date</TableHead>
-                <TableHead className="min-w-[100px] hidden sm:table-cell">
-                  Days Until Due
-                </TableHead>
+                <TableHead className="min-w-[100px] hidden sm:table-cell">Days Until Due</TableHead>
                 <TableHead className="min-w-[120px]">Principal/Value</TableHead>
                 <TableHead className="min-w-[120px]">Interest Rate</TableHead>
               </TableRow>
@@ -91,9 +92,7 @@ export default function Dashboard() {
                     <TableCell className="hidden sm:table-cell">
                       {payment.days_until_due || 0} days
                     </TableCell>
-                    <TableCell>
-                      {formatCurrency(payment.current_balance)}
-                    </TableCell>
+                    <TableCell>{formatCurrency(payment.current_balance)}</TableCell>
                     <TableCell className="font-medium text-green-600">
                       {payment.interest_rate}%
                     </TableCell>
@@ -122,9 +121,7 @@ export default function Dashboard() {
                 <TableHead className="min-w-[120px]">Party</TableHead>
                 <TableHead className="min-w-[100px]">Type</TableHead>
                 <TableHead className="min-w-[120px]">Due Date</TableHead>
-                <TableHead className="min-w-[100px] hidden sm:table-cell">
-                  Days Until Due
-                </TableHead>
+                <TableHead className="min-w-[100px] hidden sm:table-cell">Days Until Due</TableHead>
                 <TableHead className="min-w-[120px]">Asset Value</TableHead>
                 <TableHead className="min-w-[120px]">Income Rate</TableHead>
               </TableRow>
@@ -158,9 +155,7 @@ export default function Dashboard() {
                     <TableCell className="hidden sm:table-cell">
                       {payment.days_until_due || 0} days
                     </TableCell>
-                    <TableCell>
-                      {formatCurrency(payment.principal_amount)}
-                    </TableCell>
+                    <TableCell>{formatCurrency(payment.principal_amount)}</TableCell>
                     <TableCell className="font-medium text-green-600">
                       {payment.income_rate}%
                     </TableCell>
@@ -190,9 +185,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center space-y-4">
           <div className="text-lg text-red-600">Failed to load dashboard</div>
-          <div className="text-sm text-gray-600 max-w-md">
-            {errorMessage}
-          </div>
+          <div className="text-sm text-gray-600 max-w-md">{errorMessage}</div>
           <button
             type="button"
             onClick={() => window.location.reload()}
@@ -358,8 +351,8 @@ export default function Dashboard() {
             )}
             {(summary.upcomingFixedIncomePayments?.length || 0) > 5 && (
               <p className="text-sm text-muted-foreground mt-4">
-                Showing 5 of {summary.upcomingFixedIncomePayments?.length || 0} items. View fixed income page for
-                complete list.
+                Showing 5 of {summary.upcomingFixedIncomePayments?.length || 0} items. View fixed
+                income page for complete list.
               </p>
             )}
           </CardContent>

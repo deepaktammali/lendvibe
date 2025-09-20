@@ -6,10 +6,10 @@ import {
   getLoansWithCalculatedBalances as dbGetLoansWithCalculatedBalances,
 } from '@/lib/database'
 import type {
+  FixedIncomeWithTenantAndDueDate,
   LoanWithBorrowerAndDueDate,
   PaymentWithBorrowerInfo,
   RecentActivity,
-  FixedIncomeWithTenantAndDueDate,
 } from '@/types/api/dashboard'
 
 export interface DashboardSummary {

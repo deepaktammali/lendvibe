@@ -73,7 +73,7 @@ export default function Payments() {
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null)
 
   // Use the new TanStack Query hooks
-  const { data: payments = [], isLoading: loading, error } = useGetPaymentsWithDetails()
+  const { data: payments = [], isLoading: loading } = useGetPaymentsWithDetails()
   const { data: loans = [] } = useGetLoans()
   const { data: borrowers = [] } = useGetBorrowers()
   const createPaymentMutation = useCreatePayment()

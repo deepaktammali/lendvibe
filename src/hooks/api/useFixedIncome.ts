@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { borrowerKeys } from './useBorrowers'
 import {
   type CreateFixedIncomeData,
   type CreateIncomePaymentData,
   fixedIncomeService,
   type UpdateIncomePaymentData,
 } from '@/services/api/fixed-incomes.service'
-import { dashboardKeys } from './useDashboard'
 import type { FixedIncome, IncomePayment } from '@/types/api/fixedIncome'
+import { borrowerKeys } from './useBorrowers'
+import { dashboardKeys } from './useDashboard'
 
 export const fixedIncomeKeys = {
   all: ['fixedIncomes'] as const,

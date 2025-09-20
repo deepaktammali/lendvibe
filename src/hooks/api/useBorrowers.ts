@@ -4,8 +4,8 @@ import {
   type CreateBorrowerData,
   type UpdateBorrowerData,
 } from '@/services/api/borrowers.service'
-import { dashboardKeys } from './useDashboard'
 import type { Borrower } from '@/types/api/borrowers'
+import { dashboardKeys } from './useDashboard'
 
 export const borrowerKeys = {
   all: ['borrowers'] as const,
