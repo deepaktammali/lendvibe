@@ -105,14 +105,14 @@ export async function createLoan(loan: Omit<Loan, 'id' | 'created_at'>): Promise
   }
 
   await database.execute(
-    'INSERT INTO loans (id, borrower_id, principal_amount, interest_rate, term_months, start_date, status, current_balance, created_at, loan_type, repayment_interval_unit, repayment_interval_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+    'INSERT INTO loans (id, borrower_id, principal_amount, interest_rate, start_date, end_date, status, current_balance, created_at, loan_type, repayment_interval_unit, repayment_interval_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
     [
       newLoan.id,
       newLoan.borrower_id,
       newLoan.principal_amount,
       newLoan.interest_rate,
-      newLoan.term_months,
       newLoan.start_date,
+      newLoan.end_date,
       newLoan.status,
       newLoan.current_balance,
       newLoan.created_at,
