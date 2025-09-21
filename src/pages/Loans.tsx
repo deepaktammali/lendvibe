@@ -1,20 +1,3 @@
-import { useForm } from '@tanstack/react-form'
-import {
-  AlertCircle,
-  ArrowUpDown,
-  Calendar,
-  Eye,
-  IndianRupee,
-  Percent,
-  Plus,
-  RefreshCw,
-  Search,
-  Trash2,
-  User,
-  X,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -68,6 +51,23 @@ import {
 import { getCurrentDateISO } from '@/lib/utils'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
+import { useForm } from '@tanstack/react-form'
+import {
+  AlertCircle,
+  ArrowUpDown,
+  Calendar,
+  Eye,
+  IndianRupee,
+  Percent,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -403,8 +403,6 @@ export default function Loans() {
                         <SelectValue placeholder="Select a unit" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="days">Days</SelectItem>
-                        <SelectItem value="weeks">Weeks</SelectItem>
                         <SelectItem value="months">Months</SelectItem>
                         <SelectItem value="years">Years</SelectItem>
                       </SelectContent>
@@ -703,9 +701,22 @@ export default function Loans() {
                 <p className="text-base font-bold">
                   {filteredLoans.length > 0
                     ? `${(
-                        filteredLoans.reduce((sum, loan) => sum + loan.interest_rate, 0) /
-                          filteredLoans.length
-                      ).toFixed(1)}%`
+                      filteredLoans.reduce((sum, loan) => {
+                        const unit = loan.repayment_interval_unit || 'months'
+                        let normalizedRate = loan.interest_rate
+
+                        if (unit === 'years') {
+                          normalizedRate = loan.interest_rate / 12
+                        } else if (unit === 'weeks') {
+                          normalizedRate = loan.interest_rate * 4.333
+                        } else if (unit === 'days') {
+                          normalizedRate = loan.interest_rate
+                        }
+                        // months: keep as is
+
+                        return sum + normalizedRate
+                      }, 0) / filteredLoans.length
+                    ).toFixed(1)}%`
                     : '0%'}
                 </p>
               </div>
