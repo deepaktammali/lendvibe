@@ -7,6 +7,7 @@ import { initDatabase } from './lib/database'
 import Borrowers from './pages/Borrowers'
 import Dashboard from './pages/Dashboard'
 import FixedIncome from './pages/FixedIncome'
+import FixedIncomeDetail from './pages/FixedIncomeDetail'
 import LoanDetail from './pages/LoanDetail'
 import Loans from './pages/Loans'
 import Payments from './pages/Payments'
@@ -47,6 +48,7 @@ function App() {
             <Route path="/loans" element={<Loans />} />
             <Route path="/loans/:id" element={<LoanDetail />} />
             <Route path="/fixed-income" element={<FixedIncome />} />
+            <Route path="/fixed-income/:id" element={<FixedIncomeDetail />} />
             <Route path="/payments" element={<Payments />} />
           </Routes>
         </Layout>

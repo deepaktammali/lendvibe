@@ -39,8 +39,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useGetBorrowers } from '@/hooks/api/useBorrowers'
-import { useGetBorrower } from '@/hooks/api/useBorrowers'
+import { useGetBorrower, useGetBorrowers } from '@/hooks/api/useBorrowers'
 import { useGetLoan, useUpdateLoan } from '@/hooks/api/useLoans'
 import { useGetPaymentsByLoan } from '@/hooks/api/usePayments'
 import {
@@ -48,7 +47,7 @@ import {
   getDaysSinceLastPayment,
   getNextPaymentDate,
 } from '@/lib/finance'
-import { getLoanTypeLabel, getLoanTypesByCategory, isFixedIncomeType, isTraditionalLoanType } from '@/lib/loans'
+import { getLoanTypeLabel, getLoanTypesByCategory } from '@/lib/loans'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
 import type { Payment } from '@/types/api/payments'
@@ -59,10 +58,23 @@ export default function LoanDetail() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: loan, isLoading: loanLoading, error: loanError, refetch: refetchLoan } = useGetLoan(id || '')
-  const { data: borrower, isLoading: borrowerLoading, refetch: refetchBorrower } = useGetBorrower(loan?.borrower_id || '')
+  const {
+    data: loan,
+    isLoading: loanLoading,
+    error: loanError,
+    refetch: refetchLoan,
+  } = useGetLoan(id || '')
+  const {
+    data: borrower,
+    isLoading: borrowerLoading,
+    refetch: refetchBorrower,
+  } = useGetBorrower(loan?.borrower_id || '')
   const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
-  const { data: payments = [], isLoading: paymentsLoading, refetch: refetchPayments } = useGetPaymentsByLoan(id || '')
+  const {
+    data: payments = [],
+    isLoading: paymentsLoading,
+    refetch: refetchPayments,
+  } = useGetPaymentsByLoan(id || '')
   const updateLoanMutation = useUpdateLoan()
 
   const loading = loanLoading || borrowerLoading || paymentsLoading
@@ -72,13 +84,13 @@ export default function LoanDetail() {
   const editForm = useForm({
     defaultValues: {
       borrower_id: loan?.borrower_id || '',
-      loan_type: loan?.loan_type || 'installment' as const,
+      loan_type: loan?.loan_type || ('installment' as const),
       principal_amount: loan?.principal_amount || 0,
       interest_rate: loan?.interest_rate || 0,
       start_date: loan?.start_date || new Date().toISOString().split('T')[0],
       hasEndDate: !!loan?.end_date,
       end_date: loan?.end_date || '',
-      repayment_interval_unit: loan?.repayment_interval_unit || 'months' as const,
+      repayment_interval_unit: loan?.repayment_interval_unit || ('months' as const),
       repayment_interval_value: loan?.repayment_interval_value || 1,
     } as LoanFormData,
     validators: {

@@ -19,6 +19,18 @@ pub fn run() {
                             sql: include_str!("../migrations/001_initial_schema.sql"),
                             kind: tauri_plugin_sql::MigrationKind::Up,
                         },
+                        tauri_plugin_sql::Migration {
+                            version: 2,
+                            description: "add notes field to payments and income_payments tables",
+                            sql: include_str!("../migrations/002_add_notes_to_payments.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
+                        tauri_plugin_sql::Migration {
+                            version: 3,
+                            description: "add notes field to loans table",
+                            sql: include_str!("../migrations/003_add_notes_to_loans.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
                     ],
                 )
                 .build(),

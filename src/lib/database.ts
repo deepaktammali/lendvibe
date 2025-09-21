@@ -105,7 +105,7 @@ export async function createLoan(loan: Omit<Loan, 'id' | 'created_at'>): Promise
   }
 
   await database.execute(
-    'INSERT INTO loans (id, borrower_id, principal_amount, interest_rate, start_date, end_date, status, current_balance, created_at, loan_type, repayment_interval_unit, repayment_interval_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+    'INSERT INTO loans (id, borrower_id, principal_amount, interest_rate, start_date, end_date, status, current_balance, created_at, loan_type, repayment_interval_unit, repayment_interval_value, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)',
     [
       newLoan.id,
       newLoan.borrower_id,
@@ -119,6 +119,7 @@ export async function createLoan(loan: Omit<Loan, 'id' | 'created_at'>): Promise
       newLoan.loan_type,
       newLoan.repayment_interval_unit,
       newLoan.repayment_interval_value,
+      newLoan.notes,
     ]
   )
 
@@ -230,7 +231,7 @@ export async function createPayment(payment: Omit<Payment, 'id' | 'created_at'>)
   }
 
   await database.execute(
-    'INSERT INTO payments (id, loan_id, amount, payment_type, principal_amount, interest_amount, payment_date, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+    'INSERT INTO payments (id, loan_id, amount, payment_type, principal_amount, interest_amount, payment_date, notes, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
     [
       newPayment.id,
       newPayment.loan_id,
@@ -239,6 +240,7 @@ export async function createPayment(payment: Omit<Payment, 'id' | 'created_at'>)
       newPayment.principal_amount,
       newPayment.interest_amount,
       newPayment.payment_date,
+      newPayment.notes,
       newPayment.created_at,
     ]
   )
@@ -520,12 +522,13 @@ export async function createIncomePayment(
   }
 
   await database.execute(
-    'INSERT INTO income_payments (id, fixed_income_id, amount, payment_date, created_at) VALUES ($1, $2, $3, $4, $5)',
+    'INSERT INTO income_payments (id, fixed_income_id, amount, payment_date, notes, created_at) VALUES ($1, $2, $3, $4, $5, $6)',
     [
       newPayment.id,
       newPayment.fixed_income_id,
       newPayment.amount,
       newPayment.payment_date,
+      newPayment.notes,
       newPayment.created_at,
     ]
   )

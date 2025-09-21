@@ -85,7 +85,11 @@ export default function Loans() {
   const [deleteLoanId, setDeleteLoanId] = useState<string | null>(null)
 
   // Use the new TanStack Query hooks
-  const { data: loans = [], isLoading: loading, refetch: refetchLoans } = useGetLoansWithCalculatedBalances()
+  const {
+    data: loans = [],
+    isLoading: loading,
+    refetch: refetchLoans,
+  } = useGetLoansWithCalculatedBalances()
   const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
   const createLoanMutation = useCreateLoan()
   const deleteLoanMutation = useDeleteLoan()
@@ -102,6 +106,7 @@ export default function Loans() {
       end_date: '',
       repayment_interval_unit: 'months' as const,
       repayment_interval_value: 1,
+      notes: '',
     } as LoanFormData,
     validators: {
       onBlur: loanSchema,
@@ -426,6 +431,24 @@ export default function Loans() {
                 }}
               </loanForm.Subscribe>
 
+              <loanForm.Field name="notes">
+                {(field) => (
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="loan-notes">Notes</Label>
+                    <Input
+                      id="loan-notes"
+                      value={field.state.value || ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                      placeholder="Optional notes about this loan..."
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              </loanForm.Field>
+
               <loanForm.Subscribe selector={(state) => state.values}>
                 {(values) => {
                   if (values.principal_amount > 0 && values.interest_rate > 0) {
@@ -640,6 +663,7 @@ export default function Loans() {
                   <TableHead>Remaining Principal</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Start Date</TableHead>
+                  <TableHead className="hidden xl:table-cell">Notes</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -700,6 +724,9 @@ export default function Loans() {
                     <TableCell className="text-sm text-gray-500">
                       {formatDate(loan.start_date)}
                     </TableCell>
+                    <TableCell className="hidden xl:table-cell text-sm text-gray-500 max-w-32 truncate" title={loan.notes || ''}>
+                      {loan.notes || '-'}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
                         <Button
@@ -729,28 +756,34 @@ export default function Loans() {
             <AlertDialogTitle>Delete Loan</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete this loan? This action cannot be undone.
-              {deleteLoanId && (() => {
-                const loan = loans.find((l) => l.id === deleteLoanId)
-                if (loan) {
-                  return (
-                    <div className="mt-3 p-3 bg-gray-50 rounded-md">
-                      <p><strong>Borrower:</strong> {loan.borrower_name}</p>
-                      <p><strong>Amount:</strong> {formatCurrency(loan.principal_amount)}</p>
-                      <p><strong>Type:</strong> {getLoanTypeLabel(loan.loan_type)}</p>
-                      <p><strong>Status:</strong> {loan.status}</p>
-                    </div>
-                  )
-                }
-                return null
-              })()}
+              {deleteLoanId &&
+                (() => {
+                  const loan = loans.find((l) => l.id === deleteLoanId)
+                  if (loan) {
+                    return (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                        <p>
+                          <strong>Borrower:</strong> {loan.borrower_name}
+                        </p>
+                        <p>
+                          <strong>Amount:</strong> {formatCurrency(loan.principal_amount)}
+                        </p>
+                        <p>
+                          <strong>Type:</strong> {getLoanTypeLabel(loan.loan_type)}
+                        </p>
+                        <p>
+                          <strong>Status:</strong> {loan.status}
+                        </p>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
               Delete Loan
             </AlertDialogAction>
           </AlertDialogFooter>

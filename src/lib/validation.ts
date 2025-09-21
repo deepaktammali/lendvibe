@@ -26,6 +26,7 @@ export const loanSchema = z
     repayment_interval_value: z.number().int().min(1).optional(),
     hasEndDate: z.boolean().optional(),
     end_date: z.string().optional(),
+    notes: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -100,12 +101,13 @@ export const paymentSchema = z
     }
   )
 
-export const paymentFormSchema = z
+export const loanPaymentFormSchema = z
   .object({
     loan_id: z.string().min(1, 'Please select a loan'),
     principal_amount: z.number().min(0, 'Principal amount cannot be negative'),
     interest_amount: z.number().min(0, 'Interest amount cannot be negative'),
     payment_date: z.string().min(1, 'Payment date is required'),
+    notes: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -118,6 +120,16 @@ export const paymentFormSchema = z
     }
   )
 
+export const fixedIncomePaymentFormSchema = z.object({
+  fixed_income_id: z.string().min(1, 'Please select a fixed income asset'),
+  amount: z.number().min(0.01, 'Payment amount must be greater than 0'),
+  payment_date: z.string().min(1, 'Payment date is required'),
+  notes: z.string().optional(),
+})
+
+// Legacy schema for backward compatibility
+export const paymentFormSchema = loanPaymentFormSchema
+
 export const incomePaymentSchema = z.object({
   fixed_income_id: z.string().min(1, 'Please select a fixed income'),
   amount: z.number().min(0.01, 'Payment amount must be greater than 0'),
@@ -128,5 +140,7 @@ export type BorrowerFormData = z.infer<typeof borrowerSchema>
 export type LoanFormData = z.infer<typeof loanSchema>
 export type FixedIncomeFormData = z.infer<typeof fixedIncomeSchema>
 export type PaymentFormData = z.infer<typeof paymentSchema>
-export type PaymentFormInput = z.infer<typeof paymentFormSchema>
+export type LoanPaymentFormInput = z.infer<typeof loanPaymentFormSchema>
+export type FixedIncomePaymentFormInput = z.infer<typeof fixedIncomePaymentFormSchema>
 export type IncomePaymentFormData = z.infer<typeof incomePaymentSchema>
+export type PaymentFormInput = z.infer<typeof paymentFormSchema>

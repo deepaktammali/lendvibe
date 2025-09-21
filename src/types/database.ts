@@ -19,6 +19,7 @@ export interface Loan {
   current_balance: number
   repayment_interval_unit?: 'days' | 'weeks' | 'months' | 'years'
   repayment_interval_value?: number
+  notes?: string
   created_at: string
 }
 
@@ -44,6 +45,7 @@ export interface Payment {
   principal_amount: number
   interest_amount: number
   payment_date: string // YYYY-MM-DD format
+  notes?: string
   created_at: string
 }
 
@@ -52,6 +54,7 @@ export interface IncomePayment {
   fixed_income_id: string
   amount: number
   payment_date: string // YYYY-MM-DD format
+  notes?: string
   created_at: string
 }
 

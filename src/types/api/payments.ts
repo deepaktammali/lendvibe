@@ -7,8 +7,27 @@ export interface Payment {
   principal_amount: number
   interest_amount: number
   payment_date: string // YYYY-MM-DD format
+  notes?: string
   created_at: string
 }
+
+// Extended types for future fixed income support
+export interface LoanPayment extends Payment {
+  asset_type: 'loan'
+}
+
+export interface FixedIncomePayment {
+  id: string
+  fixed_income_id: string
+  amount: number
+  payment_date: string // YYYY-MM-DD format
+  notes?: string
+  created_at: string
+  asset_type: 'fixed_income'
+}
+
+// Union type for all payments (for future use)
+export type AllPayments = LoanPayment | FixedIncomePayment
 
 // Query Types
 namespace GetPayments {
@@ -41,16 +60,71 @@ namespace GetLastPaymentsByLoans {
   }
 }
 
-namespace CreatePayment {
-  export type Response = Payment
+namespace CreateLoanPayment {
+  export type Response = LoanPayment
   export type Payload = {
     loan_id: string
     principal_amount: number
     interest_amount: number
     payment_date: string
+    notes?: string
   }
 }
 
+namespace CreateFixedIncomePayment {
+  export type Response = FixedIncomePayment
+  export type Payload = {
+    fixed_income_id: string
+    amount: number
+    payment_date: string
+    notes?: string
+  }
+}
+
+// Legacy namespace for backward compatibility
+namespace CreatePayment {
+  export type Response = LoanPayment
+  export type Payload = {
+    loan_id: string
+    principal_amount: number
+    interest_amount: number
+    payment_date: string
+    notes?: string
+  }
+}
+
+namespace UpdateLoanPayment {
+  export type Response = undefined
+  export type Payload = {
+    id: string
+    data: {
+      loan_id?: string
+      amount?: number
+      payment_type?: LoanPayment['payment_type']
+      principal_amount?: number
+      interest_amount?: number
+      payment_date?: string
+      notes?: string
+    }
+    originalPayment: LoanPayment
+  }
+}
+
+namespace UpdateFixedIncomePayment {
+  export type Response = undefined
+  export type Payload = {
+    id: string
+    data: {
+      fixed_income_id?: string
+      amount?: number
+      payment_date?: string
+      notes?: string
+    }
+    originalPayment: FixedIncomePayment
+  }
+}
+
+// Legacy namespace for backward compatibility
 namespace UpdatePayment {
   export type Response = undefined
   export type Payload = {
@@ -58,12 +132,13 @@ namespace UpdatePayment {
     data: {
       loan_id?: string
       amount?: number
-      payment_type?: Payment['payment_type']
+      payment_type?: LoanPayment['payment_type']
       principal_amount?: number
       interest_amount?: number
       payment_date?: string
+      notes?: string
     }
-    originalPayment: Payment
+    originalPayment: LoanPayment
   }
 }
 
@@ -81,7 +156,11 @@ export type {
   GetPaymentsByLoan,
   GetLastPaymentByLoan,
   GetLastPaymentsByLoans,
+  CreateLoanPayment,
+  CreateFixedIncomePayment,
   CreatePayment,
+  UpdateLoanPayment,
+  UpdateFixedIncomePayment,
   UpdatePayment,
   DeletePayment,
 }

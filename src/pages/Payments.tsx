@@ -1,3 +1,19 @@
+import { useForm } from '@tanstack/react-form'
+import {
+  Calendar,
+  Edit,
+  IndianRupee,
+  Plus,
+  Receipt,
+  RefreshCw,
+  Search,
+  Trash2,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useState } from 'react'
+import FixedIncomePaymentDialog from '@/components/FixedIncomePaymentDialog'
+import UpcomingPayments from '@/components/UpcomingPayments'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,8 +51,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useGetBorrowers } from '@/hooks/api/useBorrowers'
-import { useGetFixedIncomesWithTenants } from '@/hooks/api/useFixedIncome'
 import { useGetLoans } from '@/hooks/api/useLoans'
 import {
   useCreatePayment,
@@ -44,31 +60,8 @@ import {
   useGetPaymentsWithDetails,
   useUpdatePayment,
 } from '@/hooks/api/usePayments'
-import {
-  calculateAccruedIncome,
-  calculateAccruedInterest,
-  getDaysSinceLastIncomePayment,
-  getDaysSinceLastPayment,
-  getNextIncomePaymentDate,
-  getNextPaymentDate,
-  type UpcomingPayment,
-} from '@/lib/finance'
 import { type PaymentFormInput, paymentFormSchema } from '@/lib/validation'
 import type { Payment } from '@/types/api/payments'
-import { useForm } from '@tanstack/react-form'
-import {
-  Calendar,
-  Edit,
-  IndianRupee,
-  Plus,
-  Receipt,
-  RefreshCw,
-  Search,
-  Trash2,
-  TrendingUp,
-  User,
-} from 'lucide-react'
-import { useState } from 'react'
 
 interface PaymentWithDetails extends Payment {
   borrower_name: string
@@ -82,13 +75,15 @@ export default function Payments() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingPayment, setEditingPayment] = useState<PaymentWithDetails | null>(null)
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null)
-  const [selectedPeriod, setSelectedPeriod] = useState<number>(1) // months
 
   // Use the new TanStack Query hooks
-  const { data: payments = [], isLoading: loading, refetch: refetchPayments } = useGetPaymentsWithDetails()
+  const {
+    data: payments = [],
+    isLoading: loading,
+    refetch: refetchPayments,
+  } = useGetPaymentsWithDetails()
   const { data: loans = [], refetch: refetchLoans } = useGetLoans()
   const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
-  const { data: fixedIncomes = [], refetch: refetchFixedIncomes } = useGetFixedIncomesWithTenants()
   const createPaymentMutation = useCreatePayment()
   const updatePaymentMutation = useUpdatePayment()
   const deletePaymentMutation = useDeletePayment()
@@ -99,6 +94,7 @@ export default function Payments() {
       principal_amount: 0,
       interest_amount: 0,
       payment_date: new Date().toISOString().split('T')[0],
+      notes: '',
     } as PaymentFormInput,
     validators: {
       onBlur: paymentFormSchema,
@@ -120,6 +116,7 @@ export default function Payments() {
             : value.principal_amount > 0
               ? 'principal'
               : 'interest') as Payment['payment_type'],
+          notes: value.notes,
         }
 
         await updatePaymentMutation.mutateAsync({
@@ -143,6 +140,7 @@ export default function Payments() {
       principal_amount: 0,
       interest_amount: 0,
       payment_date: new Date().toISOString().split('T')[0],
+      notes: '',
     } as PaymentFormInput,
     validators: {
       onBlur: paymentFormSchema,
@@ -154,6 +152,7 @@ export default function Payments() {
           principal_amount: value.principal_amount,
           interest_amount: value.interest_amount,
           payment_date: value.payment_date,
+          notes: value.notes,
         }
 
         await createPaymentMutation.mutateAsync(paymentData)
@@ -171,6 +170,7 @@ export default function Payments() {
     editForm.setFieldValue('principal_amount', payment.principal_amount)
     editForm.setFieldValue('interest_amount', payment.interest_amount)
     editForm.setFieldValue('payment_date', payment.payment_date)
+    editForm.setFieldValue('notes', payment.notes || '')
     setIsEditDialogOpen(true)
   }
 
@@ -239,101 +239,6 @@ export default function Payments() {
     .filter((payment) => payment.payment_date.startsWith(currentMonth))
     .reduce((sum, payment) => sum + payment.amount, 0)
 
-  // Calculate upcoming payments
-  const calculateUpcomingPayments = (): UpcomingPayment[] => {
-    const upcomingPayments: UpcomingPayment[] = []
-    const today = new Date()
-
-    // Process loans
-    loans.forEach((loan) => {
-      if (loan.status !== 'active') return
-
-      const borrower = borrowers.find((b) => b.id === loan.borrower_id)
-      if (!borrower) return
-
-      // Get last payment for this loan
-      const lastPayment = payments
-        .filter((p) => p.loan_id === loan.id)
-        .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0]
-
-      // Calculate next payment date
-      const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date)
-      const dueDateObj = new Date(nextDueDate)
-
-      // Only include future payments
-      if (dueDateObj >= today) {
-        const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date)
-        const accruedInterest = calculateAccruedInterest(loan)
-
-        upcomingPayments.push({
-          id: loan.id,
-          type: 'loan',
-          borrowerName: borrower.name,
-          assetType: loan.loan_type,
-          dueDate: nextDueDate,
-          accruedInterest,
-          daysSinceLastPayment,
-          currentBalance: loan.current_balance,
-          realRemainingPrincipal: loan.current_balance,
-        })
-      }
-    })
-
-    // Process fixed incomes
-    fixedIncomes.forEach((fixedIncome) => {
-      if (fixedIncome.status !== 'active') return
-
-      // Get last income payment for this fixed income
-      const lastIncomePayment = payments
-        .filter((p) => p.loan_id === fixedIncome.id) // Assuming payments are linked to fixed income via loan_id
-        .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0]
-
-      // Calculate next payment date
-      const nextDueDate = getNextIncomePaymentDate(fixedIncome, lastIncomePayment?.payment_date)
-      const dueDateObj = new Date(nextDueDate)
-
-      // Only include future payments
-      if (dueDateObj >= today) {
-        const daysSinceLastPayment = getDaysSinceLastIncomePayment(fixedIncome, lastIncomePayment?.payment_date)
-        const accruedIncome = calculateAccruedIncome(fixedIncome)
-
-        upcomingPayments.push({
-          id: fixedIncome.id,
-          type: 'fixed_income',
-          borrowerName: fixedIncome.tenant_name,
-          assetType: fixedIncome.income_type,
-          dueDate: nextDueDate,
-          accruedInterest: accruedIncome,
-          daysSinceLastPayment,
-          currentBalance: 0, // Fixed income doesn't have a balance
-          assetValue: fixedIncome.principal_amount,
-        })
-      }
-    })
-
-    return upcomingPayments.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-  }
-
-  const upcomingPayments = calculateUpcomingPayments()
-
-  // Filter upcoming payments by selected period
-  const selectedPeriodPayments = upcomingPayments.filter((payment) => {
-    const today = new Date()
-    const futureDate = new Date(today)
-    futureDate.setMonth(today.getMonth() + selectedPeriod)
-
-    const dueDate = new Date(payment.dueDate)
-    return dueDate >= today && dueDate <= futureDate
-  })
-
-  const getPeriodLabel = (months: number) => {
-    if (months === 1) return 'This Month'
-    if (months === 3) return 'Next 3 Months'
-    if (months === 6) return 'Next 6 Months'
-    if (months === 12) return 'Next Year'
-    return `Next ${months} Months`
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -350,13 +255,20 @@ export default function Payments() {
           <p className="text-gray-600 mt-2">Track and record payments</p>
         </div>
 
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Record Payment
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <FixedIncomePaymentDialog onSuccess={() => {
+            refetchPayments()
+            refetchLoans()
+            refetchBorrowers()
+          }} />
+
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Record Loan Payment
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Record Payment</DialogTitle>
@@ -464,6 +376,24 @@ export default function Payments() {
                 )}
               </paymentForm.Field>
 
+              <paymentForm.Field name="notes">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="payment-notes">Notes</Label>
+                    <Input
+                      id="payment-notes"
+                      value={field.state.value || ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                      placeholder="Optional notes about this payment..."
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              </paymentForm.Field>
+
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
@@ -486,6 +416,7 @@ export default function Payments() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
 
         {/* Edit Payment Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -596,6 +527,24 @@ export default function Payments() {
                 )}
               </editForm.Field>
 
+              <editForm.Field name="notes">
+                {(field) => (
+                  <div className="space-y-2">
+                    <Label htmlFor="edit-notes">Notes</Label>
+                    <Input
+                      id="edit-notes"
+                      value={field.state.value || ''}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
+                      placeholder="Optional notes about this payment..."
+                    />
+                    {field.state.meta.errors.length > 0 && (
+                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    )}
+                  </div>
+                )}
+              </editForm.Field>
+
               <div className="flex justify-end space-x-2 pt-4">
                 <Button
                   type="button"
@@ -648,6 +597,11 @@ export default function Payments() {
                           <p>
                             <strong>Date:</strong> {formatDate(payment.payment_date)}
                           </p>
+                          {payment.notes && (
+                            <p>
+                              <strong>Notes:</strong> {payment.notes}
+                            </p>
+                          )}
                         </div>
                       )
                     }
@@ -745,197 +699,129 @@ export default function Payments() {
         </Card>
       </div>
 
-      {/* Payments Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Payment History ({filteredPayments.length})</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                refetchPayments()
-                refetchLoans()
-                refetchBorrowers()
-                refetchFixedIncomes()
-              }}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredPayments.length === 0 ? (
-            <div className="text-center py-8">
-              <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No payments found</p>
-              <p className="text-sm text-gray-400">
-                {searchTerm || typeFilter !== 'all'
-                  ? 'Try adjusting your search or filter'
-                  : 'Record your first payment to get started'}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Borrower</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Principal</TableHead>
-                  <TableHead>Interest</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Recorded</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPayments.map((payment) => (
-                  <TableRow key={payment.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium">{payment.borrower_name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
-                    <TableCell>
-                      {payment.principal_amount > 0
-                        ? formatCurrency(payment.principal_amount)
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {payment.interest_amount > 0 ? formatCurrency(payment.interest_amount) : '-'}
-                    </TableCell>
-                    <TableCell>{getPaymentTypeBadge(payment.payment_type)}</TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {formatDate(payment.payment_date)}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {formatDate(payment.created_at)}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEditPayment(payment)}
-                        >
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setDeletePaymentId(payment.id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {/* Tabs for Payments */}
+      <Tabs defaultValue="past" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="past">Past Payments</TabsTrigger>
+          <TabsTrigger value="upcoming">Upcoming Payments</TabsTrigger>
+        </TabsList>
 
-      {/* Upcoming Payments */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Upcoming Payments</CardTitle>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  refetchPayments()
-                  refetchLoans()
-                  refetchBorrowers()
-                  refetchFixedIncomes()
-                }}
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-              <Select value={selectedPeriod.toString()} onValueChange={(value) => setSelectedPeriod(parseInt(value))}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Select period" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">This Month</SelectItem>
-                  <SelectItem value="3">Next 3 Months</SelectItem>
-                  <SelectItem value="6">Next 6 Months</SelectItem>
-                  <SelectItem value="12">Next Year</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {selectedPeriodPayments.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No upcoming payments found</p>
-              <p className="text-sm text-gray-400">
-                All payments are up to date for {getPeriodLabel(selectedPeriod).toLowerCase()}
-              </p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Borrower/Tenant</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Asset Type</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Accrued Amount</TableHead>
-                  <TableHead>Days Since Last</TableHead>
-                  <TableHead>Balance/Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedPeriodPayments.map((payment) => (
-                  <TableRow key={`${payment.type}-${payment.id}`}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium">{payment.borrowerName}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={payment.type === 'loan' ? 'default' : 'secondary'}>
-                        {payment.type === 'loan' ? 'Loan' : 'Fixed Income'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="capitalize">
-                      {payment.assetType.replace('_', ' ')}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatDate(payment.dueDate)}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {formatCurrency(payment.accruedInterest)}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {payment.daysSinceLastPayment} days
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {payment.type === 'loan'
-                        ? formatCurrency(payment.currentBalance)
-                        : formatCurrency(payment.assetValue || 0)
-                      }
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+        <TabsContent value="past" className="space-y-6">
+          {/* Payments Table */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Payment History ({filteredPayments.length})</CardTitle>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    refetchPayments()
+                    refetchLoans()
+                    refetchBorrowers()
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredPayments.length === 0 ? (
+                <div className="text-center py-8">
+                  <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No payments found</p>
+                  <p className="text-sm text-gray-400">
+                    {searchTerm || typeFilter !== 'all'
+                      ? 'Try adjusting your search or filter'
+                      : 'Record your first payment to get started'}
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Borrower</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead className="hidden md:table-cell">Principal</TableHead>
+                      <TableHead className="hidden md:table-cell">Interest</TableHead>
+                      <TableHead className="hidden sm:table-cell">Type</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="hidden lg:table-cell">Notes</TableHead>
+                      <TableHead className="hidden xl:table-cell">Recorded</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPayments.map((payment) => (
+                      <TableRow key={payment.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-gray-400" />
+                            <span className="font-medium">{payment.borrower_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatCurrency(payment.amount)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {payment.principal_amount > 0
+                            ? formatCurrency(payment.principal_amount)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {payment.interest_amount > 0
+                            ? formatCurrency(payment.interest_amount)
+                            : '-'}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {getPaymentTypeBadge(payment.payment_type)}
+                        </TableCell>
+                        <TableCell className="text-sm text-gray-500">
+                          {formatDate(payment.payment_date)}
+                        </TableCell>
+                        <TableCell
+                          className="hidden lg:table-cell text-sm text-gray-500 max-w-32 truncate"
+                          title={payment.notes || ''}
+                        >
+                          {payment.notes || '-'}
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-sm text-gray-500">
+                          {formatDate(payment.created_at)}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditPayment(payment)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setDeletePaymentId(payment.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="upcoming" className="space-y-6">
+          {/* Upcoming Payments */}
+          <UpcomingPayments />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

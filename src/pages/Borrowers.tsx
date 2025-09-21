@@ -1,6 +1,7 @@
 import { useForm } from '@tanstack/react-form'
-import { Edit, MapPin, Phone, Plus, RefreshCw, Search, Trash2, User } from 'lucide-react'
+import { Edit, Eye, MapPin, Phone, Plus, RefreshCw, Search, Trash2, User } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -36,7 +37,12 @@ export default function Borrowers() {
   const [editingBorrower, setEditingBorrower] = useState<Borrower | null>(null)
 
   // Use our new hooks
-  const { data: borrowers = [], isLoading: loading, error, refetch: refetchBorrowers } = useGetBorrowers()
+  const {
+    data: borrowers = [],
+    isLoading: loading,
+    error,
+    refetch: refetchBorrowers,
+  } = useGetBorrowers()
   const createBorrowerMutation = useCreateBorrower()
   const updateBorrowerMutation = useUpdateBorrower()
   const deleteBorrowerMutation = useDeleteBorrower()
@@ -251,11 +257,7 @@ export default function Borrowers() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Borrowers ({filteredBorrowers.length})</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetchBorrowers()}
-            >
+            <Button variant="outline" size="sm" onClick={() => refetchBorrowers()}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>

@@ -157,8 +157,13 @@ export function useUpdateLoan() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Partial<Omit<Loan, 'id' | 'created_at'>> }) =>
-      loanService.updateLoan(id, updates),
+    mutationFn: ({
+      id,
+      updates,
+    }: {
+      id: string
+      updates: Partial<Omit<Loan, 'id' | 'created_at'>>
+    }) => loanService.updateLoan(id, updates),
     onSuccess: (_, { id, updates }) => {
       // Update the loan in cache
       queryClient.setQueryData<Loan | null>(loanKeys.detail(id), (old) => {

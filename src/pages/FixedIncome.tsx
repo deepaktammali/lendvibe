@@ -57,7 +57,11 @@ export default function FixedIncomePage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
 
   // Use the new TanStack Query hooks
-  const { data: fixedIncomes = [], isLoading: loading, refetch: refetchFixedIncomes } = useGetFixedIncomesWithTenants()
+  const {
+    data: fixedIncomes = [],
+    isLoading: loading,
+    refetch: refetchFixedIncomes,
+  } = useGetFixedIncomesWithTenants()
   const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
   const createFixedIncomeMutation = useCreateFixedIncome()
   const deleteFixedIncomeMutation = useDeleteFixedIncome()
@@ -572,12 +576,9 @@ export default function FixedIncomePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Tenant</TableHead>
-                  <TableHead>Type</TableHead>
                   <TableHead>Asset Value</TableHead>
                   <TableHead>Rate</TableHead>
-                  <TableHead>Payment Schedule</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Start Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -590,18 +591,11 @@ export default function FixedIncomePage() {
                         <span className="font-medium">{item.tenant_name}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{getIncomeTypeBadge(item.income_type)}</TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(item.principal_amount)}
                     </TableCell>
                     <TableCell>{item.income_rate}%</TableCell>
-                    <TableCell>
-                      Every {item.payment_interval_value} {item.payment_interval_unit}
-                    </TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {formatDate(item.start_date)}
-                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
                         <Button
