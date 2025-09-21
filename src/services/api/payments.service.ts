@@ -165,7 +165,7 @@ export const paymentService = {
         total_interest_due: Math.max(paymentSchedule.total_interest_due, interestAmount),
       })
       // Refresh the schedule object
-      paymentSchedule = await dbGetPaymentSchedule(paymentSchedule.id) || paymentSchedule
+      paymentSchedule = (await dbGetPaymentSchedule(paymentSchedule.id)) || paymentSchedule
     }
 
     return paymentSchedule
@@ -206,20 +206,32 @@ export const paymentService = {
         case 'months':
           periodStart = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), 1)
           periodEnd = new Date(paymentDate.getFullYear(), paymentDate.getMonth() + 1, 0)
-          dueDate = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), loanStartDate.getDate())
+          dueDate = new Date(
+            paymentDate.getFullYear(),
+            paymentDate.getMonth(),
+            loanStartDate.getDate()
+          )
           break
 
         case 'years':
           periodStart = new Date(paymentDate.getFullYear(), 0, 1)
           periodEnd = new Date(paymentDate.getFullYear(), 11, 31)
-          dueDate = new Date(paymentDate.getFullYear(), loanStartDate.getMonth(), loanStartDate.getDate())
+          dueDate = new Date(
+            paymentDate.getFullYear(),
+            loanStartDate.getMonth(),
+            loanStartDate.getDate()
+          )
           break
 
         default:
           // Fallback to monthly
           periodStart = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), 1)
           periodEnd = new Date(paymentDate.getFullYear(), paymentDate.getMonth() + 1, 0)
-          dueDate = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), loanStartDate.getDate())
+          dueDate = new Date(
+            paymentDate.getFullYear(),
+            paymentDate.getMonth(),
+            loanStartDate.getDate()
+          )
       }
     }
 
@@ -242,7 +254,13 @@ export const paymentService = {
     await this.createMissedPaymentSchedules(data.loan_id, loan, paymentDate)
 
     // Find or create payment schedule for this payment based on repayment interval
-    const paymentSchedule = await this.findOrCreatePaymentSchedule(data.loan_id, loan, paymentDate, data.principal_amount, data.interest_amount)
+    const paymentSchedule = await this.findOrCreatePaymentSchedule(
+      data.loan_id,
+      loan,
+      paymentDate,
+      data.principal_amount,
+      data.interest_amount
+    )
 
     const totalAmount = data.principal_amount + data.interest_amount
     const newBalance = loan.current_balance - data.principal_amount
