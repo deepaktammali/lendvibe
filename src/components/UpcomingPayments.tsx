@@ -85,6 +85,7 @@ export default function UpcomingPayments({
     // Process loans
     for (const loan of loans) {
       if (loan.status !== 'active') continue
+      if (loan.loan_type === 'bullet') continue
 
       const borrower = borrowers.find((b) => b.id === loan.borrower_id)
       if (!borrower) continue
@@ -128,52 +129,31 @@ export default function UpcomingPayments({
           const today = new Date()
           let nextDueDate = new Date(startDate)
 
-          // Calculate how many intervals have passed since loan start
-          let intervalsPassed = 0
-
-          switch (intervalUnit) {
-            case 'days':
-              intervalsPassed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-              intervalsPassed = Math.floor(intervalsPassed / intervalValue)
-              nextDueDate.setDate(startDate.getDate() + (intervalsPassed + 1) * intervalValue)
-              break
-            case 'weeks':
-              intervalsPassed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7))
-              intervalsPassed = Math.floor(intervalsPassed / intervalValue)
-              nextDueDate.setDate(startDate.getDate() + (intervalsPassed + 1) * intervalValue * 7)
-              break
-            case 'months':
-              intervalsPassed = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth())
-              intervalsPassed = Math.floor(intervalsPassed / intervalValue)
-              nextDueDate.setMonth(startDate.getMonth() + (intervalsPassed + 1) * intervalValue)
-              break
-            case 'years':
-              intervalsPassed = today.getFullYear() - startDate.getFullYear()
-              intervalsPassed = Math.floor(intervalsPassed / intervalValue)
-              nextDueDate.setFullYear(startDate.getFullYear() + (intervalsPassed + 1) * intervalValue)
-              break
-          }
-
-          // Calculate period interest based on loan type
-          // Interest rate is already for the specified interval
-          const periodInterest = (loan.current_balance * loan.interest_rate) / 100
-          let expectedPayment = 0
-
-          if (loan.loan_type === 'bullet') {
-            // For bullet loans, check if this is the final payment (at maturity)
-            const endDate = loan.end_date ? new Date(loan.end_date) : null
-            if (endDate && nextDueDate >= endDate) {
-              // This is the maturity payment - don't show in upcoming payments
-              // The principal repayment happens at maturity, not in regular payments
-              continue
+          // Find the next payment due date after today
+          while (nextDueDate <= today) {
+            switch (intervalUnit) {
+              case 'days':
+                nextDueDate.setDate(nextDueDate.getDate() + intervalValue)
+                break
+              case 'weeks':
+                nextDueDate.setDate(nextDueDate.getDate() + intervalValue * 7)
+                break
+              case 'months':
+                nextDueDate.setMonth(nextDueDate.getMonth() + intervalValue)
+                break
+              case 'years':
+                nextDueDate.setFullYear(nextDueDate.getFullYear() + intervalValue)
+                break
             }
-            // For regular bullet payments, only interest is paid
-            expectedPayment = periodInterest
-          } else {
-            // For installment loans, payment includes both principal and interest
-            // This is a simplified calculation - actual installment calculation would be more complex
-            expectedPayment = periodInterest + (loan.current_balance * 0.1) // Simple 10% principal
           }
+
+          // Calculate period interest
+          // Use the full interest rate for each interval payment
+          const periodInterest = (loan.current_balance * loan.interest_rate) / 100
+
+          // For installment loans, payment includes both principal and interest
+          // This is a simplified calculation - actual installment calculation would be more complex
+          const expectedPayment = periodInterest + (loan.current_balance * 0.1) // Simple 10% principal
 
           upcomingPayments.push({
             id: loan.id,
@@ -199,52 +179,31 @@ export default function UpcomingPayments({
         const today = new Date()
         let nextDueDate = new Date(startDate)
 
-        // Calculate how many intervals have passed since loan start
-        let intervalsPassed = 0
-
-        switch (intervalUnit) {
-          case 'days':
-            intervalsPassed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
-            intervalsPassed = Math.floor(intervalsPassed / intervalValue)
-            nextDueDate.setDate(startDate.getDate() + (intervalsPassed + 1) * intervalValue)
-            break
-          case 'weeks':
-            intervalsPassed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7))
-            intervalsPassed = Math.floor(intervalsPassed / intervalValue)
-            nextDueDate.setDate(startDate.getDate() + (intervalsPassed + 1) * intervalValue * 7)
-            break
-          case 'months':
-            intervalsPassed = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth())
-            intervalsPassed = Math.floor(intervalsPassed / intervalValue)
-            nextDueDate.setMonth(startDate.getMonth() + (intervalsPassed + 1) * intervalValue)
-            break
-          case 'years':
-            intervalsPassed = today.getFullYear() - startDate.getFullYear()
-            intervalsPassed = Math.floor(intervalsPassed / intervalValue)
-            nextDueDate.setFullYear(startDate.getFullYear() + (intervalsPassed + 1) * intervalValue)
-            break
-        }
-
-        // Calculate period interest based on loan type
-        // Interest rate is already for the specified interval
-        const periodInterest = (loan.current_balance * loan.interest_rate) / 100
-        let expectedPayment = 0
-
-        if (loan.loan_type === 'bullet') {
-          // For bullet loans, check if this is the final payment (at maturity)
-          const endDate = loan.end_date ? new Date(loan.end_date) : null
-          if (endDate && nextDueDate >= endDate) {
-            // This is the maturity payment - don't show in upcoming payments
-            // The principal repayment happens at maturity, not in regular payments
-            continue
+        // Find the next payment due date after today
+        while (nextDueDate <= today) {
+          switch (intervalUnit) {
+            case 'days':
+              nextDueDate.setDate(nextDueDate.getDate() + intervalValue)
+              break
+            case 'weeks':
+              nextDueDate.setDate(nextDueDate.getDate() + intervalValue * 7)
+              break
+            case 'months':
+              nextDueDate.setMonth(nextDueDate.getMonth() + intervalValue)
+              break
+            case 'years':
+              nextDueDate.setFullYear(nextDueDate.getFullYear() + intervalValue)
+              break
           }
-          // For regular bullet payments, only interest is paid
-          expectedPayment = periodInterest
-        } else {
-          // For installment loans, payment includes both principal and interest
-          // This is a simplified calculation - actual installment calculation would be more complex
-          expectedPayment = periodInterest + (loan.current_balance * 0.1) // Simple 10% principal
         }
+
+        // Calculate period interest
+        // Use the full interest rate for each interval payment
+        const periodInterest = (loan.current_balance * loan.interest_rate) / 100
+
+        // For installment loans, payment includes both principal and interest
+        // This is a simplified calculation - actual installment calculation would be more complex
+        const expectedPayment = periodInterest + (loan.current_balance * 0.1) // Simple 10% principal
 
         upcomingPayments.push({
           id: loan.id,
@@ -319,7 +278,7 @@ export default function UpcomingPayments({
     return upcomingPayments.sort(
       (a, b) => parseDate(a.dueDate).getTime() - parseDate(b.dueDate).getTime()
     )
-  }, [loans, borrowers, payments, fixedIncomes])
+  }, [loans, borrowers, fixedIncomes])
 
   // Calculate upcoming payments when data changes
   useEffect(() => {

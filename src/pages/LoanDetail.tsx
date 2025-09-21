@@ -108,7 +108,7 @@ export default function LoanDetail() {
       // First, delete all associated payments
       const schedulePayments = getSchedulePayments(scheduleId)
       for (const payment of schedulePayments) {
-        await deletePaymentMutation.mutateAsync(payment.id)
+        await deletePaymentMutation.mutateAsync({ id: payment.id, payment })
       }
 
       // Then delete the schedule
