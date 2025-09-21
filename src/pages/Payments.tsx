@@ -62,10 +62,12 @@ import {
 } from '@/hooks/api/usePayments'
 import { type PaymentFormInput, paymentFormSchema } from '@/lib/validation'
 import type { Payment } from '@/types/api/payments'
+import type { PaymentSchedule } from '@/types/database'
 
 interface PaymentWithDetails extends Payment {
   borrower_name: string
   loan_principal: number
+  payment_schedule: PaymentSchedule
 }
 
 export default function Payments() {
@@ -166,7 +168,9 @@ export default function Payments() {
 
   const handleEditPayment = (payment: PaymentWithDetails) => {
     setEditingPayment(payment)
-    editForm.setFieldValue('loan_id', payment.loan_id)
+    // Note: In the new structure, payments are tied to payment schedules,
+    // so we can't easily change the loan. We'll update the payment schedule approach later.
+    editForm.setFieldValue('loan_id', payment.payment_schedule.loan_id)
     editForm.setFieldValue('principal_amount', payment.principal_amount)
     editForm.setFieldValue('interest_amount', payment.interest_amount)
     editForm.setFieldValue('payment_date', payment.payment_date)
@@ -193,7 +197,7 @@ export default function Payments() {
   const filteredPayments = payments.filter((payment) => {
     const matchesSearch =
       payment.borrower_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.loan_id.toLowerCase().includes(searchTerm.toLowerCase())
+      payment.payment_schedule.loan_id.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesType = typeFilter === 'all' || payment.payment_type === typeFilter
 

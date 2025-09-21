@@ -67,13 +67,8 @@ export function useCreatePayment() {
         return [newPayment, ...old]
       })
 
-      // Update payments for the specific loan
-      queryClient.setQueryData<Payment[]>(paymentKeys.byLoan(variables.loan_id), (old) => {
-        if (!old) return [newPayment]
-        return [newPayment, ...old]
-      })
-
-      // Invalidate related queries
+      // Update payments for the specific loan (need to get loan_id from payment schedule)
+      // For now, invalidate all payment queries since we changed the structure
       queryClient.invalidateQueries({ queryKey: paymentKeys.lists() })
       queryClient.invalidateQueries({ queryKey: paymentKeys.byLoan(variables.loan_id) })
       queryClient.invalidateQueries({ queryKey: paymentKeys.lastByLoan(variables.loan_id) })
@@ -102,24 +97,9 @@ export function useUpdatePayment() {
       data: UpdatePaymentData
       originalPayment: Payment
     }) => paymentService.updatePayment(id, data, originalPayment),
-    onSuccess: (_, { id, data, originalPayment }) => {
-      // Update the specific payment in various caches
-      const updatePaymentInCache = (old: Payment[] | undefined) => {
-        if (!old) return old
-        return old.map((payment) => (payment.id === id ? { ...payment, ...data } : payment))
-      }
-
-      queryClient.setQueryData<Payment[]>(paymentKeys.lists(), updatePaymentInCache)
-      queryClient.setQueryData<Payment[]>(
-        paymentKeys.byLoan(originalPayment.loan_id),
-        updatePaymentInCache
-      )
-
-      if (data.loan_id && data.loan_id !== originalPayment.loan_id) {
-        queryClient.setQueryData<Payment[]>(paymentKeys.byLoan(data.loan_id), updatePaymentInCache)
-      }
-
-      // Invalidate related queries
+    onSuccess: () => {
+      // Since payments are now tied to payment schedules, we need to invalidate
+      // all payment queries as the structure has changed
       queryClient.invalidateQueries({ queryKey: paymentKeys.all })
       queryClient.invalidateQueries({ queryKey: loanKeys.all })
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
@@ -136,23 +116,10 @@ export function useDeletePayment() {
   return useMutation({
     mutationFn: ({ id, payment }: { id: string; payment: Payment }) =>
       paymentService.deletePayment(id, payment),
-    onSuccess: (_, { id, payment }) => {
-      // Remove from payments list
-      queryClient.setQueryData<Payment[]>(paymentKeys.lists(), (old) => {
-        if (!old) return old
-        return old.filter((p) => p.id !== id)
-      })
-
-      // Remove from loan-specific payments
-      queryClient.setQueryData<Payment[]>(paymentKeys.byLoan(payment.loan_id), (old) => {
-        if (!old) return old
-        return old.filter((p) => p.id !== id)
-      })
-
-      // Invalidate related queries
+    onSuccess: () => {
+      // Since payments are now tied to payment schedules, invalidate all queries
       queryClient.invalidateQueries({ queryKey: paymentKeys.all })
-      queryClient.invalidateQueries({ queryKey: loanKeys.detail(payment.loan_id) })
-      queryClient.invalidateQueries({ queryKey: loanKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: loanKeys.all })
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {

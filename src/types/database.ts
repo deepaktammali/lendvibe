@@ -37,9 +37,21 @@ export interface FixedIncome {
   created_at: string
 }
 
-export interface Payment {
+export interface PaymentSchedule {
   id: string
   loan_id: string
+  period_start_date: string // YYYY-MM-DD format
+  period_end_date: string // YYYY-MM-DD format
+  due_date: string // YYYY-MM-DD format, calculated from loan terms
+  total_principal_due: number
+  total_interest_due: number
+  status: 'pending' | 'partially_paid' | 'paid' | 'overdue'
+  created_at: string
+}
+
+export interface Payment {
+  id: string
+  payment_schedule_id: string
   amount: number
   payment_type: 'principal' | 'interest' | 'mixed'
   principal_amount: number
@@ -81,6 +93,7 @@ export interface BorrowerWithFixedIncome extends Borrower {
 }
 
 export interface LoanWithPayments extends Loan {
+  paymentSchedules: PaymentSchedule[]
   payments: Payment[]
   borrower: Borrower
 }

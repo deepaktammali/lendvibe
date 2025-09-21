@@ -521,7 +521,9 @@ export default function LoanDetail() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">{getLoanTypeBadge(loan.loan_type)}</div>
-            <p className="text-xs text-muted-foreground mt-1">{loan.interest_rate}% annual rate</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {loan.interest_rate}% per {loan.repayment_interval_unit?.slice(0, -1) || 'period'}
+            </p>
           </CardContent>
         </Card>
 

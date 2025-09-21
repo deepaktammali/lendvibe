@@ -1,7 +1,7 @@
 // API Types - separate from database types
 export interface Payment {
   id: string
-  loan_id: string
+  payment_schedule_id: string
   amount: number
   payment_type: 'principal' | 'interest' | 'mixed'
   principal_amount: number
@@ -63,7 +63,8 @@ namespace GetLastPaymentsByLoans {
 namespace CreateLoanPayment {
   export type Response = LoanPayment
   export type Payload = {
-    loan_id: string
+    payment_schedule_id?: string // Optional - if not provided, will find/create appropriate schedule
+    loan_id: string // Still needed to find/create payment schedule
     principal_amount: number
     interest_amount: number
     payment_date: string
@@ -98,7 +99,7 @@ namespace UpdateLoanPayment {
   export type Payload = {
     id: string
     data: {
-      loan_id?: string
+      payment_schedule_id?: string
       amount?: number
       payment_type?: LoanPayment['payment_type']
       principal_amount?: number
@@ -130,7 +131,7 @@ namespace UpdatePayment {
   export type Payload = {
     id: string
     data: {
-      loan_id?: string
+      payment_schedule_id?: string
       amount?: number
       payment_type?: LoanPayment['payment_type']
       principal_amount?: number

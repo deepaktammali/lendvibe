@@ -21,6 +21,67 @@ export function calculateAccruedInterest(
   return Math.round(periodInterest * 100) / 100 // Round to 2 decimal places
 }
 
+/**
+ * Calculates the expected payment amount for the next period.
+ * For installment loans, this is typically the accrued interest.
+ * For bullet loans, this might be interest-only.
+ */
+export function calculateExpectedPaymentAmount(
+  loan: Pick<
+    Loan,
+    | 'current_balance'
+    | 'interest_rate'
+    | 'loan_type'
+    | 'repayment_interval_unit'
+    | 'repayment_interval_value'
+  >
+): number {
+  const accruedInterest = calculateAccruedInterest(loan)
+
+  // For most loan types, the expected payment is the accrued interest
+  // This can be extended to include principal payments for specific loan types
+  return accruedInterest
+}
+
+/**
+ * Calculates payment status for the current period
+ */
+export function calculatePaymentStatus(
+  accruedInterest: number,
+  paidInterestInPeriod: number,
+  dueDate: string
+): {
+  status: 'pending' | 'partial' | 'paid' | 'overdue'
+  paidAmount: number
+  remainingAmount: number
+} {
+  const today = new Date()
+  const dueDateObj = new Date(dueDate)
+  const isOverdue = dueDateObj < today
+
+  const remainingAmount = Math.max(0, accruedInterest - paidInterestInPeriod)
+
+  if (paidInterestInPeriod >= accruedInterest) {
+    return {
+      status: 'paid',
+      paidAmount: paidInterestInPeriod,
+      remainingAmount: 0,
+    }
+  } else if (paidInterestInPeriod > 0) {
+    return {
+      status: isOverdue ? 'overdue' : 'partial',
+      paidAmount: paidInterestInPeriod,
+      remainingAmount,
+    }
+  } else {
+    return {
+      status: isOverdue ? 'overdue' : 'pending',
+      paidAmount: 0,
+      remainingAmount: accruedInterest,
+    }
+  }
+}
+
 export interface PaymentApplicationResult {
   newBalance: number
   principalPaid: number
@@ -35,10 +96,14 @@ export interface UpcomingPayment {
   assetType: string
   dueDate: string
   accruedInterest: number
+  expectedPaymentAmount: number
   daysSinceLastPayment: number
   currentBalance: number
   realRemainingPrincipal?: number
   assetValue?: number
+  paymentStatus?: 'pending' | 'partial' | 'paid' | 'overdue'
+  paidInterestAmount?: number
+  remainingInterestAmount?: number
 }
 
 /**

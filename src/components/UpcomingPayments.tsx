@@ -25,6 +25,8 @@ import { useGetPaymentsWithDetails } from '@/hooks/api/usePayments'
 import {
   calculateAccruedIncome,
   calculateAccruedInterest,
+  calculateExpectedPaymentAmount,
+  calculatePaymentStatus,
   getDaysSinceLastIncomePayment,
   getDaysSinceLastPayment,
   getNextIncomePaymentDate,
@@ -91,6 +93,32 @@ export default function UpcomingPayments({
       if (dueDateObj >= today) {
         const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date)
         const accruedInterest = calculateAccruedInterest(loan)
+        const expectedPaymentAmount = calculateExpectedPaymentAmount(loan)
+
+        // Calculate interest paid in current period (from last payment date to next due date)
+        // If there was a payment on the last due date, that was for the previous period
+        // So we count payments AFTER the last payment date for the upcoming period
+        const currentPeriodStart = lastPayment?.payment_date || loan.start_date
+
+        const interestPaidInPeriod = payments
+          .filter((p) => {
+            const paymentDate = new Date(p.payment_date)
+            const periodStart = new Date(currentPeriodStart)
+            periodStart.setDate(periodStart.getDate() + 1) // Day after last payment
+
+            return (
+              p.loan_id === loan.id &&
+              paymentDate > periodStart &&
+              paymentDate <= new Date(nextDueDate)
+            )
+          })
+          .reduce((sum, p) => sum + p.interest_amount, 0)
+
+        const paymentStatus = calculatePaymentStatus(
+          accruedInterest,
+          interestPaidInPeriod,
+          nextDueDate
+        )
 
         upcomingPayments.push({
           id: loan.id,
@@ -99,9 +127,13 @@ export default function UpcomingPayments({
           assetType: loan.loan_type,
           dueDate: nextDueDate,
           accruedInterest,
+          expectedPaymentAmount,
           daysSinceLastPayment,
           currentBalance: loan.current_balance,
           realRemainingPrincipal: loan.current_balance,
+          paymentStatus: paymentStatus.status,
+          paidInterestAmount: paymentStatus.paidAmount,
+          remainingInterestAmount: paymentStatus.remainingAmount,
         })
       }
     })
@@ -127,6 +159,26 @@ export default function UpcomingPayments({
         )
         const accruedIncome = calculateAccruedIncome(fixedIncome)
 
+        // Calculate income paid in current period (from last payment date to next due date)
+        // If there was a payment on the last due date, that was for the previous period
+        // So we count payments AFTER the last payment date for the upcoming period
+        const currentPeriodStart = lastIncomePayment?.payment_date || fixedIncome.start_date
+        const incomePaidInPeriod = payments
+          .filter((p) => {
+            const paymentDate = new Date(p.payment_date)
+            const periodStart = new Date(currentPeriodStart)
+            periodStart.setDate(periodStart.getDate() + 1) // Day after last payment
+
+            return (
+              p.loan_id === fixedIncome.id &&
+              paymentDate > periodStart &&
+              paymentDate <= new Date(nextDueDate)
+            )
+          })
+          .reduce((sum, p) => sum + p.amount, 0) // For fixed income, use total amount
+
+        const paymentStatus = calculatePaymentStatus(accruedIncome, incomePaidInPeriod, nextDueDate)
+
         upcomingPayments.push({
           id: fixedIncome.id,
           type: 'fixed_income',
@@ -134,9 +186,13 @@ export default function UpcomingPayments({
           assetType: fixedIncome.income_type,
           dueDate: nextDueDate,
           accruedInterest: accruedIncome,
+          expectedPaymentAmount: accruedIncome, // For fixed income, expected payment is the accrued income
           daysSinceLastPayment,
           currentBalance: 0, // Fixed income doesn't have a balance
           assetValue: fixedIncome.principal_amount,
+          paymentStatus: paymentStatus.status,
+          paidInterestAmount: paymentStatus.paidAmount,
+          remainingInterestAmount: paymentStatus.remainingAmount,
         })
       }
     })
@@ -169,6 +225,24 @@ export default function UpcomingPayments({
     if (months === 6) return 'Next 6 Months'
     if (months === 12) return 'Next Year'
     return `Next ${months} Months`
+  }
+
+  const getStatusBadge = (status: UpcomingPayment['paymentStatus']) => {
+    const variants = {
+      pending: 'secondary',
+      partial: 'outline',
+      paid: 'default',
+      overdue: 'destructive',
+    } as const
+
+    const labels = {
+      pending: 'Pending',
+      partial: 'Partial',
+      paid: 'Paid',
+      overdue: 'Overdue',
+    }
+
+    return <Badge variant={variants[status || 'pending']}>{labels[status || 'pending']}</Badge>
   }
 
   const handleRefresh = () => {
@@ -230,6 +304,7 @@ export default function UpcomingPayments({
                 <TableHead className="hidden md:table-cell">Asset Type</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Amount</TableHead>
+                <TableHead className="hidden sm:table-cell">Status</TableHead>
                 <TableHead className="hidden lg:table-cell">Days Since</TableHead>
                 <TableHead className="hidden lg:table-cell">Balance/Value</TableHead>
               </TableRow>
@@ -253,7 +328,18 @@ export default function UpcomingPayments({
                   </TableCell>
                   <TableCell className="font-medium">{formatDate(payment.dueDate)}</TableCell>
                   <TableCell className="font-medium">
-                    {formatCurrency(payment.accruedInterest)}
+                    {formatCurrency(payment.expectedPaymentAmount)}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell">
+                    {getStatusBadge(payment.paymentStatus)}
+                    {payment.paymentStatus === 'partial' &&
+                      payment.paidInterestAmount &&
+                      payment.remainingInterestAmount && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {formatCurrency(payment.paidInterestAmount)} paid,{' '}
+                          {formatCurrency(payment.remainingInterestAmount)} remaining
+                        </div>
+                      )}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell text-sm text-gray-500">
                     {payment.daysSinceLastPayment} days
