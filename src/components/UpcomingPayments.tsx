@@ -20,7 +20,6 @@ import {
 import { useGetBorrowers } from '@/hooks/api/useBorrowers'
 import { useGetFixedIncomesWithTenants } from '@/hooks/api/useFixedIncome'
 import { useGetLoans } from '@/hooks/api/useLoans'
-import { useGetPaymentsWithDetails } from '@/hooks/api/usePayments'
 import { getPaymentSchedulesByLoan } from '@/lib/database'
 import type {
   UpcomingPayment,
@@ -65,7 +64,7 @@ export default function UpcomingPayments({
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
 
   // Use the new TanStack Query hooks
-  const { data: payments = [], refetch: refetchPayments } = useGetPaymentsWithDetails()
+  // const { data: payments = [], refetch: refetchPayments } = useGetPaymentsWithDetails()
   const { data: loans = [], refetch: refetchLoans } = useGetLoans()
   const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
   const { data: fixedIncomes = [], refetch: refetchFixedIncomes } = useGetFixedIncomesWithTenants()
@@ -433,7 +432,7 @@ export default function UpcomingPayments({
     setIsLoading(true)
     try {
       await Promise.all([
-        refetchPayments(),
+        // refetchPayments(),
         refetchLoans(),
         refetchBorrowers(),
         refetchFixedIncomes()

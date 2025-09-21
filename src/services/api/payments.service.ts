@@ -2,6 +2,7 @@ import {
   createPayment as dbCreatePayment,
   createPaymentSchedule as dbCreatePaymentSchedule,
   deletePayment as dbDeletePayment,
+  deleteAllPaymentSchedulesAndPaymentsForLoan,
   getBorrower as dbGetBorrower,
   getLastPaymentByLoan as dbGetLastPaymentByLoan,
   getLastPaymentsByLoans as dbGetLastPaymentsByLoans,
@@ -15,6 +16,8 @@ import {
   updateLoanBalance,
   updateLoanStatus,
 } from '@/lib/database'
+import { calculateAccruedInterest } from '@/lib/finance'
+import { isFixedIncomeType } from '@/lib/loans'
 import type { CreatePayment, Payment } from '@/types/api/payments'
 import type { PaymentSchedule } from '@/types/database'
 
@@ -79,7 +82,14 @@ export const paymentService = {
 
     // If no schedules exist, create them from loan start date to a reasonable future date
     if (existingSchedules.length === 0) {
-      await this.createMissedPaymentSchedules(loanId, loan, new Date())
+      await this.createMissedPaymentSchedules(loanId, {
+        start_date: loan.start_date,
+        repayment_interval_unit: loan.repayment_interval_unit,
+        repayment_interval_value: loan.repayment_interval_value,
+        current_balance: loan.current_balance,
+        interest_rate: loan.interest_rate,
+        loan_type: loan.loan_type,
+      }, new Date())
     }
   },
 
@@ -142,8 +152,11 @@ export const paymentService = {
     loanId: string,
     loan: {
       start_date: string
-      repayment_interval_unit?: string
+      repayment_interval_unit?: 'days' | 'weeks' | 'months' | 'years'
       repayment_interval_value?: number
+      current_balance?: number
+      interest_rate?: number
+      loan_type?: string
     },
     paymentDate: Date,
     principalAmount: number,
@@ -162,17 +175,32 @@ export const paymentService = {
     )
 
     if (!paymentSchedule) {
+      // Calculate expected amounts for this period
+      let expectedPrincipalDue = principalAmount
+      let expectedInterestDue = interestAmount
+
+      // If the payment amounts are less than what should be expected, calculate proper amounts
+      if (loan.current_balance && loan.interest_rate && loan.interest_rate > 0) {
+        const calculatedInterest = calculateAccruedInterest({
+          current_balance: loan.current_balance,
+          interest_rate: loan.interest_rate,
+          repayment_interval_unit: loan.repayment_interval_unit,
+          repayment_interval_value: loan.repayment_interval_value,
+        })
+        expectedInterestDue = Math.max(interestAmount, calculatedInterest)
+      }
+
       // Create new payment schedule for this period
       paymentSchedule = await dbCreatePaymentSchedule({
         loan_id: loanId,
         period_start_date: periodDates.periodStartStr,
         period_end_date: periodDates.periodEndStr,
         due_date: periodDates.dueDateStr,
-        total_principal_due: principalAmount,
-        total_interest_due: interestAmount,
+        total_principal_due: expectedPrincipalDue,
+        total_interest_due: expectedInterestDue,
         total_principal_paid: 0,
         total_interest_paid: 0,
-        status: 'pending',
+        status: 'pending' as const,
       })
     } else {
       // Update existing schedule with the actual amounts being paid
@@ -441,8 +469,11 @@ export const paymentService = {
     loanId: string,
     loan: {
       start_date: string
-      repayment_interval_unit?: string
+      repayment_interval_unit?: 'days' | 'weeks' | 'months' | 'years'
       repayment_interval_value?: number
+      current_balance?: number
+      interest_rate?: number
+      loan_type?: string
     },
     upToDate: Date
   ): Promise<void> {
@@ -512,14 +543,46 @@ export const paymentService = {
           status = 'overdue'
         }
 
-        // Create the missed schedule with default amounts
+        // Calculate expected amounts for this period
+        let principalDue = 0
+        let interestDue = 0
+
+        if (loan.current_balance && loan.interest_rate && loan.interest_rate > 0) {
+          // For fixed income types, the interest is the expected payment amount
+          if (loan.loan_type && isFixedIncomeType(loan.loan_type as any)) {
+            // For fixed income loans, the amount is typically pure income/interest
+            interestDue = calculateAccruedInterest({
+              current_balance: loan.current_balance,
+              interest_rate: loan.interest_rate,
+              repayment_interval_unit: loan.repayment_interval_unit,
+              repayment_interval_value: loan.repayment_interval_value,
+            })
+          } else {
+            // For installment and bullet loans, calculate accrued interest
+            interestDue = calculateAccruedInterest({
+              current_balance: loan.current_balance,
+              interest_rate: loan.interest_rate,
+              repayment_interval_unit: loan.repayment_interval_unit,
+              repayment_interval_value: loan.repayment_interval_value,
+            })
+
+            // For installment loans, we might expect principal payments too
+            // This could be extended based on loan amortization schedule
+            if (loan.loan_type === 'installment') {
+              // For now, principal due is 0 unless specifically calculated
+              principalDue = 0
+            }
+          }
+        }
+
+        // Create the missed schedule with calculated amounts
         const newSchedule = await dbCreatePaymentSchedule({
           loan_id: loanId,
           period_start_date: periodStartStr,
           period_end_date: periodEndStr,
           due_date: dueDateStr,
-          total_principal_due: 0, // Will be set when payments are expected
-          total_interest_due: 0, // Will be set when payments are expected
+          total_principal_due: principalDue,
+          total_interest_due: interestDue,
           total_principal_paid: 0,
           total_interest_paid: 0,
           status: status,
@@ -574,5 +637,9 @@ export const paymentService = {
     if (newStatus !== schedule.status) {
       await dbUpdatePaymentSchedule(scheduleId, { status: newStatus })
     }
+  },
+
+  async deleteAllPaymentSchedulesAndPaymentsForLoan(loanId: string): Promise<void> {
+    await deleteAllPaymentSchedulesAndPaymentsForLoan(loanId)
   },
 }

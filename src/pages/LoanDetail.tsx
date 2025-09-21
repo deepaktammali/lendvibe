@@ -36,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useGetBorrower, useGetBorrowers } from '@/hooks/api/useBorrowers'
-import { useGetLoan, useGetPaymentSchedulesByLoan, useUpdateLoan } from '@/hooks/api/useLoans'
+import { useDeleteAllPaymentSchedulesAndPayments, useGetLoan, useGetPaymentSchedulesByLoan, useUpdateLoan } from '@/hooks/api/useLoans'
 import { useDeletePayment, useGetPaymentsByLoan } from '@/hooks/api/usePayments'
 import { deletePaymentSchedule } from '@/lib/database'
 import {
@@ -75,6 +75,7 @@ export default function LoanDetail() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [expandedSchedules, setExpandedSchedules] = useState<Set<string>>(new Set())
   const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null)
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false)
 
   // Use the new TanStack Query hooks with enabled conditions for optimal loading
   const {
@@ -101,6 +102,7 @@ export default function LoanDetail() {
   } = useGetPaymentSchedulesByLoan(id || '', !!id)
   const updateLoanMutation = useUpdateLoan()
   const deletePaymentMutation = useDeletePayment()
+  const deleteAllPaymentSchedulesMutation = useDeleteAllPaymentSchedulesAndPayments()
 
   // Custom mutation for deleting payment schedules
   const deleteScheduleMutation = useMutation({
@@ -192,6 +194,17 @@ export default function LoanDetail() {
       setDeleteScheduleId(null)
     } catch (error) {
       console.error('Failed to delete payment schedule:', error)
+    }
+  }
+
+  const handleDeleteAllSchedulesAndPayments = async () => {
+    if (!id) return
+
+    try {
+      await deleteAllPaymentSchedulesMutation.mutateAsync(id)
+      setShowDeleteAllDialog(false)
+    } catch (error) {
+      console.error('Failed to delete all payment schedules and payments:', error)
     }
   }
 
@@ -765,10 +778,23 @@ export default function LoanDetail() {
       {/* Payment Schedules */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Payment Schedules ({paymentSchedules.length})
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Payment Schedules ({paymentSchedules.length})
+            </CardTitle>
+            {paymentSchedules.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setShowDeleteAllDialog(true)}
+                disabled={deleteAllPaymentSchedulesMutation.isPending}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {deleteAllPaymentSchedulesMutation.isPending ? 'Deleting...' : 'Delete All Schedules & Payments'}
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {paymentSchedules.length === 0 ? (
@@ -1009,6 +1035,41 @@ export default function LoanDetail() {
               disabled={deleteScheduleMutation.isPending}
             >
               {deleteScheduleMutation.isPending ? 'Deleting...' : 'Delete Schedule'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Schedules and Payments Confirmation Dialog */}
+      <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Payment Schedules and Payments</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete ALL payment schedules and payments for this loan? This action cannot be undone.
+
+              <div className="mt-3 p-3 bg-red-50 rounded-md border border-red-200">
+                <p className="text-sm text-red-800">
+                  <strong>This will delete:</strong>
+                </p>
+                <ul className="text-sm text-red-700 mt-1 list-disc list-inside">
+                  <li>{paymentSchedules.length} payment schedule(s)</li>
+                  <li>{payments.length} payment(s)</li>
+                </ul>
+                <p className="text-sm text-red-800 mt-2">
+                  New payment schedules with proper interest calculations will be recreated automatically when you refresh the page.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAllSchedulesAndPayments}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteAllPaymentSchedulesMutation.isPending}
+            >
+              {deleteAllPaymentSchedulesMutation.isPending ? 'Deleting...' : 'Delete All'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

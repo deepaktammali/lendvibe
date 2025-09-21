@@ -355,6 +355,22 @@ export async function deletePaymentSchedule(id: string): Promise<void> {
   await database.execute('DELETE FROM payment_schedules WHERE id = $1', [id])
 }
 
+export async function deleteAllPaymentSchedulesAndPaymentsForLoan(loanId: string): Promise<void> {
+  const database = await initDatabase()
+
+  // First delete all payments associated with payment schedules for this loan
+  await database.execute(
+    `DELETE FROM payments
+     WHERE payment_schedule_id IN (
+       SELECT id FROM payment_schedules WHERE loan_id = $1
+     )`,
+    [loanId]
+  )
+
+  // Then delete all payment schedules for this loan
+  await database.execute('DELETE FROM payment_schedules WHERE loan_id = $1', [loanId])
+}
+
 // Payment operations
 export async function createPayment(payment: Omit<Payment, 'id' | 'created_at'>): Promise<Payment> {
   const database = await initDatabase()

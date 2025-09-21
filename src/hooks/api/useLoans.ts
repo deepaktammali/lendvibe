@@ -248,3 +248,22 @@ export function useSyncAllLoanBalances() {
     },
   })
 }
+
+export function useDeleteAllPaymentSchedulesAndPayments() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (loanId: string) => paymentService.deleteAllPaymentSchedulesAndPaymentsForLoan(loanId),
+    onSuccess: (_, loanId) => {
+      // Invalidate all payment and schedule related queries
+      queryClient.invalidateQueries({ queryKey: loanKeys.paymentSchedulesByLoan(loanId) })
+      queryClient.invalidateQueries({ queryKey: paymentKeys.byLoan(loanId) })
+      queryClient.invalidateQueries({ queryKey: paymentKeys.all })
+      queryClient.invalidateQueries({ queryKey: loanKeys.detail(loanId) })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
+    },
+    onError: (error) => {
+      console.error('Failed to delete payment schedules and payments:', error)
+    },
+  })
+}
