@@ -1,6 +1,7 @@
 import { useForm } from '@tanstack/react-form'
 import {
   AlertCircle,
+  ArrowUpDown,
   Calendar,
   Eye,
   IndianRupee,
@@ -10,6 +11,7 @@ import {
   Search,
   Trash2,
   User,
+  X,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -74,12 +76,21 @@ const formatCurrency = (amount: number) => {
   }).format(amount)
 }
 
+type SortField = 'borrower' | 'amount' | 'remaining' | 'startDate' | 'interestRate'
+type SortOrder = 'asc' | 'desc'
+
 export default function Loans() {
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [loanTypeFilter, setLoanTypeFilter] = useState<string>('all')
+  const [intervalFilter, setIntervalFilter] = useState<string>('all')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [deleteLoanId, setDeleteLoanId] = useState<string | null>(null)
+
+  // Sort states
+  const [sortField, setSortField] = useState<SortField>('startDate')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
   // Use the new TanStack Query hooks
   const {
@@ -153,15 +164,79 @@ export default function Loans() {
     }
   }
 
+  // Get unique values for filter dropdowns
+  const uniqueLoanTypes = Array.from(new Set(loans.map(loan => loan.loan_type))).sort()
+  const uniqueIntervals = Array.from(new Set(loans.map(loan => loan.repayment_interval_unit || 'months'))).sort()
+
+  // Helper functions for filters
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || loanTypeFilter !== 'all' || intervalFilter !== 'all'
+
+  const clearAllFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('all')
+    setLoanTypeFilter('all')
+    setIntervalFilter('all')
+  }
+
+  // Apply all filters
   const filteredLoans = loans.filter((loan) => {
     const matchesSearch =
       loan.borrower_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      loan.id.toLowerCase().includes(searchTerm.toLowerCase())
+      loan.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getLoanTypeLabel(loan.loan_type).toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === 'all' || loan.status === statusFilter
+    const matchesLoanType = loanTypeFilter === 'all' || loan.loan_type === loanTypeFilter
+    const matchesInterval = intervalFilter === 'all' || (loan.repayment_interval_unit || 'months') === intervalFilter
 
-    return matchesSearch && matchesStatus
+    return matchesSearch && matchesStatus && matchesLoanType && matchesInterval
   })
+
+  // Sort loans
+  filteredLoans.sort((a, b) => {
+    let aValue: string | number
+    let bValue: string | number
+
+    switch (sortField) {
+      case 'borrower':
+        aValue = a.borrower_name.toLowerCase()
+        bValue = b.borrower_name.toLowerCase()
+        break
+      case 'amount':
+        aValue = a.principal_amount
+        bValue = b.principal_amount
+        break
+      case 'remaining':
+        aValue = a.real_remaining_principal
+        bValue = b.real_remaining_principal
+        break
+      case 'startDate':
+        aValue = new Date(a.start_date).getTime()
+        bValue = new Date(b.start_date).getTime()
+        break
+      case 'interestRate':
+        aValue = a.interest_rate
+        bValue = b.interest_rate
+        break
+      default:
+        return 0
+    }
+
+    if (sortOrder === 'asc') {
+      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
+    } else {
+      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
+    }
+  })
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortOrder('asc')
+    }
+  }
 
   if (loading) {
     return (
@@ -525,30 +600,64 @@ export default function Loans() {
         </Dialog>
       </div>
 
-      {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg border">
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 bg-white p-3 rounded-lg border">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by borrower name or loan ID..."
+            placeholder="Search by borrower name, loan ID, or loan type..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
-        <div className="w-full sm:w-48">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="paid_off">Paid Off</SelectItem>
-              <SelectItem value="defaulted">Defaulted</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="paid_off">Paid Off</SelectItem>
+            <SelectItem value="defaulted">Defaulted</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={loanTypeFilter} onValueChange={setLoanTypeFilter}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {uniqueLoanTypes.map(type => (
+              <SelectItem key={type} value={type}>
+                {getLoanTypeLabel(type)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={intervalFilter} onValueChange={setIntervalFilter}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="All Intervals" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Intervals</SelectItem>
+            {uniqueIntervals.map(interval => (
+              <SelectItem key={interval} value={interval}>
+                {`${interval.charAt(0).toUpperCase()}${interval.slice(1)}`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {hasActiveFilters && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearAllFilters}
+            className="shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Summary Stats */}
@@ -652,10 +761,63 @@ export default function Loans() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Borrower</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Remaining</TableHead>
-                  <TableHead>Start Date</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('borrower')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Borrower
+                      <ArrowUpDown className="ml-1 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('amount')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Amount
+                      <ArrowUpDown className="ml-1 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('remaining')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Remaining
+                      <ArrowUpDown className="ml-1 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('interestRate')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Rate
+                      <ArrowUpDown className="ml-1 h-4 w-4" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">Type</TableHead>
+                  <TableHead className="hidden lg:table-cell">Interval</TableHead>
+                  <TableHead>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleSort('startDate')}
+                      className="h-auto p-0 font-semibold hover:bg-transparent"
+                    >
+                      Start Date
+                      <ArrowUpDown className="ml-1 h-4 w-4" />
+                    </Button>
+                  </TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -674,6 +836,19 @@ export default function Loans() {
                     </TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(loan.real_remaining_principal)}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {loan.interest_rate}%
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="text-sm">
+                        {getLoanTypeLabel(loan.loan_type)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="text-sm text-gray-500">
+                        {loan.repayment_interval_value || 1} {loan.repayment_interval_unit || 'months'}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {new Date(loan.start_date).toLocaleDateString('en-IN')}

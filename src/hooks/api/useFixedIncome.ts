@@ -74,18 +74,20 @@ export function useCreateFixedIncome() {
         return [newFixedIncome, ...old]
       })
 
-      // Update fixed incomes for the specific tenant
-      queryClient.setQueryData<FixedIncome[]>(
-        fixedIncomeKeys.byTenant(newFixedIncome.tenant_id),
-        (old) => {
-          if (!old) return [newFixedIncome]
-          return [newFixedIncome, ...old]
-        }
-      )
+      // Update fixed incomes for the specific payer (if exists)
+      if (newFixedIncome.payer_id) {
+        queryClient.setQueryData<FixedIncome[]>(
+          fixedIncomeKeys.byTenant(newFixedIncome.payer_id),
+          (old) => {
+            if (!old) return [newFixedIncome]
+            return [newFixedIncome, ...old]
+          }
+        )
+        queryClient.invalidateQueries({ queryKey: borrowerKeys.detail(newFixedIncome.payer_id) })
+      }
 
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: fixedIncomeKeys.all })
-      queryClient.invalidateQueries({ queryKey: borrowerKeys.detail(newFixedIncome.tenant_id) })
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
     },
     onError: (error) => {

@@ -173,6 +173,7 @@ export default function Dashboard() {
         showPeriodSelector={false}
         maxItems={10}
         showRefreshButton={false}
+        showFilters={true}
       />
     </div>
   )

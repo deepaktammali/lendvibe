@@ -733,7 +733,7 @@ export default function Payments() {
       </div>
 
       {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg border">
+      <div className="flex flex-col sm:flex-row gap-3 bg-white p-3 rounded-lg border">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
@@ -743,19 +743,17 @@ export default function Payments() {
             className="pl-10"
           />
         </div>
-        <div className="w-full sm:w-48">
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="principal">Principal</SelectItem>
-              <SelectItem value="interest">Interest</SelectItem>
-              <SelectItem value="mixed">Mixed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="principal">Principal</SelectItem>
+            <SelectItem value="interest">Interest</SelectItem>
+            <SelectItem value="mixed">Mixed</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Summary Stats */}
@@ -929,7 +927,7 @@ export default function Payments() {
 
         <TabsContent value="upcoming" className="space-y-6">
           {/* Upcoming Payments */}
-          <UpcomingPayments />
+          <UpcomingPayments showFilters={true} />
         </TabsContent>
       </Tabs>
     </div>

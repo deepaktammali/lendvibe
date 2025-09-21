@@ -1,8 +1,8 @@
 import type { Loan, LoanCategory } from '@/types/database'
 
 export const LOAN_TYPE_LABELS: Record<Loan['loan_type'], string> = {
-  installment: 'Installment Loan',
-  bullet: 'Bullet Loan',
+  installment: 'Installment',
+  bullet: 'Bullet',
 }
 
 export const LOAN_CATEGORY_LABELS: Record<LoanCategory, string> = {

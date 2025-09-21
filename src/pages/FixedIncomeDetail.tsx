@@ -39,14 +39,6 @@ export default function FixedIncomeDetail() {
     }).format(amount)
   }
 
-  const getIncomeTypeBadge = (type: string) => {
-    const typeLabels = {
-      land_lease: 'Land Lease',
-      rent_agreement: 'Rent Agreement',
-      fixed_deposit_income: 'Fixed Deposit',
-    }
-    return <Badge variant="secondary">{typeLabels[type as keyof typeof typeLabels]}</Badge>
-  }
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -92,7 +84,7 @@ export default function FixedIncomeDetail() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Fixed Income Details</h1>
             <p className="text-gray-600 mt-1">
-              {getIncomeTypeBadge(fixedIncome.income_type)} • {fixedIncome.tenant_name}
+              {fixedIncome.label || 'Fixed Income'} • {fixedIncome.tenant_name || 'No payer assigned'}
             </p>
           </div>
         </div>
@@ -107,8 +99,8 @@ export default function FixedIncomeDetail() {
             <div className="flex items-center">
               <IndianRupee className="h-8 w-8 text-green-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Asset Value</p>
-                <p className="text-xl font-bold">{formatCurrency(fixedIncome.principal_amount)}</p>
+                <p className="text-sm font-medium text-gray-600">Payment Amount</p>
+                <p className="text-xl font-bold">{formatCurrency(fixedIncome.amount)}</p>
               </div>
             </div>
           </CardContent>
@@ -119,8 +111,8 @@ export default function FixedIncomeDetail() {
             <div className="flex items-center">
               <TrendingUp className="h-8 w-8 text-blue-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Income Rate</p>
-                <p className="text-xl font-bold">{fixedIncome.income_rate}%</p>
+                <p className="text-sm font-medium text-gray-600">Payment Frequency</p>
+                <p className="text-xl font-bold">Every {fixedIncome.payment_interval_value} {fixedIncome.payment_interval_unit}</p>
               </div>
             </div>
           </CardContent>
@@ -164,7 +156,9 @@ export default function FixedIncomeDetail() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Income Type</p>
-              <div className="mt-1">{getIncomeTypeBadge(fixedIncome.income_type)}</div>
+              <div className="mt-1">
+                <Badge variant="default">{fixedIncome.label || 'Fixed Income'}</Badge>
+              </div>
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Payment Schedule</p>

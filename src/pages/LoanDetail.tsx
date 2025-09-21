@@ -1,19 +1,13 @@
-import { useForm } from '@tanstack/react-form'
 import {
-  AlertTriangle,
-  ArrowLeft,
-  Calendar,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  Edit,
-  IndianRupee,
-  RefreshCw,
-  TrendingUp,
-  User,
-} from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,8 +36,9 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useGetBorrower, useGetBorrowers } from '@/hooks/api/useBorrowers'
-import { useGetLoan, useUpdateLoan, useGetPaymentSchedulesByLoan } from '@/hooks/api/useLoans'
-import { useGetPaymentsByLoan } from '@/hooks/api/usePayments'
+import { useGetLoan, useGetPaymentSchedulesByLoan, useUpdateLoan } from '@/hooks/api/useLoans'
+import { useDeletePayment, useGetPaymentsByLoan } from '@/hooks/api/usePayments'
+import { deletePaymentSchedule } from '@/lib/database'
 import {
   calculateAccruedInterest,
   getDaysSinceLastPayment,
@@ -54,12 +49,32 @@ import { formatDate, getCurrentDateISO, isOverdue } from '@/lib/utils'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
 import type { Payment } from '@/types/api/payments'
+import { useForm } from '@tanstack/react-form'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Edit,
+  IndianRupee,
+  RefreshCw,
+  Trash2,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export default function LoanDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [expandedSchedules, setExpandedSchedules] = useState<Set<string>>(new Set())
+  const [deleteScheduleId, setDeleteScheduleId] = useState<string | null>(null)
 
   // Use the new TanStack Query hooks with enabled conditions for optimal loading
   const {
@@ -85,6 +100,32 @@ export default function LoanDetail() {
     refetch: refetchSchedules,
   } = useGetPaymentSchedulesByLoan(id || '', !!id)
   const updateLoanMutation = useUpdateLoan()
+  const deletePaymentMutation = useDeletePayment()
+
+  // Custom mutation for deleting payment schedules
+  const deleteScheduleMutation = useMutation({
+    mutationFn: async (scheduleId: string) => {
+      // First, delete all associated payments
+      const schedulePayments = getSchedulePayments(scheduleId)
+      for (const payment of schedulePayments) {
+        await deletePaymentMutation.mutateAsync(payment.id)
+      }
+
+      // Then delete the schedule
+      await deletePaymentSchedule(scheduleId)
+    },
+    onSuccess: () => {
+      // Invalidate and refetch relevant queries
+      queryClient.invalidateQueries({ queryKey: ['payments'] })
+      queryClient.invalidateQueries({ queryKey: ['loans'] })
+      refetchPayments()
+      refetchSchedules()
+      refetchLoan()
+    },
+    onError: (error) => {
+      console.error('Failed to delete payment schedule:', error)
+    }
+  })
 
   const loading = loanLoading || borrowerLoading || paymentsLoading || schedulesLoading
   const error = loanError
@@ -137,6 +178,21 @@ export default function LoanDetail() {
 
   const getSchedulePayments = (scheduleId: string) => {
     return payments.filter(payment => payment.payment_schedule_id === scheduleId)
+  }
+
+  const handleDeleteSchedule = (scheduleId: string) => {
+    setDeleteScheduleId(scheduleId)
+  }
+
+  const confirmDeleteSchedule = async () => {
+    if (!deleteScheduleId) return
+
+    try {
+      await deleteScheduleMutation.mutateAsync(deleteScheduleId)
+      setDeleteScheduleId(null)
+    } catch (error) {
+      console.error('Failed to delete payment schedule:', error)
+    }
   }
 
   const getScheduleStatusBadge = (schedule: any) => {
@@ -277,18 +333,17 @@ export default function LoanDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => navigate('/loans')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Loans
-          </Button>
+      <div className="space-y-4">
+        <Button variant="ghost" onClick={() => navigate('/loans')} className="w-fit">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Loans
+        </Button>
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Loan Details</h1>
             <p className="text-gray-600 mt-2">Comprehensive loan information and payment history</p>
           </div>
-        </div>
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setIsEditDialogOpen(true)}>
               <Edit className="h-4 w-4 mr-2" />
@@ -559,6 +614,7 @@ export default function LoanDetail() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Loan Overview Cards */}
@@ -731,6 +787,7 @@ export default function LoanDetail() {
                   <TableHead>Interest Due</TableHead>
                   <TableHead>Paid</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-24">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -781,10 +838,21 @@ export default function LoanDetail() {
                         <TableCell>
                           {getScheduleStatusBadge(schedule)}
                         </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteSchedule(schedule.id)}
+                            className="h-8 w-8 p-0"
+                            disabled={deleteScheduleMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                       {isExpanded && schedulePayments.length > 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="p-0">
+                          <TableCell colSpan={8} className="p-0">
                             <div className="px-4 py-2 bg-gray-50 border-l-4 border-blue-200">
                               <h4 className="text-sm font-medium mb-2 text-gray-700">
                                 Payments for this schedule ({schedulePayments.length})
@@ -820,7 +888,7 @@ export default function LoanDetail() {
                       )}
                       {isExpanded && schedulePayments.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={7} className="p-0">
+                          <TableCell colSpan={8} className="p-0">
                             <div className="px-4 py-2 bg-gray-50 border-l-4 border-gray-200">
                               <p className="text-sm text-gray-500 italic">
                                 No payments made for this schedule yet
@@ -899,6 +967,52 @@ export default function LoanDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Schedule Confirmation Dialog */}
+      <AlertDialog open={!!deleteScheduleId} onOpenChange={() => setDeleteScheduleId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment Schedule</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this payment schedule? This action will also delete all payments associated with this schedule and cannot be undone.
+              {deleteScheduleId &&
+                (() => {
+                  const schedule = paymentSchedules.find((s) => s.id === deleteScheduleId)
+                  const schedulePayments = getSchedulePayments(deleteScheduleId)
+                  if (schedule) {
+                    return (
+                      <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                        <p>
+                          <strong>Period:</strong> {new Date(schedule.period_start_date).toLocaleDateString('en-IN')} - {new Date(schedule.period_end_date).toLocaleDateString('en-IN')}
+                        </p>
+                        <p>
+                          <strong>Due Date:</strong> {new Date(schedule.due_date).toLocaleDateString('en-IN')}
+                        </p>
+                        <p>
+                          <strong>Total Due:</strong> {formatCurrency(schedule.total_principal_due + schedule.total_interest_due)}
+                        </p>
+                        <p>
+                          <strong>Associated Payments:</strong> {schedulePayments.length} payment(s) will be deleted
+                        </p>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteSchedule}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleteScheduleMutation.isPending}
+            >
+              {deleteScheduleMutation.isPending ? 'Deleting...' : 'Delete Schedule'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

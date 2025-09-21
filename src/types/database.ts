@@ -25,10 +25,9 @@ export interface Loan {
 
 export interface FixedIncome {
   id: string
-  tenant_id: string // Reference to borrowers table (but conceptually they're tenants/lessees)
-  income_type: 'land_lease' | 'rent_agreement' | 'fixed_deposit_income'
-  principal_amount: number // The asset value or deposit amount
-  income_rate: number // Annual rate for income calculation
+  label?: string // Descriptive label for the fixed income
+  payer_id?: string // Optional reference to borrowers table
+  amount: number // Simple payment amount
   payment_interval_unit: 'days' | 'weeks' | 'months' | 'years'
   payment_interval_value: number
   start_date: string // YYYY-MM-DD format
@@ -76,15 +75,10 @@ export interface IncomePayment {
 export type LoanCategory = 'traditional_loan' | 'fixed_income'
 
 export const LOAN_TYPE_LABELS: Record<Loan['loan_type'], string> = {
-  installment: 'Installment Loan',
-  bullet: 'Bullet Loan',
+  installment: 'Installment',
+  bullet: 'Bullet',
 }
 
-export const FIXED_INCOME_TYPE_LABELS: Record<FixedIncome['income_type'], string> = {
-  land_lease: 'Land Lease',
-  rent_agreement: 'Rent Agreement',
-  fixed_deposit_income: 'Fixed Deposit Income',
-}
 
 export interface BorrowerWithLoans extends Borrower {
   loans: Loan[]

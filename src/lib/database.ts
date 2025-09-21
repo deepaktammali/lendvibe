@@ -612,13 +612,12 @@ export async function createFixedIncome(
   }
 
   await database.execute(
-    'INSERT INTO fixed_income (id, tenant_id, income_type, principal_amount, income_rate, payment_interval_unit, payment_interval_value, start_date, end_date, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+    'INSERT INTO fixed_income (id, label, payer_id, amount, payment_interval_unit, payment_interval_value, start_date, end_date, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
     [
       newFixedIncome.id,
-      newFixedIncome.tenant_id,
-      newFixedIncome.income_type,
-      newFixedIncome.principal_amount,
-      newFixedIncome.income_rate,
+      newFixedIncome.label,
+      newFixedIncome.payer_id,
+      newFixedIncome.amount,
       newFixedIncome.payment_interval_unit,
       newFixedIncome.payment_interval_value,
       newFixedIncome.start_date,
@@ -674,7 +673,7 @@ export async function getFixedIncomesWithTenants(): Promise<
 > {
   const database = await initDatabase()
   const result = await database.select<(FixedIncome & { tenant_name: string })[]>(
-    'SELECT f.*, b.name as tenant_name FROM fixed_income f JOIN borrowers b ON f.tenant_id = b.id WHERE f.status = "active" ORDER BY f.start_date DESC'
+    'SELECT f.*, COALESCE(b.name, \'No payer assigned\') as tenant_name FROM fixed_income f LEFT JOIN borrowers b ON f.payer_id = b.id WHERE f.status = "active" ORDER BY f.start_date DESC'
   )
   return result
 }

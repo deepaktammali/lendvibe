@@ -17,10 +17,9 @@ import {
 import type { FixedIncome, FixedIncomeWithTenant, IncomePayment } from '@/types/api/fixedIncome'
 
 export interface CreateFixedIncomeData {
-  tenant_id: string
-  income_type: FixedIncome['income_type']
-  principal_amount: number
-  income_rate: number
+  label?: string
+  payer_id?: string
+  amount: number
   payment_interval_unit: FixedIncome['payment_interval_unit']
   payment_interval_value: number
   start_date: string
@@ -28,10 +27,9 @@ export interface CreateFixedIncomeData {
 }
 
 export interface UpdateFixedIncomeData {
-  tenant_id?: string
-  income_type?: FixedIncome['income_type']
-  principal_amount?: number
-  income_rate?: number
+  label?: string
+  payer_id?: string
+  amount?: number
   payment_interval_unit?: FixedIncome['payment_interval_unit']
   payment_interval_value?: number
   start_date?: string
@@ -59,10 +57,9 @@ export const fixedIncomeService = {
     // Transform database types to API types
     return dbFixedIncomes.map((dbFixedIncome) => ({
       id: dbFixedIncome.id,
-      tenant_id: dbFixedIncome.tenant_id,
-      income_type: dbFixedIncome.income_type,
-      principal_amount: dbFixedIncome.principal_amount,
-      income_rate: dbFixedIncome.income_rate,
+      label: dbFixedIncome.label,
+      payer_id: dbFixedIncome.payer_id,
+      amount: dbFixedIncome.amount,
       payment_interval_unit: dbFixedIncome.payment_interval_unit,
       payment_interval_value: dbFixedIncome.payment_interval_value,
       start_date: dbFixedIncome.start_date,
@@ -79,10 +76,9 @@ export const fixedIncomeService = {
     // Transform database type to API type
     return {
       id: dbFixedIncome.id,
-      tenant_id: dbFixedIncome.tenant_id,
-      income_type: dbFixedIncome.income_type,
-      principal_amount: dbFixedIncome.principal_amount,
-      income_rate: dbFixedIncome.income_rate,
+      label: dbFixedIncome.label,
+      payer_id: dbFixedIncome.payer_id,
+      amount: dbFixedIncome.amount,
       payment_interval_unit: dbFixedIncome.payment_interval_unit,
       payment_interval_value: dbFixedIncome.payment_interval_value,
       start_date: dbFixedIncome.start_date,
@@ -97,10 +93,9 @@ export const fixedIncomeService = {
     // Transform database types to API types
     return dbFixedIncomes.map((dbFixedIncome) => ({
       id: dbFixedIncome.id,
-      tenant_id: dbFixedIncome.tenant_id,
-      income_type: dbFixedIncome.income_type,
-      principal_amount: dbFixedIncome.principal_amount,
-      income_rate: dbFixedIncome.income_rate,
+      label: dbFixedIncome.label,
+      payer_id: dbFixedIncome.payer_id,
+      amount: dbFixedIncome.amount,
       payment_interval_unit: dbFixedIncome.payment_interval_unit,
       payment_interval_value: dbFixedIncome.payment_interval_value,
       start_date: dbFixedIncome.start_date,
@@ -115,10 +110,9 @@ export const fixedIncomeService = {
     // Transform database types to API types
     return dbFixedIncomesWithTenants.map((dbFixedIncome) => ({
       id: dbFixedIncome.id,
-      tenant_id: dbFixedIncome.tenant_id,
-      income_type: dbFixedIncome.income_type,
-      principal_amount: dbFixedIncome.principal_amount,
-      income_rate: dbFixedIncome.income_rate,
+      label: dbFixedIncome.label,
+      payer_id: dbFixedIncome.payer_id,
+      amount: dbFixedIncome.amount,
       payment_interval_unit: dbFixedIncome.payment_interval_unit,
       payment_interval_value: dbFixedIncome.payment_interval_value,
       start_date: dbFixedIncome.start_date,
@@ -132,6 +126,11 @@ export const fixedIncomeService = {
   async createFixedIncome(data: CreateFixedIncomeData): Promise<FixedIncome> {
     const fixedIncomeData = {
       ...data,
+      // Set default values for legacy fields
+      tenant_id: data.payer_id, // Map payer_id to tenant_id for legacy compatibility
+      income_type: 'land_lease' as const,
+      principal_amount: data.amount,
+      income_rate: 0,
       status: 'active' as const,
     }
     const dbFixedIncome = await dbCreateFixedIncome(fixedIncomeData)
@@ -139,10 +138,9 @@ export const fixedIncomeService = {
     // Transform database type to API type
     return {
       id: dbFixedIncome.id,
-      tenant_id: dbFixedIncome.tenant_id,
-      income_type: dbFixedIncome.income_type,
-      principal_amount: dbFixedIncome.principal_amount,
-      income_rate: dbFixedIncome.income_rate,
+      label: dbFixedIncome.label,
+      payer_id: dbFixedIncome.payer_id,
+      amount: dbFixedIncome.amount,
       payment_interval_unit: dbFixedIncome.payment_interval_unit,
       payment_interval_value: dbFixedIncome.payment_interval_value,
       start_date: dbFixedIncome.start_date,

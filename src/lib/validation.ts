@@ -47,13 +47,9 @@ export const loanSchema = z
 
 export const fixedIncomeSchema = z
   .object({
-    tenant_id: z.string().min(1, 'Please select a tenant'),
-    income_type: z.enum(['land_lease', 'rent_agreement', 'fixed_deposit_income']),
-    principal_amount: z.number().min(0.01, 'Asset value must be greater than 0'),
-    income_rate: z
-      .number()
-      .min(0, 'Income rate cannot be negative')
-      .max(100, 'Income rate cannot exceed 100%'),
+    label: z.string().optional(),
+    payer_id: z.string().optional(),
+    amount: z.number().min(0.01, 'Amount must be greater than 0'),
     payment_interval_unit: z.enum(['days', 'weeks', 'months', 'years']),
     payment_interval_value: z.number().int().min(1),
     start_date: z.string().min(1, 'Start date is required'),

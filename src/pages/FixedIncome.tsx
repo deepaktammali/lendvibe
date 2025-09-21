@@ -46,10 +46,9 @@ import {
   useDeleteFixedIncome,
   useGetFixedIncomesWithTenants,
 } from '@/hooks/api/useFixedIncome'
-import { formatDate, getCurrentDateISO } from '@/lib/utils'
+import { getCurrentDateISO } from '@/lib/utils'
 import { type FixedIncomeFormData, fixedIncomeSchema } from '@/lib/validation'
 import type { FixedIncome } from '@/types/api/fixedIncome'
-import { FIXED_INCOME_TYPE_LABELS } from '@/types/database'
 
 export default function FixedIncomePage() {
   const navigate = useNavigate()
@@ -76,10 +75,9 @@ export default function FixedIncomePage() {
 
   const fixedIncomeForm = useForm({
     defaultValues: {
-      tenant_id: '',
-      income_type: 'land_lease' as const,
-      principal_amount: 0,
-      income_rate: 0,
+      label: '',
+      payer_id: '',
+      amount: 0,
       payment_interval_unit: 'months' as const,
       payment_interval_value: 1,
       start_date: getCurrentDateISO(),
@@ -92,10 +90,9 @@ export default function FixedIncomePage() {
     onSubmit: async ({ value }) => {
       try {
         const fixedIncomeData = {
-          tenant_id: value.tenant_id,
-          income_type: value.income_type,
-          principal_amount: value.principal_amount,
-          income_rate: value.income_rate,
+          label: value.label,
+          payer_id: value.payer_id || undefined,
+          amount: value.amount,
           payment_interval_unit: value.payment_interval_unit,
           payment_interval_value: value.payment_interval_value,
           start_date: value.start_date,
@@ -127,23 +124,14 @@ export default function FixedIncomePage() {
 
   const filteredFixedIncomes = fixedIncomes.filter((item) => {
     const matchesSearch =
-      item.tenant_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.income_type.toLowerCase().includes(searchTerm.toLowerCase())
+      (item.label || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (item.tenant_name || '').toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter
 
     return matchesSearch && matchesStatus
   })
 
-  const _getIncomeTypeBadge = (type: FixedIncome['income_type']) => {
-    const variants = {
-      land_lease: 'default',
-      rent_agreement: 'secondary',
-      fixed_deposit_income: 'outline',
-    } as const
-
-    return <Badge variant={variants[type]}>{FIXED_INCOME_TYPE_LABELS[type]}</Badge>
-  }
 
   const getStatusBadge = (status: FixedIncome['status']) => {
     const variants = {
@@ -193,18 +181,39 @@ export default function FixedIncomePage() {
               className="space-y-4"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <fixedIncomeForm.Field name="tenant_id">
+                <fixedIncomeForm.Field name="label">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="tenant">Tenant *</Label>
+                      <Label htmlFor="label">Label</Label>
+                      <Input
+                        id="label"
+                        placeholder="e.g., Rent - Apartment 1A"
+                        value={field.state.value || ''}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </fixedIncomeForm.Field>
+
+                <fixedIncomeForm.Field name="payer_id">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="payer">Payer (Optional)</Label>
                       <Select
-                        value={field.state.value}
-                        onValueChange={(value) => field.handleChange(value)}
+                        value={field.state.value || ''}
+                        onValueChange={(value) => field.handleChange(value || '')}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a tenant" />
+                          <SelectValue placeholder="Select a payer (optional)" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="">No payer selected</SelectItem>
                           {borrowers.map((borrower) => (
                             <SelectItem key={borrower.id} value={borrower.id}>
                               {borrower.name}
@@ -221,42 +230,12 @@ export default function FixedIncomePage() {
                   )}
                 </fixedIncomeForm.Field>
 
-                <fixedIncomeForm.Field name="income_type">
+                <fixedIncomeForm.Field name="amount">
                   {(field) => (
                     <div className="space-y-2">
-                      <Label htmlFor="income-type">Income Type *</Label>
-                      <Select
-                        value={field.state.value}
-                        onValueChange={(value) =>
-                          field.handleChange(value as FixedIncomeFormData['income_type'])
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select income type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(FIXED_INCOME_TYPE_LABELS).map(([value, label]) => (
-                            <SelectItem key={value} value={value}>
-                              {label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
-                          {field.state.meta.errors[0]?.message}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </fixedIncomeForm.Field>
-
-                <fixedIncomeForm.Field name="principal_amount">
-                  {(field) => (
-                    <div className="space-y-2">
-                      <Label htmlFor="principal-amount">Asset Value *</Label>
+                      <Label htmlFor="amount">Amount *</Label>
                       <Input
-                        id="principal-amount"
+                        id="amount"
                         type="number"
                         step="0.01"
                         min="0"
@@ -264,32 +243,6 @@ export default function FixedIncomePage() {
                         onChange={(e) => {
                           const amount = parseFloat(e.target.value) || 0
                           field.handleChange(amount)
-                        }}
-                        onBlur={field.handleBlur}
-                      />
-                      {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
-                          {field.state.meta.errors[0]?.message}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </fixedIncomeForm.Field>
-
-                <fixedIncomeForm.Field name="income_rate">
-                  {(field) => (
-                    <div className="space-y-2">
-                      <Label htmlFor="income-rate">Annual Rate (%) *</Label>
-                      <Input
-                        id="income-rate"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={field.state.value || ''}
-                        onChange={(e) => {
-                          const rate = parseFloat(e.target.value) || 0
-                          field.handleChange(rate)
                         }}
                         onBlur={field.handleBlur}
                       />
@@ -447,29 +400,27 @@ export default function FixedIncomePage() {
       </div>
 
       {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg border">
+      <div className="flex flex-col sm:flex-row gap-3 bg-white p-3 rounded-lg border">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
-            placeholder="Search by tenant name or income type..."
+            placeholder="Search by label or payer name..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
-        <div className="w-full sm:w-48">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="terminated">Terminated</SelectItem>
-              <SelectItem value="expired">Expired</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-40">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="terminated">Terminated</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Summary Stats */}
@@ -484,7 +435,7 @@ export default function FixedIncomePage() {
                   {formatCurrency(
                     filteredFixedIncomes
                       .filter((item) => item.status === 'active')
-                      .reduce((sum, item) => sum + item.principal_amount, 0)
+                      .reduce((sum, item) => sum + item.amount, 0)
                   )}
                 </p>
               </div>
@@ -511,15 +462,14 @@ export default function FixedIncomePage() {
             <div className="flex items-center">
               <Clock className="h-6 w-6 text-purple-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Average Rate</p>
+                <p className="text-sm font-medium text-gray-600">Average Payment</p>
                 <p className="text-base font-bold">
                   {filteredFixedIncomes.length > 0
-                    ? (
-                        filteredFixedIncomes.reduce((sum, item) => sum + item.income_rate, 0) /
+                    ? formatCurrency(
+                        filteredFixedIncomes.reduce((sum, item) => sum + item.amount, 0) /
                         filteredFixedIncomes.length
-                      ).toFixed(2)
-                    : '0.00'}
-                  %
+                      )
+                    : formatCurrency(0)}
                 </p>
               </div>
             </div>
@@ -572,9 +522,10 @@ export default function FixedIncomePage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Tenant</TableHead>
-                  <TableHead>Asset Value</TableHead>
-                  <TableHead>Rate</TableHead>
+                  <TableHead>Label</TableHead>
+                  <TableHead>Payer</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Payment Every</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -583,15 +534,18 @@ export default function FixedIncomePage() {
                 {filteredFixedIncomes.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
+                      <span className="font-medium">{item.label || 'Untitled'}</span>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4 text-gray-400" />
-                        <span className="font-medium">{item.tenant_name}</span>
+                        <span>{item.tenant_name || 'No payer assigned'}</span>
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">
-                      {formatCurrency(item.principal_amount)}
+                      {formatCurrency(item.amount)}
                     </TableCell>
-                    <TableCell>{item.income_rate}%</TableCell>
+                    <TableCell>{item.payment_interval_value} {item.payment_interval_unit}</TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">

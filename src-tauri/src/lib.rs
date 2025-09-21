@@ -36,6 +36,18 @@ pub fn run() {
                             description: "add payment_schedules table for parent-child payment structure",
                             sql: include_str!("../migrations/004_add_payment_schedules.sql"),
                             kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
+                        tauri_plugin_sql::Migration {
+                            version: 5,
+                            description: "fix payment schedule duplicates",
+                            sql: include_str!("../migrations/005_fix_payment_schedule_duplicates.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        },
+                        tauri_plugin_sql::Migration {
+                            version: 6,
+                            description: "simplify fixed_income table structure",
+                            sql: include_str!("../migrations/006_simplify_fixed_income.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
                         }
                     ],
                 )

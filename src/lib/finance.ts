@@ -183,38 +183,10 @@ export function getDaysSinceLastPayment(
  * Calculates accrued income for fixed income assets
  */
 export function calculateAccruedIncome(
-  fixedIncome: Pick<
-    FixedIncome,
-    'principal_amount' | 'income_rate' | 'payment_interval_unit' | 'payment_interval_value'
-  >
+  fixedIncome: Pick<FixedIncome, 'amount'>
 ): number {
-  if (fixedIncome.income_rate <= 0 || fixedIncome.principal_amount <= 0) {
-    return 0
-  }
-
-  const annualRate = fixedIncome.income_rate / 100
-  const dailyRate = annualRate / 365
-
-  let intervalDays = 30
-  if (fixedIncome.payment_interval_unit && fixedIncome.payment_interval_value) {
-    switch (fixedIncome.payment_interval_unit) {
-      case 'days':
-        intervalDays = fixedIncome.payment_interval_value
-        break
-      case 'weeks':
-        intervalDays = fixedIncome.payment_interval_value * 7
-        break
-      case 'months':
-        intervalDays = fixedIncome.payment_interval_value * 30
-        break
-      case 'years':
-        intervalDays = fixedIncome.payment_interval_value * 365
-        break
-    }
-  }
-
-  const accruedIncome = fixedIncome.principal_amount * dailyRate * intervalDays
-  return Math.round(accruedIncome * 100) / 100
+  // In the simplified model, the amount IS the expected payment
+  return fixedIncome.amount
 }
 
 /**

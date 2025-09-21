@@ -238,7 +238,7 @@ export default function Borrowers() {
       </div>
 
       {/* Search */}
-      <div className="bg-white p-4 rounded-lg border">
+      <div className="bg-white p-3 rounded-lg border">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input

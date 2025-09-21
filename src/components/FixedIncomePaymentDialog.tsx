@@ -95,8 +95,7 @@ export default function FixedIncomePaymentDialog({ onSuccess }: FixedIncomePayme
                   <SelectContent>
                     {fixedIncomes.map((income) => (
                       <SelectItem key={income.id} value={income.id}>
-                        {income.tenant_name} - {income.income_type.replace('_', ' ')} -{' '}
-                        {formatCurrency(income.principal_amount)}
+                        {income.label || income.tenant_name || 'Untitled'} - {formatCurrency(income.amount)}
                       </SelectItem>
                     ))}
                   </SelectContent>

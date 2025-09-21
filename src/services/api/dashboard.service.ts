@@ -172,7 +172,7 @@ export const dashboardService = {
     const fixedIncomeStats = {
       total: fixedIncomes.length,
       active: fixedIncomes.filter((fi) => fi.status === 'active').length,
-      totalIncome: fixedIncomes.reduce((sum, fi) => sum + fi.principal_amount, 0),
+      totalIncome: fixedIncomes.reduce((sum, fi) => sum + fi.amount, 0),
     }
 
     return {

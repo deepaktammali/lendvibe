@@ -9,7 +9,6 @@ import {
   getPaymentSchedulesByLoan as dbGetPaymentSchedulesByLoan,
   getPayments as dbGetPayments,
   getPaymentsByLoan as dbGetPaymentsByLoan,
-  getPaymentsByPaymentSchedule as dbGetPaymentsByPaymentSchedule,
   updatePayment as dbUpdatePayment,
   updatePaymentSchedule as dbUpdatePaymentSchedule,
   getLoan,
