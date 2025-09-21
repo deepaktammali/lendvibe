@@ -1,7 +1,12 @@
-# Tauri + React + Typescript
+# LendVibe
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+A lending application built with Tauri and React. Track loans, manage payments, and organize your lending activities in one place.
 
-## Recommended IDE Setup
+Vibe coded with human guidance, mostly using Claude Code.
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Development
+
+```bash
+bun install
+bun run dev
+```
