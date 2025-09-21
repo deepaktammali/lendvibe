@@ -1,4 +1,15 @@
-import { ArrowLeft, Banknote, Calendar, Eye, IndianRupee, MapPin, Phone, Receipt, TrendingUp, User } from 'lucide-react'
+import {
+  ArrowLeft,
+  Banknote,
+  Calendar,
+  Eye,
+  IndianRupee,
+  MapPin,
+  Phone,
+  Receipt,
+  TrendingUp,
+  User,
+} from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -25,8 +36,8 @@ export default function BorrowerDetail() {
   const { data: allPayments = [], isLoading: loadingPayments } = useGetPaymentsWithDetails()
 
   // Filter payments for this borrower's loans
-  const borrowerPayments = allPayments.filter(payment =>
-    loans.some(loan => loan.id === payment.loan_id)
+  const borrowerPayments = allPayments.filter((payment) =>
+    loans.some((loan) => loan.id === payment.loan_id)
   )
 
   const formatCurrency = (amount: number) => {
@@ -57,7 +68,11 @@ export default function BorrowerDetail() {
       defaulted: 'Defaulted',
     }
 
-    return <Badge variant={variants[status as keyof typeof variants]}>{labels[status as keyof typeof labels]}</Badge>
+    return (
+      <Badge variant={variants[status as keyof typeof variants]}>
+        {labels[status as keyof typeof labels]}
+      </Badge>
+    )
   }
 
   const getPaymentTypeBadge = (type: string) => {
@@ -73,14 +88,18 @@ export default function BorrowerDetail() {
       mixed: 'Mixed',
     }
 
-    return <Badge variant={variants[type as keyof typeof variants]}>{labels[type as keyof typeof labels]}</Badge>
+    return (
+      <Badge variant={variants[type as keyof typeof variants]}>
+        {labels[type as keyof typeof labels]}
+      </Badge>
+    )
   }
 
   // Calculate totals
   const totalLoaned = loans.reduce((sum, loan) => sum + loan.principal_amount, 0)
   const totalRemaining = loans.reduce((sum, loan) => sum + loan.current_balance, 0)
   const totalPaid = borrowerPayments.reduce((sum, payment) => sum + payment.amount, 0)
-  const activeLoans = loans.filter(loan => loan.status === 'active').length
+  const activeLoans = loans.filter((loan) => loan.status === 'active').length
 
   if (loadingBorrower || loadingLoans || loadingPayments) {
     return (
@@ -305,7 +324,10 @@ export default function BorrowerDetail() {
                   </TableHeader>
                   <TableBody>
                     {borrowerPayments
-                      .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())
+                      .sort(
+                        (a, b) =>
+                          new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
+                      )
                       .map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell className="font-medium">

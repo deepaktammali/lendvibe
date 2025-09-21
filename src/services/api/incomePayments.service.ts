@@ -54,7 +54,9 @@ export const incomePaymentService = {
     }))
   },
 
-  async getLastIncomePaymentByFixedIncome(fixedIncomeId: string): Promise<FixedIncomePayment | null> {
+  async getLastIncomePaymentByFixedIncome(
+    fixedIncomeId: string
+  ): Promise<FixedIncomePayment | null> {
     const dbPayment = await dbGetLastIncomePaymentByFixedIncome(fixedIncomeId)
     if (!dbPayment) return null
 
@@ -69,7 +71,9 @@ export const incomePaymentService = {
     }
   },
 
-  async getLastIncomePaymentsByFixedIncomes(fixedIncomeIds: string[]): Promise<Map<string, FixedIncomePayment>> {
+  async getLastIncomePaymentsByFixedIncomes(
+    fixedIncomeIds: string[]
+  ): Promise<Map<string, FixedIncomePayment>> {
     const dbPaymentsMap = await dbGetLastIncomePaymentsByFixedIncomes(fixedIncomeIds)
     const apiPaymentsMap = new Map<string, FixedIncomePayment>()
 

@@ -256,11 +256,13 @@ export default function Payments() {
         </div>
 
         <div className="flex gap-2">
-          <FixedIncomePaymentDialog onSuccess={() => {
-            refetchPayments()
-            refetchLoans()
-            refetchBorrowers()
-          }} />
+          <FixedIncomePaymentDialog
+            onSuccess={() => {
+              refetchPayments()
+              refetchLoans()
+              refetchBorrowers()
+            }}
+          />
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -269,153 +271,165 @@ export default function Payments() {
                 Record Loan Payment
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Record Payment</DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                paymentForm.handleSubmit()
-              }}
-              className="space-y-4"
-            >
-              <paymentForm.Field name="loan_id">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-loan">Loan *</Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(value) => field.handleChange(value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a loan" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {loans.map((loan) => {
-                          const borrower = borrowers.find((b) => b.id === loan.borrower_id)
-                          return (
-                            <SelectItem key={loan.id} value={loan.id}>
-                              {borrower?.name} - {formatCurrency(loan.current_balance)} remaining
-                            </SelectItem>
-                          )
-                        })}
-                      </SelectContent>
-                    </Select>
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </paymentForm.Field>
-
-              <paymentForm.Field name="principal_amount">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-principal">Principal Amount</Label>
-                    <Input
-                      id="payment-principal"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={field.state.value || ''}
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0
-                        field.handleChange(amount)
-                      }}
-                      onBlur={field.handleBlur}
-                      placeholder="0.00"
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </paymentForm.Field>
-
-              <paymentForm.Field name="interest_amount">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-interest">Interest Amount</Label>
-                    <Input
-                      id="payment-interest"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={field.state.value || ''}
-                      onChange={(e) => {
-                        const amount = parseFloat(e.target.value) || 0
-                        field.handleChange(amount)
-                      }}
-                      onBlur={field.handleBlur}
-                      placeholder="0.00"
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </paymentForm.Field>
-
-              <paymentForm.Field name="payment_date">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-date">Payment Date *</Label>
-                    <Input
-                      id="payment-date"
-                      type="date"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </paymentForm.Field>
-
-              <paymentForm.Field name="notes">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="payment-notes">Notes</Label>
-                    <Input
-                      id="payment-notes"
-                      value={field.state.value || ''}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                      placeholder="Optional notes about this payment..."
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </paymentForm.Field>
-
-              <div className="flex justify-end space-x-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    paymentForm.reset()
-                    setIsAddDialogOpen(false)
-                  }}
-                >
-                  Cancel
-                </Button>
-                <paymentForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-                  {([canSubmit, isSubmitting]) => (
-                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
-                      {isSubmitting ? 'Recording...' : 'Record Payment'}
-                    </Button>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Record Payment</DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  paymentForm.handleSubmit()
+                }}
+                className="space-y-4"
+              >
+                <paymentForm.Field name="loan_id">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="payment-loan">Loan *</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) => field.handleChange(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a loan" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {loans.map((loan) => {
+                            const borrower = borrowers.find((b) => b.id === loan.borrower_id)
+                            return (
+                              <SelectItem key={loan.id} value={loan.id}>
+                                {borrower?.name} - {formatCurrency(loan.current_balance)} remaining
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
                   )}
-                </paymentForm.Subscribe>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                </paymentForm.Field>
+
+                <paymentForm.Field name="principal_amount">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="payment-principal">Principal Amount</Label>
+                      <Input
+                        id="payment-principal"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={field.state.value || ''}
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0
+                          field.handleChange(amount)
+                        }}
+                        onBlur={field.handleBlur}
+                        placeholder="0.00"
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </paymentForm.Field>
+
+                <paymentForm.Field name="interest_amount">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="payment-interest">Interest Amount</Label>
+                      <Input
+                        id="payment-interest"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={field.state.value || ''}
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0
+                          field.handleChange(amount)
+                        }}
+                        onBlur={field.handleBlur}
+                        placeholder="0.00"
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </paymentForm.Field>
+
+                <paymentForm.Field name="payment_date">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="payment-date">Payment Date *</Label>
+                      <Input
+                        id="payment-date"
+                        type="date"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </paymentForm.Field>
+
+                <paymentForm.Field name="notes">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="payment-notes">Notes</Label>
+                      <Input
+                        id="payment-notes"
+                        value={field.state.value || ''}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        placeholder="Optional notes about this payment..."
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </paymentForm.Field>
+
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      paymentForm.reset()
+                      setIsAddDialogOpen(false)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <paymentForm.Subscribe
+                    selector={(state) => [state.canSubmit, state.isSubmitting]}
+                  >
+                    {([canSubmit, isSubmitting]) => (
+                      <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                        {isSubmitting ? 'Recording...' : 'Record Payment'}
+                      </Button>
+                    )}
+                  </paymentForm.Subscribe>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Edit Payment Dialog */}

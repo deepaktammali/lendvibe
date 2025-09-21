@@ -73,7 +73,7 @@ export default function FixedIncomePage() {
     }).format(amount)
   }
 
-  const formatDate = (dateString: string) => {
+  const _formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString()
   }
 
@@ -138,7 +138,7 @@ export default function FixedIncomePage() {
     return matchesSearch && matchesStatus
   })
 
-  const getIncomeTypeBadge = (type: FixedIncome['income_type']) => {
+  const _getIncomeTypeBadge = (type: FixedIncome['income_type']) => {
     const variants = {
       land_lease: 'default',
       rent_agreement: 'secondary',

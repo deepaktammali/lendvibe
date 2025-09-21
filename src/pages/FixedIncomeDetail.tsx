@@ -1,4 +1,4 @@
-import { ArrowLeft, Calendar, IndianRupee, Plus, Receipt, TrendingUp, User } from 'lucide-react'
+import { ArrowLeft, Calendar, IndianRupee, Receipt, TrendingUp } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import FixedIncomePaymentDialog from '@/components/FixedIncomePaymentDialog'
 import { Badge } from '@/components/ui/badge'
@@ -12,16 +12,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { useGetFixedIncomesWithTenants, useGetIncomePaymentsByFixedIncome } from '@/hooks/api/useFixedIncome'
+import {
+  useGetFixedIncomesWithTenants,
+  useGetIncomePaymentsByFixedIncome,
+} from '@/hooks/api/useFixedIncome'
 
 export default function FixedIncomeDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const { data: fixedIncomesWithTenants = [], isLoading: loadingFixedIncome } = useGetFixedIncomesWithTenants()
+  const { data: fixedIncomesWithTenants = [], isLoading: loadingFixedIncome } =
+    useGetFixedIncomesWithTenants()
   const { data: payments = [], isLoading: loadingPayments } = useGetIncomePaymentsByFixedIncome(id!)
 
-  const fixedIncome = fixedIncomesWithTenants.find(fi => fi.id === id)
+  const fixedIncome = fixedIncomesWithTenants.find((fi) => fi.id === id)
 
   const handlePaymentSuccess = () => {
     // Refresh functionality can be implemented when needed
@@ -42,7 +46,7 @@ export default function FixedIncomeDetail() {
     const typeLabels = {
       land_lease: 'Land Lease',
       rent_agreement: 'Rent Agreement',
-      fixed_deposit_income: 'Fixed Deposit'
+      fixed_deposit_income: 'Fixed Deposit',
     }
     return <Badge variant="secondary">{typeLabels[type as keyof typeof typeLabels]}</Badge>
   }
@@ -215,9 +219,7 @@ export default function FixedIncomeDetail() {
                     <TableCell className="font-medium">
                       {formatDate(payment.payment_date)}
                     </TableCell>
-                    <TableCell className="font-medium">
-                      {formatCurrency(payment.amount)}
-                    </TableCell>
+                    <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-gray-500">
                       {payment.notes || '-'}
                     </TableCell>

@@ -12,9 +12,12 @@ export const incomePaymentKeys = {
   all: ['incomePayments'] as const,
   lists: () => [...incomePaymentKeys.all, 'list'] as const,
   list: (filters: string) => [...incomePaymentKeys.lists(), { filters }] as const,
-  byFixedIncome: (fixedIncomeId: string) => [...incomePaymentKeys.all, 'byFixedIncome', fixedIncomeId] as const,
-  lastByFixedIncome: (fixedIncomeId: string) => [...incomePaymentKeys.all, 'lastByFixedIncome', fixedIncomeId] as const,
-  lastByFixedIncomes: (fixedIncomeIds: string[]) => [...incomePaymentKeys.all, 'lastByFixedIncomes', { fixedIncomeIds }] as const,
+  byFixedIncome: (fixedIncomeId: string) =>
+    [...incomePaymentKeys.all, 'byFixedIncome', fixedIncomeId] as const,
+  lastByFixedIncome: (fixedIncomeId: string) =>
+    [...incomePaymentKeys.all, 'lastByFixedIncome', fixedIncomeId] as const,
+  lastByFixedIncomes: (fixedIncomeIds: string[]) =>
+    [...incomePaymentKeys.all, 'lastByFixedIncomes', { fixedIncomeIds }] as const,
 }
 
 export function useGetIncomePayments() {
@@ -39,7 +42,10 @@ export function useGetIncomePaymentsByFixedIncome(fixedIncomeId: string, enabled
   })
 }
 
-export function useGetLastIncomePaymentByFixedIncome(fixedIncomeId: string, enabled: boolean = true) {
+export function useGetLastIncomePaymentByFixedIncome(
+  fixedIncomeId: string,
+  enabled: boolean = true
+) {
   return useQuery({
     queryKey: incomePaymentKeys.lastByFixedIncome(fixedIncomeId),
     queryFn: () => incomePaymentService.getLastIncomePaymentByFixedIncome(fixedIncomeId),
@@ -47,7 +53,10 @@ export function useGetLastIncomePaymentByFixedIncome(fixedIncomeId: string, enab
   })
 }
 
-export function useGetLastIncomePaymentsByFixedIncomes(fixedIncomeIds: string[], enabled: boolean = true) {
+export function useGetLastIncomePaymentsByFixedIncomes(
+  fixedIncomeIds: string[],
+  enabled: boolean = true
+) {
   return useQuery({
     queryKey: incomePaymentKeys.lastByFixedIncomes(fixedIncomeIds),
     queryFn: () => incomePaymentService.getLastIncomePaymentsByFixedIncomes(fixedIncomeIds),
@@ -68,15 +77,22 @@ export function useCreateIncomePayment() {
       })
 
       // Update payments for the specific fixed income
-      queryClient.setQueryData<FixedIncomePayment[]>(incomePaymentKeys.byFixedIncome(variables.fixed_income_id), (old) => {
-        if (!old) return [newPayment]
-        return [newPayment, ...old]
-      })
+      queryClient.setQueryData<FixedIncomePayment[]>(
+        incomePaymentKeys.byFixedIncome(variables.fixed_income_id),
+        (old) => {
+          if (!old) return [newPayment]
+          return [newPayment, ...old]
+        }
+      )
 
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: incomePaymentKeys.lists() })
-      queryClient.invalidateQueries({ queryKey: incomePaymentKeys.byFixedIncome(variables.fixed_income_id) })
-      queryClient.invalidateQueries({ queryKey: incomePaymentKeys.lastByFixedIncome(variables.fixed_income_id) })
+      queryClient.invalidateQueries({
+        queryKey: incomePaymentKeys.byFixedIncome(variables.fixed_income_id),
+      })
+      queryClient.invalidateQueries({
+        queryKey: incomePaymentKeys.lastByFixedIncome(variables.fixed_income_id),
+      })
 
       // Invalidate fixed income queries
       queryClient.invalidateQueries({ queryKey: fixedIncomeKeys.detail(variables.fixed_income_id) })
@@ -109,14 +125,20 @@ export function useUpdateIncomePayment() {
         return old.map((payment) => (payment.id === id ? { ...payment, ...data } : payment))
       }
 
-      queryClient.setQueryData<FixedIncomePayment[]>(incomePaymentKeys.lists(), updatePaymentInCache)
+      queryClient.setQueryData<FixedIncomePayment[]>(
+        incomePaymentKeys.lists(),
+        updatePaymentInCache
+      )
       queryClient.setQueryData<FixedIncomePayment[]>(
         incomePaymentKeys.byFixedIncome(originalPayment.fixed_income_id),
         updatePaymentInCache
       )
 
       if (data.fixed_income_id && data.fixed_income_id !== originalPayment.fixed_income_id) {
-        queryClient.setQueryData<FixedIncomePayment[]>(incomePaymentKeys.byFixedIncome(data.fixed_income_id), updatePaymentInCache)
+        queryClient.setQueryData<FixedIncomePayment[]>(
+          incomePaymentKeys.byFixedIncome(data.fixed_income_id),
+          updatePaymentInCache
+        )
       }
 
       // Invalidate related queries
@@ -134,7 +156,7 @@ export function useDeleteIncomePayment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: ({ id, payment }: { id: string; payment: FixedIncomePayment }) =>
+    mutationFn: ({ id }: { id: string; payment: FixedIncomePayment }) =>
       incomePaymentService.deleteIncomePayment(id),
     onSuccess: (_, { id, payment }) => {
       // Remove from income payments list
@@ -144,10 +166,13 @@ export function useDeleteIncomePayment() {
       })
 
       // Remove from fixed income-specific payments
-      queryClient.setQueryData<FixedIncomePayment[]>(incomePaymentKeys.byFixedIncome(payment.fixed_income_id), (old) => {
-        if (!old) return old
-        return old.filter((p) => p.id !== id)
-      })
+      queryClient.setQueryData<FixedIncomePayment[]>(
+        incomePaymentKeys.byFixedIncome(payment.fixed_income_id),
+        (old) => {
+          if (!old) return old
+          return old.filter((p) => p.id !== id)
+        }
+      )
 
       // Invalidate related queries
       queryClient.invalidateQueries({ queryKey: incomePaymentKeys.all })
