@@ -15,7 +15,7 @@ bun run dev
 
 ## iOS Development
 
-To test on iPadOS/iOS devices without an Apple Developer Program subscription, see: https://stackoverflow.com/questions/4952820/test-ios-app-on-device-without-apple-developer-program-or-jailbreak
+To test/ install on iPadOS/iOS devices without an Apple Developer Program subscription, see: https://stackoverflow.com/questions/4952820/test-ios-app-on-device-without-apple-developer-program-or-jailbreak
 
 Build and open in Xcode:
 
