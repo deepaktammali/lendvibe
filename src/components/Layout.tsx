@@ -1,5 +1,5 @@
 import { Banknote, Home, IndianRupee, Menu, Receipt, TrendingUp, Users, X } from 'lucide-react'
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -18,26 +18,57 @@ const navigation = [
 
 interface SidebarContentProps {
   setSidebarOpen: (open: boolean) => void
+  expanded?: boolean
+  setSidebarExpanded?: (expanded: boolean) => void
 }
 
-const SidebarContent = ({ setSidebarOpen }: SidebarContentProps) => {
+const SidebarContent = ({ setSidebarOpen, expanded, setSidebarExpanded }: SidebarContentProps) => {
   const location = useLocation()
+  const [showText, setShowText] = useState(false)
+
+  // Delay showing text until expansion animation is nearly complete
+  React.useEffect(() => {
+    if (expanded) {
+      const timer = setTimeout(() => setShowText(true), 250) // Show text after 250ms
+      return () => clearTimeout(timer)
+    } else {
+      setShowText(false) // Immediately hide text when collapsing
+    }
+  }, [expanded])
 
   return (
     <>
-      <div className="hidden sm:flex items-center justify-between gap-2 p-6 border-b">
-        <div className="flex items-center gap-2">
-          <IndianRupee className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold text-gray-900">LendTracker</h1>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="sm:hidden"
-          onClick={() => setSidebarOpen(false)}
-        >
-          <X className="h-5 w-5" />
-        </Button>
+      <div className="flex items-center gap-2 p-6 border-b min-h-[72px]">
+        {expanded ? (
+          <>
+            <div className="flex items-center gap-2">
+              <IndianRupee className="h-6 w-6 text-primary" />
+              {showText && (
+                <h1 className="text-xl font-bold text-gray-900">LendTracker</h1>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarExpanded?.(false)}
+              className="ml-auto"
+            >
+              <X className="h-6 w-6" />
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarExpanded?.(true)}
+            className="w-full flex justify-center items-center p-0 h-full"
+          >
+            <div className="flex flex-col items-center gap-2">
+              <IndianRupee className="h-6 w-6 text-primary" />
+              <Menu className="h-6 w-6" />
+            </div>
+          </Button>
+        )}
       </div>
 
       <nav className="mt-6">
@@ -48,16 +79,24 @@ const SidebarContent = ({ setSidebarOpen }: SidebarContentProps) => {
               <Link
                 key={item.name}
                 to={item.href}
-                onClick={() => setSidebarOpen(false)}
+                onClick={() => {
+                  setSidebarOpen(false)
+                  setSidebarExpanded?.(false)
+                }}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg mb-1 transition-colors',
+                  'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg mb-1 transition-all duration-200',
+                  expanded ? 'justify-start' : 'justify-center',
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
                 <item.icon className="h-5 w-5" />
-                <span className="hidden sm:inline">{item.name}</span>
+                {expanded && showText && (
+                  <span className="transition-all duration-200 opacity-100">
+                    {item.name}
+                  </span>
+                )}
               </Link>
             )
           })}
@@ -69,15 +108,23 @@ const SidebarContent = ({ setSidebarOpen }: SidebarContentProps) => {
 
 export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarExpanded, setSidebarExpanded] = useState(false)
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar - collapsed on small screens */}
-      <div className="w-16 sm:w-64 bg-white shadow-sm border-r">
-        <SidebarContent setSidebarOpen={setSidebarOpen} />
+      {/* Expandable sidebar */}
+      <div className={cn(
+        "bg-white shadow-sm border-r flex-shrink-0 transition-all duration-300 ease-in-out",
+        sidebarExpanded ? "w-64" : "w-16"
+      )}>
+        <SidebarContent
+          setSidebarOpen={setSidebarOpen}
+          expanded={sidebarExpanded}
+          setSidebarExpanded={setSidebarExpanded}
+        />
       </div>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar Overlay - still needed for mobile menu */}
       {sidebarOpen && (
         <Button
           className="sm:hidden fixed inset-0 z-50 bg-black bg-opacity-50"
@@ -92,7 +139,7 @@ export default function Layout({ children }: LayoutProps) {
         />
       )}
 
-      {/* Mobile Sidebar */}
+      {/* Mobile Sidebar - still needed for mobile menu */}
       <div
         className={cn(
           'sm:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg border-r transform transition-transform duration-300 ease-in-out',
