@@ -3,6 +3,8 @@ import {
   AlertTriangle,
   ArrowLeft,
   Calendar,
+  ChevronDown,
+  ChevronRight,
   Clock,
   Edit,
   IndianRupee,
@@ -10,7 +12,7 @@ import {
   TrendingUp,
   User,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -40,7 +42,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useGetBorrower, useGetBorrowers } from '@/hooks/api/useBorrowers'
-import { useGetLoan, useUpdateLoan } from '@/hooks/api/useLoans'
+import { useGetLoan, useUpdateLoan, useGetPaymentSchedulesByLoan } from '@/hooks/api/useLoans'
 import { useGetPaymentsByLoan } from '@/hooks/api/usePayments'
 import {
   calculateAccruedInterest,
@@ -48,6 +50,7 @@ import {
   getNextPaymentDate,
 } from '@/lib/finance'
 import { getLoanTypeLabel, getLoanTypesByCategory } from '@/lib/loans'
+import { formatDate, getCurrentDateISO, isOverdue } from '@/lib/utils'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
 import type { Payment } from '@/types/api/payments'
@@ -56,29 +59,132 @@ export default function LoanDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [expandedSchedules, setExpandedSchedules] = useState<Set<string>>(new Set())
 
-  // Use the new TanStack Query hooks
+  // Use the new TanStack Query hooks with enabled conditions for optimal loading
   const {
     data: loan,
     isLoading: loanLoading,
     error: loanError,
     refetch: refetchLoan,
-  } = useGetLoan(id || '')
+  } = useGetLoan(id || '', !!id)
   const {
     data: borrower,
     isLoading: borrowerLoading,
     refetch: refetchBorrower,
-  } = useGetBorrower(loan?.borrower_id || '')
+  } = useGetBorrower(loan?.borrower_id || '', !!loan?.borrower_id)
   const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
   const {
     data: payments = [],
     isLoading: paymentsLoading,
     refetch: refetchPayments,
-  } = useGetPaymentsByLoan(id || '')
+  } = useGetPaymentsByLoan(id || '', !!id)
+  const {
+    data: paymentSchedules = [],
+    isLoading: schedulesLoading,
+    refetch: refetchSchedules,
+  } = useGetPaymentSchedulesByLoan(id || '', !!id)
   const updateLoanMutation = useUpdateLoan()
 
-  const loading = loanLoading || borrowerLoading || paymentsLoading
+  const loading = loanLoading || borrowerLoading || paymentsLoading || schedulesLoading
   const error = loanError
+
+  // Calculate loan statistics (memoized for performance)
+  const loanStats = useMemo(() => {
+    if (!loan || !payments) return null
+
+    const totalPrincipalPaid = payments.reduce((sum, payment) => sum + payment.principal_amount, 0)
+    const totalInterestPaid = payments.reduce((sum, payment) => sum + payment.interest_amount, 0)
+    const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0)
+    const remainingPrincipal = loan.principal_amount - totalPrincipalPaid
+    const accruedInterest = calculateAccruedInterest(loan)
+    const lastPayment = payments[0] // Payments are ordered by date DESC
+    const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date)
+    const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date)
+    const isOverdueStatus = isOverdue(nextDueDate)
+
+    return {
+      totalPrincipalPaid,
+      totalInterestPaid,
+      totalPayments,
+      remainingPrincipal,
+      accruedInterest,
+      lastPayment,
+      nextDueDate,
+      daysSinceLastPayment,
+      isOverdue: isOverdueStatus,
+    }
+  }, [payments, loan])
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+    }).format(amount)
+  }
+
+  const toggleScheduleExpansion = (scheduleId: string) => {
+    setExpandedSchedules(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(scheduleId)) {
+        newSet.delete(scheduleId)
+      } else {
+        newSet.add(scheduleId)
+      }
+      return newSet
+    })
+  }
+
+  const getSchedulePayments = (scheduleId: string) => {
+    return payments.filter(payment => payment.payment_schedule_id === scheduleId)
+  }
+
+  const getScheduleStatusBadge = (schedule: any) => {
+    const variants = {
+      pending: 'secondary',
+      partially_paid: 'outline',
+      paid: 'default',
+      overdue: 'destructive',
+    } as const
+
+    return (
+      <Badge variant={variants[schedule.status as keyof typeof variants] || 'secondary'}>
+        {schedule.status.replace('_', ' ').toUpperCase()}
+      </Badge>
+    )
+  }
+
+  const getPaymentTypeBadge = (type: Payment['payment_type']) => {
+    const variants = {
+      principal: 'default',
+      interest: 'secondary',
+      mixed: 'outline',
+    } as const
+
+    const labels = {
+      principal: 'Principal',
+      interest: 'Interest',
+      mixed: 'Mixed',
+    }
+
+    return <Badge variant={variants[type]}>{labels[type]}</Badge>
+  }
+
+  const getLoanTypeBadge = (type: string) => {
+    const variants = {
+      installment: 'default',
+      bullet: 'secondary',
+      land_lease: 'outline',
+      rent_agreement: 'outline',
+      fixed_deposit_income: 'outline',
+    } as const
+
+    return (
+      <Badge variant={variants[type as keyof typeof variants] || 'default'}>
+        {getLoanTypeLabel(type as Loan['loan_type'])}
+      </Badge>
+    )
+  }
 
   // Edit form
   const editForm = useForm({
@@ -87,7 +193,7 @@ export default function LoanDetail() {
       loan_type: loan?.loan_type || ('installment' as const),
       principal_amount: loan?.principal_amount || 0,
       interest_rate: loan?.interest_rate || 0,
-      start_date: loan?.start_date || new Date().toISOString().split('T')[0],
+      start_date: loan?.start_date || getCurrentDateISO(),
       hasEndDate: !!loan?.end_date,
       end_date: loan?.end_date || '',
       repayment_interval_unit: loan?.repayment_interval_unit || ('months' as const),
@@ -136,49 +242,6 @@ export default function LoanDetail() {
     }
   }, [loan, isEditDialogOpen, editForm])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
-
-  const getPaymentTypeBadge = (type: Payment['payment_type']) => {
-    const variants = {
-      principal: 'default',
-      interest: 'secondary',
-      mixed: 'outline',
-    } as const
-
-    const labels = {
-      principal: 'Principal',
-      interest: 'Interest',
-      mixed: 'Mixed',
-    }
-
-    return <Badge variant={variants[type]}>{labels[type]}</Badge>
-  }
-
-  const getLoanTypeBadge = (type: string) => {
-    const variants = {
-      installment: 'default',
-      bullet: 'secondary',
-      land_lease: 'outline',
-      rent_agreement: 'outline',
-      fixed_deposit_income: 'outline',
-    } as const
-
-    return (
-      <Badge variant={variants[type as keyof typeof variants] || 'default'}>
-        {getLoanTypeLabel(type as Loan['loan_type'])}
-      </Badge>
-    )
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -203,16 +266,13 @@ export default function LoanDetail() {
     )
   }
 
-  // Calculate loan statistics
-  const totalPrincipalPaid = payments.reduce((sum, payment) => sum + payment.principal_amount, 0)
-  const totalInterestPaid = payments.reduce((sum, payment) => sum + payment.interest_amount, 0)
-  const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0)
-  const remainingPrincipal = loan.principal_amount - totalPrincipalPaid
-  const accruedInterest = calculateAccruedInterest(loan)
-  const lastPayment = payments[0] // Payments are ordered by date DESC
-  const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date)
-  const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date)
-  const isOverdue = nextDueDate < new Date().toISOString().split('T')[0]
+  if (!loanStats) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-lg">Calculating loan statistics...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -544,9 +604,9 @@ export default function LoanDetail() {
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(remainingPrincipal)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(loanStats.remainingPrincipal)}</div>
             <p className="text-xs text-muted-foreground">
-              {((remainingPrincipal / loan.principal_amount) * 100).toFixed(1)}% remaining
+              {((loanStats.remainingPrincipal / loan.principal_amount) * 100).toFixed(1)}% remaining
             </p>
           </CardContent>
         </Card>
@@ -560,7 +620,7 @@ export default function LoanDetail() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalPayments)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(loanStats.totalPayments)}</div>
             <p className="text-xs text-muted-foreground">{payments.length} payments made</p>
           </CardContent>
         </Card>
@@ -571,9 +631,10 @@ export default function LoanDetail() {
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalPrincipalPaid)}</div>
+            <div className="text-2xl font-bold">{formatCurrency(loanStats.totalPrincipalPaid)}</div>
             <p className="text-xs text-muted-foreground">
-              {((totalPrincipalPaid / loan.principal_amount) * 100).toFixed(1)}% of principal
+              {((loanStats.totalPrincipalPaid / loan.principal_amount) * 100).toFixed(1)}% of
+              principal
             </p>
           </CardContent>
         </Card>
@@ -585,7 +646,7 @@ export default function LoanDetail() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatCurrency(totalInterestPaid)}
+              {formatCurrency(loanStats.totalInterestPaid)}
             </div>
             <p className="text-xs text-muted-foreground">Interest collected</p>
           </CardContent>
@@ -594,14 +655,18 @@ export default function LoanDetail() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Accrued Interest</CardTitle>
-            <Clock className={`h-4 w-4 ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`} />
+            <Clock
+              className={`h-4 w-4 ${loanStats.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}
+            />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${isOverdue ? 'text-red-600' : ''}`}>
-              {formatCurrency(accruedInterest)}
+            <div className={`text-2xl font-bold ${loanStats.isOverdue ? 'text-red-600' : ''}`}>
+              {formatCurrency(loanStats.accruedInterest)}
             </div>
-            <p className={`text-xs ${isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}>
-              {isOverdue ? 'Overdue' : 'Current period'}
+            <p
+              className={`text-xs ${loanStats.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}
+            >
+              {loanStats.isOverdue ? 'Overdue' : 'Current period'}
             </p>
           </CardContent>
         </Card>
@@ -619,15 +684,17 @@ export default function LoanDetail() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label className="text-sm font-medium">Next Due Date</Label>
-              <div className={`flex items-center gap-2 mt-1 ${isOverdue ? 'text-red-600' : ''}`}>
-                {isOverdue && <AlertTriangle className="h-4 w-4" />}
-                <span className="font-medium">{formatDate(nextDueDate)}</span>
-                {isOverdue && <Badge variant="destructive">Overdue</Badge>}
+              <div
+                className={`flex items-center gap-2 mt-1 ${loanStats.isOverdue ? 'text-red-600' : ''}`}
+              >
+                {loanStats.isOverdue && <AlertTriangle className="h-4 w-4" />}
+                <span className="font-medium">{formatDate(loanStats.nextDueDate, 'medium')}</span>
+                {loanStats.isOverdue && <Badge variant="destructive">Overdue</Badge>}
               </div>
             </div>
             <div>
               <Label className="text-sm font-medium">Days Since Last Payment</Label>
-              <div className="font-medium mt-1">{daysSinceLastPayment} days</div>
+              <div className="font-medium mt-1">{loanStats.daysSinceLastPayment} days</div>
             </div>
             <div>
               <Label className="text-sm font-medium">Repayment Interval</Label>
@@ -636,6 +703,138 @@ export default function LoanDetail() {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Payment Schedules */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Payment Schedules ({paymentSchedules.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {paymentSchedules.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No payment schedules generated yet</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8"></TableHead>
+                  <TableHead>Period</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead>Principal Due</TableHead>
+                  <TableHead>Interest Due</TableHead>
+                  <TableHead>Paid</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paymentSchedules.map((schedule) => {
+                  const schedulePayments = getSchedulePayments(schedule.id)
+                  const isExpanded = expandedSchedules.has(schedule.id)
+                  const totalPaid = schedule.total_principal_paid + schedule.total_interest_paid
+
+                  return (
+                    <>
+                      <TableRow key={schedule.id} className="cursor-pointer hover:bg-gray-50">
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleScheduleExpansion(schedule.id)}
+                            className="p-1 h-6 w-6"
+                          >
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {new Date(schedule.period_start_date).toLocaleDateString('en-IN', {
+                            month: 'short',
+                            day: 'numeric'
+                          })} - {new Date(schedule.period_end_date).toLocaleDateString('en-IN', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
+                        </TableCell>
+                        <TableCell>
+                          {new Date(schedule.due_date).toLocaleDateString('en-IN')}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(schedule.total_principal_due)}
+                        </TableCell>
+                        <TableCell>
+                          {formatCurrency(schedule.total_interest_due)}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {formatCurrency(totalPaid)}
+                        </TableCell>
+                        <TableCell>
+                          {getScheduleStatusBadge(schedule)}
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && schedulePayments.length > 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="p-0">
+                            <div className="px-4 py-2 bg-gray-50 border-l-4 border-blue-200">
+                              <h4 className="text-sm font-medium mb-2 text-gray-700">
+                                Payments for this schedule ({schedulePayments.length})
+                              </h4>
+                              <div className="space-y-1">
+                                {schedulePayments.map((payment) => (
+                                  <div key={payment.id} className="flex justify-between items-center text-sm">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-gray-600">
+                                        {new Date(payment.payment_date).toLocaleDateString('en-IN')}
+                                      </span>
+                                      {getPaymentTypeBadge(payment.payment_type)}
+                                    </div>
+                                    <div className="flex gap-4">
+                                      <span>Total: {formatCurrency(payment.amount)}</span>
+                                      {payment.principal_amount > 0 && (
+                                        <span className="text-blue-600">
+                                          Principal: {formatCurrency(payment.principal_amount)}
+                                        </span>
+                                      )}
+                                      {payment.interest_amount > 0 && (
+                                        <span className="text-green-600">
+                                          Interest: {formatCurrency(payment.interest_amount)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {isExpanded && schedulePayments.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="p-0">
+                            <div className="px-4 py-2 bg-gray-50 border-l-4 border-gray-200">
+                              <p className="text-sm text-gray-500 italic">
+                                No payments made for this schedule yet
+                              </p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -652,6 +851,7 @@ export default function LoanDetail() {
                 refetchBorrower()
                 refetchBorrowers()
                 refetchPayments()
+                refetchSchedules()
               }}
             >
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -680,7 +880,7 @@ export default function LoanDetail() {
                 {payments.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell className="font-medium">
-                      {formatDate(payment.payment_date)}
+                      {formatDate(payment.payment_date, 'short')}
                     </TableCell>
                     <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
                     <TableCell>

@@ -1,5 +1,5 @@
 import { Calendar, RefreshCw, User } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +22,8 @@ import { useGetBorrowers } from '@/hooks/api/useBorrowers'
 import { useGetFixedIncomesWithTenants } from '@/hooks/api/useFixedIncome'
 import { useGetLoans } from '@/hooks/api/useLoans'
 import { useGetPaymentsWithDetails } from '@/hooks/api/usePayments'
+import { getPaymentSchedulesByLoan } from '@/lib/database'
+import { paymentService } from '@/services/api/payments.service'
 import {
   calculateAccruedIncome,
   calculateAccruedInterest,
@@ -33,6 +35,7 @@ import {
   getNextPaymentDate,
   type UpcomingPayment,
 } from '@/lib/finance'
+import { formatDate, parseDate } from '@/lib/utils'
 
 interface UpcomingPaymentsProps {
   title?: string
@@ -50,6 +53,8 @@ export default function UpcomingPayments({
   onRefresh,
 }: UpcomingPaymentsProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<number>(1) // months
+  const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   // Use the new TanStack Query hooks
   const { data: payments = [], refetch: refetchPayments } = useGetPaymentsWithDetails()
@@ -64,145 +69,144 @@ export default function UpcomingPayments({
     }).format(amount)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
-
-  // Calculate upcoming payments
-  const calculateUpcomingPayments = (): UpcomingPayment[] => {
+  // Calculate upcoming payments using payment schedules
+  const calculateUpcomingPayments = async (): Promise<UpcomingPayment[]> => {
     const upcomingPayments: UpcomingPayment[] = []
     const today = new Date()
 
     // Process loans
-    loans.forEach((loan) => {
-      if (loan.status !== 'active') return
+    for (const loan of loans) {
+      if (loan.status !== 'active') continue
 
       const borrower = borrowers.find((b) => b.id === loan.borrower_id)
-      if (!borrower) return
+      if (!borrower) continue
 
-      // Get last payment for this loan
-      const lastPayment = payments
-        .filter((p) => p.loan_id === loan.id)
-        .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0]
+      try {
+        // Ensure payment schedules exist for this loan
+        await paymentService.ensurePaymentSchedulesExist(loan.id)
 
-      // Calculate next payment date
-      const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date)
-      const dueDateObj = new Date(nextDueDate)
+        // Get payment schedules for this loan
+        const schedules = await getPaymentSchedulesByLoan(loan.id)
 
-      // Only include future payments
-      if (dueDateObj >= today) {
-        const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date)
-        const accruedInterest = calculateAccruedInterest(loan)
-        const expectedPaymentAmount = calculateExpectedPaymentAmount(loan)
+        // Find first unpaid schedule
+        const nextSchedule = schedules.find(s => s.status !== 'paid')
 
-        // Calculate interest paid in current period (from last payment date to next due date)
-        // If there was a payment on the last due date, that was for the previous period
-        // So we count payments AFTER the last payment date for the upcoming period
-        const currentPeriodStart = lastPayment?.payment_date || loan.start_date
+        if (nextSchedule) {
+          // Use payment schedule
+          const dueDate = new Date(nextSchedule.due_date)
+          const remainingInterest = nextSchedule.total_interest_due - nextSchedule.total_interest_paid
+          const remainingPrincipal = nextSchedule.total_principal_due - nextSchedule.total_principal_paid
 
-        const interestPaidInPeriod = payments
-          .filter((p) => {
-            const paymentDate = new Date(p.payment_date)
-            const periodStart = new Date(currentPeriodStart)
-            periodStart.setDate(periodStart.getDate() + 1) // Day after last payment
-
-            return (
-              p.loan_id === loan.id &&
-              paymentDate > periodStart &&
-              paymentDate <= new Date(nextDueDate)
-            )
+          upcomingPayments.push({
+            id: loan.id,
+            type: 'loan',
+            borrowerName: borrower.name,
+            assetType: loan.loan_type,
+            dueDate: formatDate(dueDate, 'iso'),
+            accruedInterest: remainingInterest,
+            expectedPaymentAmount: remainingInterest + remainingPrincipal,
+            daysSinceLastPayment: Math.floor((today.getTime() - new Date(loan.start_date).getTime()) / (1000 * 60 * 60 * 24)),
+            currentBalance: loan.current_balance,
+            paymentStatus: nextSchedule.status === 'overdue' ? 'overdue' :
+                          nextSchedule.status === 'partially_paid' ? 'partial' : 'pending',
           })
-          .reduce((sum, p) => sum + p.interest_amount, 0)
+        } else {
+          // Fall back to simple calculation
+          const startDate = new Date(loan.start_date)
+          const paymentsMade = payments.filter(p => p.loan_id === loan.id).length
+          const nextDueDate = new Date(startDate)
+          nextDueDate.setMonth(startDate.getMonth() + paymentsMade + 1)
+          const monthlyInterest = (loan.current_balance * loan.interest_rate) / 100
 
-        const paymentStatus = calculatePaymentStatus(
-          accruedInterest,
-          interestPaidInPeriod,
-          nextDueDate
-        )
+          upcomingPayments.push({
+            id: loan.id,
+            type: 'loan',
+            borrowerName: borrower.name,
+            assetType: loan.loan_type,
+            dueDate: formatDate(nextDueDate, 'iso'),
+            accruedInterest: monthlyInterest,
+            expectedPaymentAmount: monthlyInterest,
+            daysSinceLastPayment: Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
+            currentBalance: loan.current_balance,
+            paymentStatus: nextDueDate < today ? 'overdue' : 'pending',
+          })
+        }
+      } catch (error) {
+        console.error('Error fetching payment schedules for loan:', loan.id, error)
+        // Fall back to simple calculation on error
+        const startDate = new Date(loan.start_date)
+        const paymentsMade = payments.filter(p => p.loan_id === loan.id).length
+        const nextDueDate = new Date(startDate)
+        nextDueDate.setMonth(startDate.getMonth() + paymentsMade + 1)
+        const monthlyInterest = (loan.current_balance * loan.interest_rate) / 100
 
         upcomingPayments.push({
           id: loan.id,
           type: 'loan',
           borrowerName: borrower.name,
           assetType: loan.loan_type,
-          dueDate: nextDueDate,
-          accruedInterest,
-          expectedPaymentAmount,
-          daysSinceLastPayment,
+          dueDate: formatDate(nextDueDate, 'iso'),
+          accruedInterest: monthlyInterest,
+          expectedPaymentAmount: monthlyInterest,
+          daysSinceLastPayment: Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
           currentBalance: loan.current_balance,
-          realRemainingPrincipal: loan.current_balance,
-          paymentStatus: paymentStatus.status,
-          paidInterestAmount: paymentStatus.paidAmount,
-          remainingInterestAmount: paymentStatus.remainingAmount,
+          paymentStatus: nextDueDate < today ? 'overdue' : 'pending',
         })
       }
-    })
+    }
 
-    // Process fixed incomes
+    // Process fixed incomes - ultra simple
     fixedIncomes.forEach((fixedIncome) => {
       if (fixedIncome.status !== 'active') return
 
-      // Get last income payment for this fixed income
-      const lastIncomePayment = payments
-        .filter((p) => p.loan_id === fixedIncome.id) // Assuming payments are linked to fixed income via loan_id
-        .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime())[0]
+      // Find the next unpaid payment
+      const startDate = new Date(fixedIncome.start_date)
+      const paymentsMade = payments.filter(p => p.loan_id === fixedIncome.id).length
 
-      // Calculate next payment date
-      const nextDueDate = getNextIncomePaymentDate(fixedIncome, lastIncomePayment?.payment_date)
-      const dueDateObj = new Date(nextDueDate)
+      // Next payment = start_date + (payments_made + 1) months
+      const nextDueDate = new Date(startDate)
+      nextDueDate.setMonth(startDate.getMonth() + paymentsMade + 1)
 
-      // Only include future payments
-      if (dueDateObj >= today) {
-        const daysSinceLastPayment = getDaysSinceLastIncomePayment(
-          fixedIncome,
-          lastIncomePayment?.payment_date
-        )
-        const accruedIncome = calculateAccruedIncome(fixedIncome)
+      // Income amount for the period
+      const monthlyIncome = (fixedIncome.principal_amount * fixedIncome.income_rate) / 100
 
-        // Calculate income paid in current period (from last payment date to next due date)
-        // If there was a payment on the last due date, that was for the previous period
-        // So we count payments AFTER the last payment date for the upcoming period
-        const currentPeriodStart = lastIncomePayment?.payment_date || fixedIncome.start_date
-        const incomePaidInPeriod = payments
-          .filter((p) => {
-            const paymentDate = new Date(p.payment_date)
-            const periodStart = new Date(currentPeriodStart)
-            periodStart.setDate(periodStart.getDate() + 1) // Day after last payment
-
-            return (
-              p.loan_id === fixedIncome.id &&
-              paymentDate > periodStart &&
-              paymentDate <= new Date(nextDueDate)
-            )
-          })
-          .reduce((sum, p) => sum + p.amount, 0) // For fixed income, use total amount
-
-        const paymentStatus = calculatePaymentStatus(accruedIncome, incomePaidInPeriod, nextDueDate)
-
-        upcomingPayments.push({
-          id: fixedIncome.id,
-          type: 'fixed_income',
-          borrowerName: fixedIncome.tenant_name,
-          assetType: fixedIncome.income_type,
-          dueDate: nextDueDate,
-          accruedInterest: accruedIncome,
-          expectedPaymentAmount: accruedIncome, // For fixed income, expected payment is the accrued income
-          daysSinceLastPayment,
-          currentBalance: 0, // Fixed income doesn't have a balance
-          assetValue: fixedIncome.principal_amount,
-          paymentStatus: paymentStatus.status,
-          paidInterestAmount: paymentStatus.paidAmount,
-          remainingInterestAmount: paymentStatus.remainingAmount,
-        })
-      }
+      upcomingPayments.push({
+        id: fixedIncome.id,
+        type: 'fixed_income',
+        borrowerName: fixedIncome.tenant_name,
+        assetType: fixedIncome.income_type,
+        dueDate: formatDate(nextDueDate, 'iso'),
+        accruedInterest: monthlyIncome,
+        expectedPaymentAmount: monthlyIncome,
+        daysSinceLastPayment: Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
+        currentBalance: 0,
+        assetValue: fixedIncome.principal_amount,
+        paymentStatus: nextDueDate < today ? 'overdue' : 'pending',
+      })
     })
-
     return upcomingPayments.sort(
-      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+      (a, b) => parseDate(a.dueDate).getTime() - parseDate(b.dueDate).getTime()
     )
   }
 
-  const upcomingPayments = calculateUpcomingPayments()
+  // Calculate upcoming payments when data changes
+  useEffect(() => {
+    if (loans.length === 0 || borrowers.length === 0) return
+
+    const loadUpcomingPayments = async () => {
+      setIsLoading(true)
+      try {
+        const payments = await calculateUpcomingPayments()
+        setUpcomingPayments(payments)
+      } catch (error) {
+        console.error('Error calculating upcoming payments:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadUpcomingPayments()
+  }, [loans, borrowers, payments, fixedIncomes])
 
   // Filter upcoming payments by selected period (only if period selector is shown)
   const filteredPayments = showPeriodSelector
@@ -211,7 +215,7 @@ export default function UpcomingPayments({
         const futureDate = new Date(today)
         futureDate.setMonth(today.getMonth() + selectedPeriod)
 
-        const dueDate = new Date(payment.dueDate)
+        const dueDate = parseDate(payment.dueDate)
         return dueDate >= today && dueDate <= futureDate
       })
     : upcomingPayments
@@ -245,12 +249,22 @@ export default function UpcomingPayments({
     return <Badge variant={variants[status || 'pending']}>{labels[status || 'pending']}</Badge>
   }
 
-  const handleRefresh = () => {
-    refetchPayments()
-    refetchLoans()
-    refetchBorrowers()
-    refetchFixedIncomes()
-    onRefresh?.()
+  const handleRefresh = async () => {
+    setIsLoading(true)
+    try {
+      await Promise.all([
+        refetchPayments(),
+        refetchLoans(),
+        refetchBorrowers(),
+        refetchFixedIncomes()
+      ])
+      // The useEffect will automatically recalculate when data changes
+      onRefresh?.()
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -260,9 +274,9 @@ export default function UpcomingPayments({
           <CardTitle>{title}</CardTitle>
           <div className="flex items-center gap-2">
             {showRefreshButton && (
-              <Button variant="outline" size="sm" onClick={handleRefresh}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Loading...' : 'Refresh'}
               </Button>
             )}
             {showPeriodSelector && (
@@ -326,7 +340,9 @@ export default function UpcomingPayments({
                   <TableCell className="hidden md:table-cell capitalize">
                     {payment.assetType.replace('_', ' ')}
                   </TableCell>
-                  <TableCell className="font-medium">{formatDate(payment.dueDate)}</TableCell>
+                  <TableCell className="font-medium">
+                    {formatDate(payment.dueDate, 'medium')}
+                  </TableCell>
                   <TableCell className="font-medium">
                     {formatCurrency(payment.expectedPaymentAmount)}
                   </TableCell>

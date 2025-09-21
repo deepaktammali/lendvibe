@@ -53,13 +53,14 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useGetBorrowers } from '@/hooks/api/useBorrowers'
-import { useGetLoans } from '@/hooks/api/useLoans'
+import { useGetLoans, useGetPaymentSchedulesByLoan } from '@/hooks/api/useLoans'
 import {
   useCreatePayment,
   useDeletePayment,
   useGetPaymentsWithDetails,
   useUpdatePayment,
 } from '@/hooks/api/usePayments'
+import { formatDate, getCurrentDateISO, getCurrentMonth } from '@/lib/utils'
 import { type PaymentFormInput, paymentFormSchema } from '@/lib/validation'
 import type { Payment } from '@/types/api/payments'
 import type { PaymentSchedule } from '@/types/database'
@@ -77,6 +78,7 @@ export default function Payments() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingPayment, setEditingPayment] = useState<PaymentWithDetails | null>(null)
   const [deletePaymentId, setDeletePaymentId] = useState<string | null>(null)
+  const [selectedLoanForPayment, setSelectedLoanForPayment] = useState<string>('')
 
   // Use the new TanStack Query hooks
   const {
@@ -95,7 +97,7 @@ export default function Payments() {
       loan_id: '',
       principal_amount: 0,
       interest_amount: 0,
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: getCurrentDateISO(),
       notes: '',
     } as PaymentFormInput,
     validators: {
@@ -136,12 +138,16 @@ export default function Payments() {
     },
   })
 
+  // Fetch payment schedules when a loan is selected for payment
+  const { data: paymentSchedules = [] } = useGetPaymentSchedulesByLoan(selectedLoanForPayment)
+
   const paymentForm = useForm({
     defaultValues: {
       loan_id: '',
+      payment_schedule_id: '',
       principal_amount: 0,
       interest_amount: 0,
-      payment_date: new Date().toISOString().split('T')[0],
+      payment_date: getCurrentDateISO(),
       notes: '',
     } as PaymentFormInput,
     validators: {
@@ -151,6 +157,7 @@ export default function Payments() {
       try {
         const paymentData = {
           loan_id: value.loan_id,
+          payment_schedule_id: value.payment_schedule_id,
           principal_amount: value.principal_amount,
           interest_amount: value.interest_amount,
           payment_date: value.payment_date,
@@ -160,6 +167,7 @@ export default function Payments() {
         await createPaymentMutation.mutateAsync(paymentData)
         setIsAddDialogOpen(false)
         paymentForm.reset()
+        setSelectedLoanForPayment('')
       } catch (error) {
         console.error('Failed to record payment:', error)
       }
@@ -211,10 +219,6 @@ export default function Payments() {
     }).format(amount)
   }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
-
   const getPaymentTypeBadge = (type: Payment['payment_type']) => {
     const variants = {
       principal: 'default',
@@ -238,7 +242,7 @@ export default function Payments() {
   )
   const totalInterest = filteredPayments.reduce((sum, payment) => sum + payment.interest_amount, 0)
 
-  const currentMonth = new Date().toISOString().slice(0, 7)
+  const currentMonth = getCurrentMonth()
   const monthlyPayments = filteredPayments
     .filter((payment) => payment.payment_date.startsWith(currentMonth))
     .reduce((sum, payment) => sum + payment.amount, 0)
@@ -293,7 +297,12 @@ export default function Payments() {
                       <Label htmlFor="payment-loan">Loan *</Label>
                       <Select
                         value={field.state.value}
-                        onValueChange={(value) => field.handleChange(value)}
+                        onValueChange={(value) => {
+                          field.handleChange(value)
+                          setSelectedLoanForPayment(value)
+                          // Reset payment schedule when loan changes
+                          paymentForm.setFieldValue('payment_schedule_id', '')
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a loan" />
@@ -304,6 +313,89 @@ export default function Payments() {
                             return (
                               <SelectItem key={loan.id} value={loan.id}>
                                 {borrower?.name} - {formatCurrency(loan.current_balance)} remaining
+                              </SelectItem>
+                            )
+                          })}
+                        </SelectContent>
+                      </Select>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </paymentForm.Field>
+
+                <paymentForm.Field name="payment_schedule_id">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="payment-schedule">Payment Schedule *</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) => field.handleChange(value)}
+                        disabled={!selectedLoanForPayment || paymentSchedules.length === 0}
+                      >
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              !selectedLoanForPayment
+                                ? 'Select a loan first'
+                                : paymentSchedules.length === 0
+                                  ? 'No payment schedules available'
+                                  : 'Select a payment schedule'
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {paymentSchedules.map((schedule) => {
+                            const statusBadge = (() => {
+                              switch (schedule.status) {
+                                case 'pending':
+                                  return (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Pending
+                                    </Badge>
+                                  )
+                                case 'overdue':
+                                  return (
+                                    <Badge variant="destructive" className="text-xs">
+                                      Overdue
+                                    </Badge>
+                                  )
+                                case 'paid':
+                                  return (
+                                    <Badge variant="default" className="text-xs">
+                                      Paid
+                                    </Badge>
+                                  )
+                                case 'partially_paid':
+                                  return (
+                                    <Badge variant="outline" className="text-xs">
+                                      Partial
+                                    </Badge>
+                                  )
+                                default:
+                                  return null
+                              }
+                            })()
+
+                            return (
+                              <SelectItem key={schedule.id} value={schedule.id}>
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium">
+                                      {formatDate(schedule.period_start_date, 'short')} -{' '}
+                                      {formatDate(schedule.period_end_date, 'short')}
+                                    </span>
+                                    {statusBadge}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    Due: {formatDate(schedule.due_date, 'medium')} | Principal:{' '}
+                                    {formatCurrency(schedule.total_principal_due)} | Interest:{' '}
+                                    {formatCurrency(schedule.total_interest_due)}
+                                  </div>
+                                </div>
                               </SelectItem>
                             )
                           })}
@@ -613,7 +705,7 @@ export default function Payments() {
                             <strong>Interest:</strong> {formatCurrency(payment.interest_amount)}
                           </p>
                           <p>
-                            <strong>Date:</strong> {formatDate(payment.payment_date)}
+                            <strong>Date:</strong> {formatDate(payment.payment_date, 'medium')}
                           </p>
                           {payment.notes && (
                             <p>
@@ -796,7 +888,7 @@ export default function Payments() {
                           {getPaymentTypeBadge(payment.payment_type)}
                         </TableCell>
                         <TableCell className="text-sm text-gray-500">
-                          {formatDate(payment.payment_date)}
+                          {formatDate(payment.payment_date, 'short')}
                         </TableCell>
                         <TableCell
                           className="hidden lg:table-cell text-sm text-gray-500 max-w-32 truncate"
@@ -805,7 +897,7 @@ export default function Payments() {
                           {payment.notes || '-'}
                         </TableCell>
                         <TableCell className="hidden xl:table-cell text-sm text-gray-500">
-                          {formatDate(payment.created_at)}
+                          {formatDate(payment.created_at, 'relative')}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

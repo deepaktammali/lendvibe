@@ -87,6 +87,7 @@ namespace CreatePayment {
   export type Response = LoanPayment
   export type Payload = {
     loan_id: string
+    payment_schedule_id: string
     principal_amount: number
     interest_amount: number
     payment_date: string

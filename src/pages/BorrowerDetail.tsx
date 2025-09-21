@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useGetBorrower } from '@/hooks/api/useBorrowers'
 import { useGetLoansByBorrower } from '@/hooks/api/useLoans'
 import { useGetPaymentsWithDetails } from '@/hooks/api/usePayments'
+import { formatDate } from '@/lib/utils'
 
 export default function BorrowerDetail() {
   const { id } = useParams<{ id: string }>()
@@ -45,10 +46,6 @@ export default function BorrowerDetail() {
       style: 'currency',
       currency: 'INR',
     }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
   }
 
   const getLoanTypeLabel = (type: string) => {
@@ -226,7 +223,7 @@ export default function BorrowerDetail() {
               <Calendar className="h-5 w-5 text-gray-400" />
               <div>
                 <p className="text-sm font-medium text-gray-600">Customer Since</p>
-                <p className="text-base">{formatDate(borrower.created_at)}</p>
+                <p className="text-base">{formatDate(borrower.created_at, 'medium')}</p>
               </div>
             </div>
           </div>
@@ -278,7 +275,7 @@ export default function BorrowerDetail() {
                         <TableCell>{loan.interest_rate}%</TableCell>
                         <TableCell>{getStatusBadge(loan.status)}</TableCell>
                         <TableCell className="text-sm text-gray-500">
-                          {formatDate(loan.start_date)}
+                          {formatDate(loan.start_date, 'short')}
                         </TableCell>
                         <TableCell className="text-right">
                           <Button
@@ -331,7 +328,7 @@ export default function BorrowerDetail() {
                       .map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell className="font-medium">
-                            {formatDate(payment.payment_date)}
+                            {formatDate(payment.payment_date, 'short')}
                           </TableCell>
                           <TableCell className="font-medium">
                             {formatCurrency(payment.amount)}

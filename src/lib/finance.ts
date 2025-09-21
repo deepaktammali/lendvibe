@@ -1,5 +1,6 @@
 import type { FixedIncome, Loan } from '@/types/database'
 import { isFixedIncomeType } from './loans'
+import { formatDate } from './utils'
 
 /**
  * Calculates expected interest for the next repayment period.
@@ -24,7 +25,7 @@ export function calculateAccruedInterest(
 /**
  * Calculates the expected payment amount for the next period.
  * For installment loans, this is typically the accrued interest.
- * For bullet loans, this might be interest-only.
+ * For bullet losses, this might be interest-only.
  */
 export function calculateExpectedPaymentAmount(
   loan: Pick<
@@ -113,12 +114,25 @@ export function getNextPaymentDate(
   loan: Pick<Loan, 'start_date' | 'repayment_interval_unit' | 'repayment_interval_value'>,
   lastPaymentDate?: string
 ): string {
-  const baseDate = lastPaymentDate ? new Date(lastPaymentDate) : new Date(loan.start_date)
+  let baseDate: Date
+
+  if (lastPaymentDate) {
+    // Start from the last payment date and add one interval
+    baseDate = new Date(lastPaymentDate)
+  } else {
+    // If no payments have been made, the next payment should be the first due date:
+    // start_date + repayment_interval_value
+    baseDate = new Date(loan.start_date)
+  }
+
+  // Get the day of the month from start date for 'months' interval
+  const startDate = new Date(loan.start_date)
+  const dueDayOfMonth = startDate.getDate()
 
   if (!loan.repayment_interval_unit || !loan.repayment_interval_value) {
     // Default to monthly
     baseDate.setMonth(baseDate.getMonth() + 1)
-    return baseDate.toISOString().split('T')[0]
+    return formatDate(baseDate)
   }
 
   switch (loan.repayment_interval_unit) {
@@ -128,15 +142,28 @@ export function getNextPaymentDate(
     case 'weeks':
       baseDate.setDate(baseDate.getDate() + loan.repayment_interval_value * 7)
       break
-    case 'months':
-      baseDate.setMonth(baseDate.getMonth() + loan.repayment_interval_value)
+    case 'months': {
+      if (lastPaymentDate) {
+        // Add months to the last payment date
+        baseDate.setMonth(baseDate.getMonth() + loan.repayment_interval_value)
+      } else {
+        // First due date: month after loan start, but on the same day of month
+        baseDate.setMonth(baseDate.getMonth() + loan.repayment_interval_value)
+        // Ensure we use the day of month from start date
+        const newDayOfMonth = Math.min(
+          dueDayOfMonth,
+          new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0).getDate()
+        )
+        baseDate.setDate(newDayOfMonth)
+      }
       break
+    }
     case 'years':
       baseDate.setFullYear(baseDate.getFullYear() + loan.repayment_interval_value)
       break
   }
 
-  return baseDate.toISOString().split('T')[0]
+  return formatDate(baseDate)
 }
 
 /**
@@ -201,7 +228,7 @@ export function getNextIncomePaymentDate(
 
   if (!fixedIncome.payment_interval_unit || !fixedIncome.payment_interval_value) {
     baseDate.setMonth(baseDate.getMonth() + 1)
-    return baseDate.toISOString().split('T')[0]
+    return formatDate(baseDate)
   }
 
   switch (fixedIncome.payment_interval_unit) {
@@ -219,7 +246,7 @@ export function getNextIncomePaymentDate(
       break
   }
 
-  return baseDate.toISOString().split('T')[0]
+  return formatDate(baseDate)
 }
 
 /**

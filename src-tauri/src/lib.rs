@@ -31,6 +31,12 @@ pub fn run() {
                             sql: include_str!("../migrations/003_add_notes_to_loans.sql"),
                             kind: tauri_plugin_sql::MigrationKind::Up,
                         },
+                        tauri_plugin_sql::Migration {
+                            version: 4,
+                            description: "add payment_schedules table for parent-child payment structure",
+                            sql: include_str!("../migrations/004_add_payment_schedules.sql"),
+                            kind: tauri_plugin_sql::MigrationKind::Up,
+                        }
                     ],
                 )
                 .build(),

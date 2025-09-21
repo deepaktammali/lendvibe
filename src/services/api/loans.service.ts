@@ -6,6 +6,7 @@ import {
   getLoansByBorrower as dbGetLoansByBorrower,
   getLoansWithBorrowers as dbGetLoansWithBorrowers,
   getLoansWithCalculatedBalances as dbGetLoansWithCalculatedBalances,
+  getLoanWithBorrower as dbGetLoanWithBorrower,
   getRealRemainingPrincipal as dbGetRealRemainingPrincipal,
   syncAllLoanBalances as dbSyncAllLoanBalances,
   updateLoan as dbUpdateLoan,
@@ -20,6 +21,15 @@ import type {
 } from '@/types/api/loans'
 
 export type CreateLoanData = CreateLoan.Payload
+
+export interface LoanWithBorrowerDetail extends Loan {
+  borrower: {
+    id: string
+    name: string
+    email?: string
+    phone: string
+  }
+}
 
 export const loanService = {
   async getLoans(): Promise<Loan[]> {
@@ -59,6 +69,32 @@ export const loanService = {
       repayment_interval_unit: dbLoan.repayment_interval_unit,
       repayment_interval_value: dbLoan.repayment_interval_value,
       created_at: dbLoan.created_at,
+    }
+  },
+
+  async getLoanWithBorrower(id: string): Promise<LoanWithBorrowerDetail | null> {
+    const dbLoan = await dbGetLoanWithBorrower(id)
+    if (!dbLoan) return null
+
+    return {
+      id: dbLoan.id,
+      borrower_id: dbLoan.borrower_id,
+      loan_type: dbLoan.loan_type,
+      principal_amount: dbLoan.principal_amount,
+      interest_rate: dbLoan.interest_rate,
+      start_date: dbLoan.start_date,
+      end_date: dbLoan.end_date,
+      status: dbLoan.status,
+      current_balance: dbLoan.current_balance,
+      repayment_interval_unit: dbLoan.repayment_interval_unit,
+      repayment_interval_value: dbLoan.repayment_interval_value,
+      created_at: dbLoan.created_at,
+      borrower: {
+        id: dbLoan.borrower_id,
+        name: dbLoan.borrower_name,
+        email: dbLoan.borrower_email,
+        phone: dbLoan.borrower_phone,
+      },
     }
   },
 

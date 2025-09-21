@@ -45,6 +45,8 @@ export interface PaymentSchedule {
   due_date: string // YYYY-MM-DD format, calculated from loan terms
   total_principal_due: number
   total_interest_due: number
+  total_principal_paid: number // Accumulated principal payments
+  total_interest_paid: number // Accumulated interest payments
   status: 'pending' | 'partially_paid' | 'paid' | 'overdue'
   created_at: string
 }

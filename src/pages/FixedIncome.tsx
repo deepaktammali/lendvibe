@@ -46,6 +46,7 @@ import {
   useDeleteFixedIncome,
   useGetFixedIncomesWithTenants,
 } from '@/hooks/api/useFixedIncome'
+import { formatDate, getCurrentDateISO } from '@/lib/utils'
 import { type FixedIncomeFormData, fixedIncomeSchema } from '@/lib/validation'
 import type { FixedIncome } from '@/types/api/fixedIncome'
 import { FIXED_INCOME_TYPE_LABELS } from '@/types/database'
@@ -73,10 +74,6 @@ export default function FixedIncomePage() {
     }).format(amount)
   }
 
-  const _formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
-
   const fixedIncomeForm = useForm({
     defaultValues: {
       tenant_id: '',
@@ -85,7 +82,7 @@ export default function FixedIncomePage() {
       income_rate: 0,
       payment_interval_unit: 'months' as const,
       payment_interval_value: 1,
-      start_date: new Date().toISOString().split('T')[0],
+      start_date: getCurrentDateISO(),
       hasEndDate: false,
       end_date: '',
     } as FixedIncomeFormData & { hasEndDate: boolean },

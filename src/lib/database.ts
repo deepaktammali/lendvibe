@@ -233,28 +233,47 @@ export async function createPaymentSchedule(
   schedule: Omit<PaymentSchedule, 'id' | 'created_at'>
 ): Promise<PaymentSchedule> {
   const database = await initDatabase()
+
   const newSchedule: PaymentSchedule = {
     id: generateId(),
     created_at: getCurrentTimestamp(),
+    total_principal_paid: 0,
+    total_interest_paid: 0,
     ...schedule,
   }
 
-  await database.execute(
-    'INSERT INTO payment_schedules (id, loan_id, period_start_date, period_end_date, due_date, total_principal_due, total_interest_due, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-    [
-      newSchedule.id,
-      newSchedule.loan_id,
-      newSchedule.period_start_date,
-      newSchedule.period_end_date,
-      newSchedule.due_date,
-      newSchedule.total_principal_due,
-      newSchedule.total_interest_due,
-      newSchedule.status,
-      newSchedule.created_at,
-    ]
-  )
+  try {
+    await database.execute(
+      'INSERT INTO payment_schedules (id, loan_id, period_start_date, period_end_date, due_date, total_principal_due, total_interest_due, total_principal_paid, total_interest_paid, status, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+      [
+        newSchedule.id,
+        newSchedule.loan_id,
+        newSchedule.period_start_date,
+        newSchedule.period_end_date,
+        newSchedule.due_date,
+        newSchedule.total_principal_due,
+        newSchedule.total_interest_due,
+        newSchedule.total_principal_paid,
+        newSchedule.total_interest_paid,
+        newSchedule.status,
+        newSchedule.created_at,
+      ]
+    )
+    return newSchedule
+  } catch (error) {
+    // If insertion fails due to unique constraint, fetch and return the existing schedule
+    const existingScheduleAfterConflict = await database.select<PaymentSchedule[]>(
+      'SELECT * FROM payment_schedules WHERE loan_id = $1 AND period_start_date = $2 AND period_end_date = $3',
+      [schedule.loan_id, schedule.period_start_date, schedule.period_end_date]
+    )
 
-  return newSchedule
+    if (existingScheduleAfterConflict.length > 0) {
+      return existingScheduleAfterConflict[0]
+    }
+
+    // If we still can't find it, re-throw the original error
+    throw error
+  }
 }
 
 export async function getPaymentSchedules(): Promise<PaymentSchedule[]> {
@@ -483,9 +502,9 @@ export async function getRealRemainingPrincipal(loanId: string): Promise<number>
   const loan = await getLoan(loanId)
   if (!loan) return 0
 
-  // Get sum of all principal payments for this loan
+  // Get sum of all principal payments for this loan via payment_schedules join
   const result = await database.select<{ total_principal_paid: number }[]>(
-    'SELECT COALESCE(SUM(principal_amount), 0) as total_principal_paid FROM payments WHERE loan_id = $1',
+    'SELECT COALESCE(SUM(p.principal_amount), 0) as total_principal_paid FROM payments p JOIN payment_schedules ps ON p.payment_schedule_id = ps.id WHERE ps.loan_id = $1',
     [loanId]
   )
 
@@ -509,6 +528,7 @@ export async function getLoansWithCalculatedBalances(): Promise<
   const database = await initDatabase()
 
   // Get loans with borrower names and calculated remaining principal
+  // Use proper JOIN through payment_schedules since payments now reference schedules
   const result = await database.select<
     (Loan & { borrower_name: string; total_principal_paid: number })[]
   >(
@@ -519,9 +539,10 @@ export async function getLoansWithCalculatedBalances(): Promise<
     FROM loans l
     JOIN borrowers b ON l.borrower_id = b.id
     LEFT JOIN (
-      SELECT loan_id, SUM(principal_amount) as total_principal_paid
-      FROM payments
-      GROUP BY loan_id
+      SELECT ps.loan_id, SUM(p.principal_amount) as total_principal_paid
+      FROM payments p
+      JOIN payment_schedules ps ON p.payment_schedule_id = ps.id
+      GROUP BY ps.loan_id
     ) p ON l.id = p.loan_id
     WHERE l.status = "active"
     ORDER BY l.start_date DESC`
@@ -537,15 +558,17 @@ export async function syncAllLoanBalances(): Promise<void> {
   const database = await initDatabase()
 
   // Get all loans with their calculated remaining principal
+  // Use proper JOIN through payment_schedules since payments now reference schedules
   const result = await database.select<(Loan & { total_principal_paid: number })[]>(
     `SELECT
       l.*,
       COALESCE(p.total_principal_paid, 0) as total_principal_paid
     FROM loans l
     LEFT JOIN (
-      SELECT loan_id, SUM(principal_amount) as total_principal_paid
-      FROM payments
-      GROUP BY loan_id
+      SELECT ps.loan_id, SUM(p.principal_amount) as total_principal_paid
+      FROM payments p
+      JOIN payment_schedules ps ON p.payment_schedule_id = ps.id
+      GROUP BY ps.loan_id
     ) p ON l.id = p.loan_id
     WHERE l.status = "active"`
   )
@@ -558,6 +581,22 @@ export async function syncAllLoanBalances(): Promise<void> {
     )
     await updateLoanBalance(loan.id, realRemainingPrincipal)
   }
+}
+
+export async function getLoanWithBorrower(
+  id: string
+): Promise<
+  (Loan & { borrower_name: string; borrower_email?: string; borrower_phone: string }) | null
+> {
+  const database = await initDatabase()
+  const result = await database.select<
+    (Loan & { borrower_name: string; borrower_email?: string; borrower_phone: string })[]
+  >(
+    'SELECT l.*, b.name as borrower_name, b.email as borrower_email, b.phone as borrower_phone FROM loans l JOIN borrowers b ON l.borrower_id = b.id WHERE l.id = $1',
+    [id]
+  )
+
+  return result.length > 0 ? result[0] : null
 }
 
 // Fixed Income operations

@@ -63,6 +63,7 @@ import {
   isTraditionalLoanType,
   LOAN_CATEGORY_LABELS,
 } from '@/lib/loans'
+import { getCurrentDateISO } from '@/lib/utils'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
 
@@ -97,7 +98,7 @@ export default function Loans() {
       loan_type: 'installment' as const,
       principal_amount: 0,
       interest_rate: 0,
-      start_date: new Date().toISOString().split('T')[0],
+      start_date: getCurrentDateISO(),
       hasEndDate: false,
       end_date: '',
       repayment_interval_unit: 'months' as const,
@@ -654,6 +655,7 @@ export default function Loans() {
                   <TableHead>Borrower</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Remaining</TableHead>
+                  <TableHead>Start Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -672,6 +674,9 @@ export default function Loans() {
                     </TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(loan.real_remaining_principal)}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(loan.start_date).toLocaleDateString('en-IN')}
                     </TableCell>
                     <TableCell>
                       <Select

@@ -27,6 +27,7 @@ import {
   useGetBorrowers,
   useUpdateBorrower,
 } from '@/hooks/api/useBorrowers'
+import { formatDate } from '@/lib/utils'
 import { type BorrowerFormData, borrowerSchema } from '@/lib/validation'
 import type { Borrower } from '@/types/api/borrowers'
 
@@ -114,10 +115,6 @@ export default function Borrowers() {
       borrower.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (borrower.phone || '').toLowerCase().includes(searchTerm.toLowerCase())
   )
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
-  }
 
   if (loading) {
     return (

@@ -2,6 +2,7 @@ import {
   createPayment as dbCreatePayment,
   createPaymentSchedule as dbCreatePaymentSchedule,
   deletePayment as dbDeletePayment,
+  getBorrower as dbGetBorrower,
   getLastPaymentByLoan as dbGetLastPaymentByLoan,
   getLastPaymentsByLoans as dbGetLastPaymentsByLoans,
   getPaymentSchedule as dbGetPaymentSchedule,
@@ -14,7 +15,6 @@ import {
   getLoan,
   updateLoanBalance,
   updateLoanStatus,
-  getBorrower as dbGetBorrower,
 } from '@/lib/database'
 import type { CreatePayment, Payment } from '@/types/api/payments'
 import type { PaymentSchedule } from '@/types/database'
@@ -67,6 +67,21 @@ export const paymentService = {
     }
 
     return paymentsWithDetails
+  },
+
+  async ensurePaymentSchedulesExist(loanId: string): Promise<void> {
+    const loan = await getLoan(loanId)
+    if (!loan) {
+      throw new Error('Loan not found')
+    }
+
+    // Get existing schedules
+    const existingSchedules = await dbGetPaymentSchedulesByLoan(loanId)
+
+    // If no schedules exist, create them from loan start date to a reasonable future date
+    if (existingSchedules.length === 0) {
+      await this.createMissedPaymentSchedules(loanId, loan, new Date())
+    }
   },
 
   async getPaymentsByLoan(loanId: string): Promise<Payment[]> {
@@ -156,6 +171,8 @@ export const paymentService = {
         due_date: periodDates.dueDateStr,
         total_principal_due: principalAmount,
         total_interest_due: interestAmount,
+        total_principal_paid: 0,
+        total_interest_paid: 0,
         status: 'pending',
       })
     } else {
@@ -171,7 +188,7 @@ export const paymentService = {
     return paymentSchedule
   },
 
-  // Helper method to calculate payment period dates based on loan interval
+  // Helper method to calculate payment period dates based on loan start date + interval
   calculatePaymentPeriod(
     loan: {
       start_date: string
@@ -181,59 +198,74 @@ export const paymentService = {
     paymentDate: Date
   ): { periodStartStr: string; periodEndStr: string; dueDateStr: string } {
     const loanStartDate = new Date(loan.start_date)
+    const intervalUnit = loan.repayment_interval_unit || 'months'
+    const intervalValue = loan.repayment_interval_value || 1
+
+    // Calculate which payment period this payment falls into based on loan start date
     let periodStart: Date
     let periodEnd: Date
-    let dueDate: Date
 
-    // Default to monthly if no interval specified
-    if (!loan.repayment_interval_unit || !loan.repayment_interval_value) {
-      periodStart = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), 1)
-      periodEnd = new Date(paymentDate.getFullYear(), paymentDate.getMonth() + 1, 0)
-      dueDate = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), loanStartDate.getDate())
+    if (intervalUnit === 'months') {
+      // For monthly payments, calculate which month period this payment belongs to
+      const monthsSinceStart = Math.floor(
+        (paymentDate.getFullYear() - loanStartDate.getFullYear()) * 12 +
+          paymentDate.getMonth() -
+          loanStartDate.getMonth()
+      )
+
+      // Find the period number (0-based)
+      const periodNumber = Math.floor(monthsSinceStart / intervalValue)
+
+      // Calculate period start: loan start date + (periodNumber * interval) months
+      periodStart = new Date(loanStartDate)
+      periodStart.setMonth(loanStartDate.getMonth() + periodNumber * intervalValue)
+
+      // Period end: period start + interval - 1 day
+      periodEnd = new Date(periodStart)
+      periodEnd.setMonth(periodStart.getMonth() + intervalValue)
+      periodEnd.setDate(periodEnd.getDate() - 1)
+    } else if (intervalUnit === 'weeks') {
+      // For weekly payments
+      const weeksSinceStart = Math.floor(
+        (paymentDate.getTime() - loanStartDate.getTime()) / (7 * 24 * 60 * 60 * 1000)
+      )
+      const periodNumber = Math.floor(weeksSinceStart / intervalValue)
+
+      periodStart = new Date(loanStartDate)
+      periodStart.setDate(loanStartDate.getDate() + periodNumber * intervalValue * 7)
+
+      periodEnd = new Date(periodStart)
+      periodEnd.setDate(periodStart.getDate() + intervalValue * 7 - 1)
+    } else if (intervalUnit === 'years') {
+      // For yearly payments
+      const yearsSinceStart = paymentDate.getFullYear() - loanStartDate.getFullYear()
+      const periodNumber = Math.floor(yearsSinceStart / intervalValue)
+
+      periodStart = new Date(loanStartDate)
+      periodStart.setFullYear(loanStartDate.getFullYear() + periodNumber * intervalValue)
+
+      periodEnd = new Date(periodStart)
+      periodEnd.setFullYear(periodStart.getFullYear() + intervalValue)
+      periodEnd.setDate(periodEnd.getDate() - 1)
     } else {
-      switch (loan.repayment_interval_unit) {
-        case 'weeks': {
-          // Find the week containing the payment date
-          const weekStart = new Date(paymentDate)
-          weekStart.setDate(paymentDate.getDate() - paymentDate.getDay()) // Start of week (Sunday)
-          periodStart = weekStart
-          periodEnd = new Date(weekStart)
-          periodEnd.setDate(weekStart.getDate() + 6) // End of week (Saturday)
-          dueDate = new Date(weekStart)
-          break
-        }
+      // Default to monthly for any other interval
+      const monthsSinceStart = Math.floor(
+        (paymentDate.getFullYear() - loanStartDate.getFullYear()) * 12 +
+          paymentDate.getMonth() -
+          loanStartDate.getMonth()
+      )
+      const periodNumber = Math.floor(monthsSinceStart / intervalValue)
 
-        case 'months':
-          periodStart = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), 1)
-          periodEnd = new Date(paymentDate.getFullYear(), paymentDate.getMonth() + 1, 0)
-          dueDate = new Date(
-            paymentDate.getFullYear(),
-            paymentDate.getMonth(),
-            loanStartDate.getDate()
-          )
-          break
+      periodStart = new Date(loanStartDate)
+      periodStart.setMonth(loanStartDate.getMonth() + periodNumber * intervalValue)
 
-        case 'years':
-          periodStart = new Date(paymentDate.getFullYear(), 0, 1)
-          periodEnd = new Date(paymentDate.getFullYear(), 11, 31)
-          dueDate = new Date(
-            paymentDate.getFullYear(),
-            loanStartDate.getMonth(),
-            loanStartDate.getDate()
-          )
-          break
-
-        default:
-          // Fallback to monthly
-          periodStart = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), 1)
-          periodEnd = new Date(paymentDate.getFullYear(), paymentDate.getMonth() + 1, 0)
-          dueDate = new Date(
-            paymentDate.getFullYear(),
-            paymentDate.getMonth(),
-            loanStartDate.getDate()
-          )
-      }
+      periodEnd = new Date(periodStart)
+      periodEnd.setMonth(periodStart.getMonth() + intervalValue)
+      periodEnd.setDate(periodEnd.getDate() - 1)
     }
+
+    // Due date is the same as period end
+    const dueDate = new Date(periodEnd)
 
     return {
       periodStartStr: periodStart.toISOString().split('T')[0],
@@ -248,25 +280,22 @@ export const paymentService = {
       throw new Error('Loan not found')
     }
 
-    const paymentDate = new Date(data.payment_date)
+    // Validate that the payment schedule exists and belongs to the loan
+    const paymentSchedule = await dbGetPaymentSchedule(data.payment_schedule_id)
 
-    // IMPORTANT: Create schedules for any missed periods
-    await this.createMissedPaymentSchedules(data.loan_id, loan, paymentDate)
+    if (!paymentSchedule) {
+      throw new Error('Payment schedule not found')
+    }
 
-    // Find or create payment schedule for this payment based on repayment interval
-    const paymentSchedule = await this.findOrCreatePaymentSchedule(
-      data.loan_id,
-      loan,
-      paymentDate,
-      data.principal_amount,
-      data.interest_amount
-    )
+    if (paymentSchedule.loan_id !== data.loan_id) {
+      throw new Error('Payment schedule does not belong to the specified loan')
+    }
 
     const totalAmount = data.principal_amount + data.interest_amount
     const newBalance = loan.current_balance - data.principal_amount
 
     const paymentData = {
-      payment_schedule_id: paymentSchedule.id,
+      payment_schedule_id: data.payment_schedule_id,
       amount: totalAmount,
       payment_date: data.payment_date,
       principal_amount: data.principal_amount,
@@ -280,8 +309,15 @@ export const paymentService = {
 
     const dbPayment = await dbCreatePayment(paymentData)
 
+    // Update payment schedule with accumulated totals
+    await this.updatePaymentScheduleTotals(
+      data.payment_schedule_id,
+      data.principal_amount,
+      data.interest_amount
+    )
+
     // Update payment schedule status based on payments
-    await this.updatePaymentScheduleStatus(paymentSchedule.id)
+    await this.updatePaymentScheduleStatus(data.payment_schedule_id)
 
     // Only update loan balance if there's a principal payment
     if (data.principal_amount > 0) {
@@ -343,6 +379,14 @@ export const paymentService = {
 
     await dbUpdatePayment(id, updateData)
 
+    // Update payment schedule totals
+    await this.updatePaymentScheduleTotals(
+      originalSchedule.id,
+      -originalPayment.principal_amount,
+      -originalPayment.interest_amount
+    )
+    await this.updatePaymentScheduleTotals(newSchedule.id, newPrincipalAmount, newInterestAmount)
+
     // Update payment schedule statuses
     await this.updatePaymentScheduleStatus(originalSchedule.id)
     if (originalSchedule.id !== newSchedule.id) {
@@ -382,6 +426,13 @@ export const paymentService = {
 
     await dbDeletePayment(id)
 
+    // Update payment schedule totals (subtract the deleted payment)
+    await this.updatePaymentScheduleTotals(
+      schedule.id,
+      -payment.principal_amount,
+      -payment.interest_amount
+    )
+
     // Update payment schedule status
     await this.updatePaymentScheduleStatus(schedule.id)
   },
@@ -394,65 +445,58 @@ export const paymentService = {
       repayment_interval_unit?: string
       repayment_interval_value?: number
     },
-    paymentDate: Date
+    upToDate: Date
   ): Promise<void> {
     const existingSchedules = await dbGetPaymentSchedulesByLoan(loanId)
     const loanStartDate = new Date(loan.start_date)
-
-    // Handle weeks, months, and years
-    if (
-      !loan.repayment_interval_unit ||
-      !loan.repayment_interval_value ||
-      !['weeks', 'months', 'years'].includes(loan.repayment_interval_unit)
-    ) {
-      return
-    }
-
-    // Generate schedules from loan start until payment date
-    const currentDate = new Date(loanStartDate)
-    const payDate = new Date(paymentDate)
+    const intervalUnit = loan.repayment_interval_unit || 'months'
+    const intervalValue = loan.repayment_interval_value || 1
 
     // Safety limit to prevent infinite loops (max 1000 periods)
     let iterations = 0
     const maxIterations = 1000
 
-    while (currentDate <= payDate && iterations < maxIterations) {
+    // Calculate periods from loan start date using the new logic
+    let periodNumber = 0
+
+    while (iterations < maxIterations) {
       iterations++
       let periodStart: Date
       let periodEnd: Date
-      let dueDate: Date
 
-      // Calculate period dates based on interval unit
-      if (loan.repayment_interval_unit === 'weeks') {
-        // Weekly: period is the week itself
-        periodStart = new Date(currentDate)
-        periodEnd = new Date(currentDate)
-        periodEnd.setDate(periodEnd.getDate() + 6) // End of week
-        dueDate = new Date(currentDate)
-      } else if (loan.repayment_interval_unit === 'months') {
-        // Monthly: period is the month
-        periodStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-        periodEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-        dueDate = new Date(
-          currentDate.getFullYear(),
-          currentDate.getMonth(),
-          loanStartDate.getDate()
-        )
-      } else if (loan.repayment_interval_unit === 'years') {
-        // Yearly: period is the year
-        periodStart = new Date(currentDate.getFullYear(), 0, 1)
-        periodEnd = new Date(currentDate.getFullYear(), 11, 31)
-        dueDate = new Date(
-          currentDate.getFullYear(),
-          loanStartDate.getMonth(),
-          loanStartDate.getDate()
-        )
+      // Calculate period start: loan start date + (periodNumber * interval)
+      if (intervalUnit === 'months') {
+        periodStart = new Date(loanStartDate)
+        periodStart.setMonth(loanStartDate.getMonth() + periodNumber * intervalValue)
+
+        periodEnd = new Date(periodStart)
+        periodEnd.setMonth(periodStart.getMonth() + intervalValue)
+        periodEnd.setDate(periodEnd.getDate() - 1)
+      } else if (intervalUnit === 'weeks') {
+        periodStart = new Date(loanStartDate)
+        periodStart.setDate(loanStartDate.getDate() + periodNumber * intervalValue * 7)
+
+        periodEnd = new Date(periodStart)
+        periodEnd.setDate(periodStart.getDate() + intervalValue * 7 - 1)
+      } else if (intervalUnit === 'years') {
+        periodStart = new Date(loanStartDate)
+        periodStart.setFullYear(loanStartDate.getFullYear() + periodNumber * intervalValue)
+
+        periodEnd = new Date(periodStart)
+        periodEnd.setFullYear(periodStart.getFullYear() + intervalValue)
+        periodEnd.setDate(periodEnd.getDate() - 1)
       } else {
-        break // Should not reach here
+        break
+      }
+
+      // If period start is after the target date, we're done
+      if (periodStart > upToDate) {
+        break
       }
 
       const periodStartStr = periodStart.toISOString().split('T')[0]
       const periodEndStr = periodEnd.toISOString().split('T')[0]
+      const dueDateStr = periodEnd.toISOString().split('T')[0]
 
       // Check if schedule already exists
       const existingSchedule = existingSchedules.find(
@@ -461,51 +505,63 @@ export const paymentService = {
       )
 
       if (!existingSchedule) {
-        // Determine status: if due date has passed and we're past the period, mark as overdue
+        // Determine status: if due date has passed, mark as overdue
         const now = new Date()
         let status: PaymentSchedule['status'] = 'pending'
 
-        if (dueDate < now && periodEnd < now) {
-          // Period has ended and no schedule existed - mark as overdue
+        if (periodEnd < now) {
           status = 'overdue'
         }
 
-        // Create the missed schedule with default/zero amounts
-        // These can be updated later when actual payments are expected
-        await dbCreatePaymentSchedule({
+        // Create the missed schedule with default amounts
+        const newSchedule = await dbCreatePaymentSchedule({
           loan_id: loanId,
           period_start_date: periodStartStr,
           period_end_date: periodEndStr,
-          due_date: dueDate.toISOString().split('T')[0],
+          due_date: dueDateStr,
           total_principal_due: 0, // Will be set when payments are expected
           total_interest_due: 0, // Will be set when payments are expected
+          total_principal_paid: 0,
+          total_interest_paid: 0,
           status: status,
         })
+
+        // Add the newly created schedule to our local array to avoid duplicate attempts
+        existingSchedules.push(newSchedule)
       }
 
-      // Move to next period
-      if (loan.repayment_interval_unit === 'weeks') {
-        currentDate.setDate(currentDate.getDate() + loan.repayment_interval_value * 7)
-      } else if (loan.repayment_interval_unit === 'months') {
-        currentDate.setMonth(currentDate.getMonth() + loan.repayment_interval_value)
-      } else if (loan.repayment_interval_unit === 'years') {
-        currentDate.setFullYear(currentDate.getFullYear() + loan.repayment_interval_value)
-      }
+      periodNumber++
     }
   },
 
-  // Helper method to update payment schedule status based on payments
-  async updatePaymentScheduleStatus(scheduleId: string): Promise<void> {
-    const payments = await dbGetPaymentsByPaymentSchedule(scheduleId)
-    const totalPaid = payments.reduce((sum, payment) => sum + payment.amount, 0)
+  // Helper method to update payment schedule accumulated totals
+  async updatePaymentScheduleTotals(
+    scheduleId: string,
+    principalAmount: number,
+    interestAmount: number
+  ): Promise<void> {
     const schedule = await dbGetPaymentSchedule(scheduleId)
+    if (!schedule) return
 
+    const newPrincipalTotal = schedule.total_principal_paid + principalAmount
+    const newInterestTotal = schedule.total_interest_paid + interestAmount
+
+    await dbUpdatePaymentSchedule(scheduleId, {
+      total_principal_paid: Math.max(0, newPrincipalTotal),
+      total_interest_paid: Math.max(0, newInterestTotal),
+    })
+  },
+
+  // Helper method to update payment schedule status based on accumulated totals
+  async updatePaymentScheduleStatus(scheduleId: string): Promise<void> {
+    const schedule = await dbGetPaymentSchedule(scheduleId)
     if (!schedule) return
 
     const totalDue = schedule.total_principal_due + schedule.total_interest_due
+    const totalPaid = schedule.total_principal_paid + schedule.total_interest_paid
     let newStatus: PaymentSchedule['status']
 
-    if (totalPaid >= totalDue) {
+    if (totalPaid >= totalDue && totalDue > 0) {
       newStatus = 'paid'
     } else if (totalPaid > 0) {
       newStatus = 'partially_paid'

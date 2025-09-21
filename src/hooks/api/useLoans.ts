@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { getPaymentSchedulesByLoan } from '@/lib/database'
 import { type CreateLoanData, loanService } from '@/services/api/loans.service'
+import { paymentService } from '@/services/api/payments.service'
 import type { Loan } from '@/types/api/loans'
 import { borrowerKeys } from './useBorrowers'
 import { dashboardKeys } from './useDashboard'
@@ -16,6 +18,9 @@ export const loanKeys = {
   withCalculatedBalances: () => [...loanKeys.all, 'withCalculatedBalances'] as const,
   realRemainingPrincipal: (loanId: string) =>
     [...loanKeys.all, 'realRemainingPrincipal', loanId] as const,
+  paymentSchedules: () => [...loanKeys.all, 'paymentSchedules'] as const,
+  paymentSchedulesByLoan: (loanId: string) =>
+    [...loanKeys.paymentSchedules(), 'byLoan', loanId] as const,
 }
 
 export function useGetLoans() {
@@ -59,6 +64,20 @@ export function useGetRealRemainingPrincipal(loanId: string, enabled: boolean = 
   return useQuery({
     queryKey: loanKeys.realRemainingPrincipal(loanId),
     queryFn: () => loanService.getRealRemainingPrincipal(loanId),
+    enabled: enabled && !!loanId,
+  })
+}
+
+export function useGetPaymentSchedulesByLoan(loanId: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: loanKeys.paymentSchedulesByLoan(loanId),
+    queryFn: async () => {
+      // First ensure schedules exist for this loan
+      await paymentService.ensurePaymentSchedulesExist(loanId)
+
+      // Then fetch the schedules
+      return await getPaymentSchedulesByLoan(loanId)
+    },
     enabled: enabled && !!loanId,
   })
 }

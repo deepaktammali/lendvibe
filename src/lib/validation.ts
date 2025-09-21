@@ -104,6 +104,7 @@ export const paymentSchema = z
 export const loanPaymentFormSchema = z
   .object({
     loan_id: z.string().min(1, 'Please select a loan'),
+    payment_schedule_id: z.string().min(1, 'Please select a payment schedule'),
     principal_amount: z.number().min(0, 'Principal amount cannot be negative'),
     interest_amount: z.number().min(0, 'Interest amount cannot be negative'),
     payment_date: z.string().min(1, 'Payment date is required'),

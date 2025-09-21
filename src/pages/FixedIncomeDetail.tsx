@@ -16,6 +16,7 @@ import {
   useGetFixedIncomesWithTenants,
   useGetIncomePaymentsByFixedIncome,
 } from '@/hooks/api/useFixedIncome'
+import { formatDate } from '@/lib/utils'
 
 export default function FixedIncomeDetail() {
   const { id } = useParams<{ id: string }>()
@@ -36,10 +37,6 @@ export default function FixedIncomeDetail() {
       style: 'currency',
       currency: 'INR',
     }).format(amount)
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString()
   }
 
   const getIncomeTypeBadge = (type: string) => {
@@ -177,12 +174,12 @@ export default function FixedIncomeDetail() {
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600">Start Date</p>
-              <p className="text-base">{formatDate(fixedIncome.start_date)}</p>
+              <p className="text-base">{formatDate(fixedIncome.start_date, 'medium')}</p>
             </div>
             {fixedIncome.end_date && (
               <div>
                 <p className="text-sm font-medium text-gray-600">End Date</p>
-                <p className="text-base">{formatDate(fixedIncome.end_date)}</p>
+                <p className="text-base">{formatDate(fixedIncome.end_date, 'medium')}</p>
               </div>
             )}
           </div>
@@ -217,14 +214,14 @@ export default function FixedIncomeDetail() {
                 {payments.map((payment) => (
                   <TableRow key={payment.id}>
                     <TableCell className="font-medium">
-                      {formatDate(payment.payment_date)}
+                      {formatDate(payment.payment_date, 'short')}
                     </TableCell>
                     <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-gray-500">
                       {payment.notes || '-'}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-sm text-gray-500">
-                      {formatDate(payment.created_at)}
+                      {formatDate(payment.created_at, 'relative')}
                     </TableCell>
                   </TableRow>
                 ))}
