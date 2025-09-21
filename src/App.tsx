@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
 import { initDatabase } from './lib/database'
+import BorrowerDetail from './pages/BorrowerDetail'
 import Borrowers from './pages/Borrowers'
 import Dashboard from './pages/Dashboard'
 import FixedIncome from './pages/FixedIncome'
@@ -45,6 +46,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/borrowers" element={<Borrowers />} />
+            <Route path="/borrowers/:id" element={<BorrowerDetail />} />
             <Route path="/loans" element={<Loans />} />
             <Route path="/loans/:id" element={<LoanDetail />} />
             <Route path="/fixed-income" element={<FixedIncome />} />

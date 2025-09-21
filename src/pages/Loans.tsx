@@ -73,10 +73,6 @@ const formatCurrency = (amount: number) => {
   }).format(amount)
 }
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString()
-}
-
 export default function Loans() {
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
@@ -656,14 +652,9 @@ export default function Loans() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Borrower</TableHead>
-                  <TableHead>Loan Type</TableHead>
                   <TableHead>Amount</TableHead>
-                  <TableHead>Rate</TableHead>
-                  <TableHead>Term</TableHead>
-                  <TableHead>Remaining Principal</TableHead>
+                  <TableHead>Remaining</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead className="hidden xl:table-cell">Notes</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -676,30 +667,8 @@ export default function Loans() {
                         <span className="font-medium">{loan.borrower_name}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{getLoanTypeLabel(loan.loan_type)}</TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(loan.principal_amount)}
-                    </TableCell>
-                    <TableCell>{loan.interest_rate}%</TableCell>
-                    <TableCell>
-                      {loan.end_date ? (
-                        <div className="text-sm">
-                          <div>Ends: {formatDate(loan.end_date)}</div>
-                          {(() => {
-                            const start = new Date(loan.start_date)
-                            const end = new Date(loan.end_date!)
-                            const diffMs = end.getTime() - start.getTime()
-                            const months = Math.ceil(diffMs / (1000 * 60 * 60 * 24 * 30))
-                            return <div className="text-gray-500">({months} months)</div>
-                          })()}
-                        </div>
-                      ) : (
-                        <div className="text-sm text-gray-500">
-                          {isFixedIncomeType(loan.loan_type)
-                            ? `Every ${loan.repayment_interval_value} ${loan.repayment_interval_unit}`
-                            : 'No end date'}
-                        </div>
-                      )}
                     </TableCell>
                     <TableCell className="font-medium">
                       {formatCurrency(loan.real_remaining_principal)}
@@ -720,12 +689,6 @@ export default function Loans() {
                           <SelectItem value="defaulted">Defaulted</SelectItem>
                         </SelectContent>
                       </Select>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {formatDate(loan.start_date)}
-                    </TableCell>
-                    <TableCell className="hidden xl:table-cell text-sm text-gray-500 max-w-32 truncate" title={loan.notes || ''}>
-                      {loan.notes || '-'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">

@@ -17,6 +17,7 @@ export interface IncomePayment {
   fixed_income_id: string
   amount: number
   payment_date: string // YYYY-MM-DD format
+  notes?: string
   created_at: string
 }
 
@@ -120,6 +121,7 @@ namespace CreateIncomePayment {
     fixed_income_id: string
     amount: number
     payment_date: string
+    notes?: string
   }
 }
 
@@ -131,6 +133,7 @@ namespace UpdateIncomePayment {
       fixed_income_id?: string
       amount?: number
       payment_date?: string
+      notes?: string
     }
   }
 }

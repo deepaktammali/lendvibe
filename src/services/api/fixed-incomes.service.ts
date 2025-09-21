@@ -43,12 +43,14 @@ export interface CreateIncomePaymentData {
   fixed_income_id: string
   amount: number
   payment_date: string
+  notes?: string
 }
 
 export interface UpdateIncomePaymentData {
   fixed_income_id?: string
   amount?: number
   payment_date?: string
+  notes?: string
 }
 
 export const fixedIncomeService = {
@@ -167,6 +169,7 @@ export const fixedIncomeService = {
       fixed_income_id: dbPayment.fixed_income_id,
       amount: dbPayment.amount,
       payment_date: dbPayment.payment_date,
+      notes: dbPayment.notes,
       created_at: dbPayment.created_at,
     }))
   },
@@ -179,6 +182,7 @@ export const fixedIncomeService = {
       fixed_income_id: dbPayment.fixed_income_id,
       amount: dbPayment.amount,
       payment_date: dbPayment.payment_date,
+      notes: dbPayment.notes,
       created_at: dbPayment.created_at,
     }))
   },
@@ -193,6 +197,7 @@ export const fixedIncomeService = {
       fixed_income_id: dbPayment.fixed_income_id,
       amount: dbPayment.amount,
       payment_date: dbPayment.payment_date,
+      notes: dbPayment.notes,
       created_at: dbPayment.created_at,
     }
   },
@@ -210,6 +215,7 @@ export const fixedIncomeService = {
           fixed_income_id: dbPayment.fixed_income_id,
           amount: dbPayment.amount,
           payment_date: dbPayment.payment_date,
+          notes: dbPayment.notes,
           created_at: dbPayment.created_at,
         })
       }
@@ -223,6 +229,7 @@ export const fixedIncomeService = {
       fixed_income_id: data.fixed_income_id,
       amount: data.amount,
       payment_date: data.payment_date,
+      notes: data.notes,
     }
     const dbPayment = await dbCreateIncomePayment(paymentData)
 
@@ -232,6 +239,7 @@ export const fixedIncomeService = {
       fixed_income_id: dbPayment.fixed_income_id,
       amount: dbPayment.amount,
       payment_date: dbPayment.payment_date,
+      notes: dbPayment.notes,
       created_at: dbPayment.created_at,
     }
   },

@@ -31,6 +31,7 @@ import { type BorrowerFormData, borrowerSchema } from '@/lib/validation'
 import type { Borrower } from '@/types/api/borrowers'
 
 export default function Borrowers() {
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -315,6 +316,13 @@ export default function Borrowers() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => navigate(`/borrowers/${borrower.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => handleEdit(borrower)}>
                           <Edit className="h-4 w-4" />
                         </Button>
