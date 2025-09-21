@@ -206,14 +206,14 @@ export default function FixedIncomePage() {
                     <div className="space-y-2">
                       <Label htmlFor="payer">Payer (Optional)</Label>
                       <Select
-                        value={field.state.value || ''}
-                        onValueChange={(value) => field.handleChange(value || '')}
+                        value={field.state.value || 'none'}
+                        onValueChange={(value) => field.handleChange(value === 'none' ? '' : value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a payer (optional)" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No payer selected</SelectItem>
+                          <SelectItem value="none">No payer selected</SelectItem>
                           {borrowers.map((borrower) => (
                             <SelectItem key={borrower.id} value={borrower.id}>
                               {borrower.name}
