@@ -3,6 +3,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { useEffect } from 'react'
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
+import { ThemeProvider } from './components/ThemeProvider'
 import { initDatabase } from './lib/database'
 import BorrowerDetail from './pages/BorrowerDetail'
 import Borrowers from './pages/Borrowers'
@@ -12,6 +13,7 @@ import FixedIncomeDetail from './pages/FixedIncomeDetail'
 import LoanDetail from './pages/LoanDetail'
 import Loans from './pages/Loans'
 import Payments from './pages/Payments'
+import Settings from './pages/Settings'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -41,20 +43,23 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/borrowers" element={<Borrowers />} />
-            <Route path="/borrowers/:id" element={<BorrowerDetail />} />
-            <Route path="/loans" element={<Loans />} />
-            <Route path="/loans/:id" element={<LoanDetail />} />
-            <Route path="/fixed-income" element={<FixedIncome />} />
-            <Route path="/fixed-income/:id" element={<FixedIncomeDetail />} />
-            <Route path="/payments" element={<Payments />} />
-          </Routes>
-        </Layout>
-      </Router>
+      <ThemeProvider>
+        <Router>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/borrowers" element={<Borrowers />} />
+              <Route path="/borrowers/:id" element={<BorrowerDetail />} />
+              <Route path="/loans" element={<Loans />} />
+              <Route path="/loans/:id" element={<LoanDetail />} />
+              <Route path="/fixed-income" element={<FixedIncome />} />
+              <Route path="/fixed-income/:id" element={<FixedIncomeDetail />} />
+              <Route path="/payments" element={<Payments />} />
+              <Route path="/settings" element={<Settings />} />
+            </Routes>
+          </Layout>
+        </Router>
+      </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   )

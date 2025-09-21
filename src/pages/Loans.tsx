@@ -250,8 +250,8 @@ export default function Loans() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Loans</h1>
-          <p className="text-gray-600 mt-2">Manage your loans</p>
+          <h1 className="text-3xl font-bold text-foreground">Loans</h1>
+          <p className="text-muted-foreground mt-2">Manage your loans</p>
         </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -599,9 +599,9 @@ export default function Loans() {
       </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white p-3 rounded-lg border">
+      <div className="flex flex-col sm:flex-row gap-3 bg-card p-3 rounded-lg border">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by borrower name, loan ID, or loan type..."
             value={searchTerm}
@@ -665,7 +665,7 @@ export default function Loans() {
             <div className="flex items-center">
               <IndianRupee className="h-6 w-6 text-green-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Active</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Active</p>
                 <p className="text-base font-bold">
                   {formatCurrency(
                     filteredLoans
@@ -683,7 +683,7 @@ export default function Loans() {
             <div className="flex items-center">
               <Calendar className="h-6 w-6 text-blue-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Active Loans</p>
+                <p className="text-sm font-medium text-muted-foreground">Active Loans</p>
                 <p className="text-base font-bold">
                   {filteredLoans.filter((loan) => loan.status === 'active').length}
                 </p>
@@ -697,7 +697,7 @@ export default function Loans() {
             <div className="flex items-center">
               <Percent className="h-6 w-6 text-purple-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Avg. Interest</p>
+                <p className="text-sm font-medium text-muted-foreground">Avg. Interest</p>
                 <p className="text-base font-bold">
                   {filteredLoans.length > 0
                     ? `${(
@@ -729,7 +729,7 @@ export default function Loans() {
             <div className="flex items-center">
               <AlertCircle className="h-6 w-6 text-red-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Defaulted</p>
+                <p className="text-sm font-medium text-muted-foreground">Defaulted</p>
                 <p className="text-base font-bold">
                   {filteredLoans.filter((loan) => loan.status === 'defaulted').length}
                 </p>

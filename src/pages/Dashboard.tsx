@@ -1,6 +1,7 @@
 import { AlertTriangle, Banknote, Clock, IndianRupee, TrendingUp, Users } from 'lucide-react'
 import { useMemo } from 'react'
 import UpcomingPayments from '@/components/UpcomingPayments'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   useGetDashboardStats,
@@ -41,13 +42,12 @@ export default function Dashboard() {
         <div className="text-center space-y-4">
           <div className="text-lg text-red-600">Failed to load dashboard</div>
           <div className="text-sm text-gray-600 max-w-md">{errorMessage}</div>
-          <button
-            type="button"
+          <Button
+            variant="default"
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     )
@@ -64,8 +64,8 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Overview of your lending operations</p>
+        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+        <p className="text-muted-foreground mt-2">Overview of your lending operations</p>
       </div>
 
       {/* Stats Cards */}

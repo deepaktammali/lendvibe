@@ -480,9 +480,9 @@ export default function UpcomingPayments({
 
       {showFilters && (
         <div className="px-6 pb-4">
-          <div className="flex flex-col sm:flex-row gap-3 bg-white p-3 rounded-lg border">
+          <div className="flex flex-col sm:flex-row gap-3 bg-card p-3 rounded-lg border">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by borrower or asset type..."
                 value={searchTerm}
@@ -542,9 +542,9 @@ export default function UpcomingPayments({
       <CardContent>
         {displayPayments.length === 0 ? (
           <div className="text-center py-8">
-            <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">No upcoming payments found</p>
-            <p className="text-sm text-gray-400">
+            <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No upcoming payments found</p>
+            <p className="text-sm text-muted-foreground">
               {showPeriodSelector
                 ? `All payments are up to date for ${getPeriodLabel(selectedPeriod).toLowerCase()}`
                 : 'No upcoming payments at this time'}
@@ -599,7 +599,7 @@ export default function UpcomingPayments({
                 <TableRow key={`${payment.type}-${payment.id}`}>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-400" />
+                      <User className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{payment.borrowerName}</span>
                     </div>
                   </TableCell>
@@ -628,7 +628,7 @@ export default function UpcomingPayments({
                         </div>
                       )}
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell text-sm text-gray-500">
+                  <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                     {payment.daysSinceLastPayment} days
                   </TableCell>
                   <TableCell className="hidden lg:table-cell font-medium">

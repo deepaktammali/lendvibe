@@ -136,8 +136,8 @@ export default function Borrowers() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Borrowers</h1>
-          <p className="text-gray-600 mt-2">Manage your borrowers</p>
+          <h1 className="text-3xl font-bold text-foreground">Borrowers</h1>
+          <p className="text-muted-foreground mt-2">Manage your borrowers</p>
         </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -238,9 +238,9 @@ export default function Borrowers() {
       </div>
 
       {/* Search */}
-      <div className="bg-white p-3 rounded-lg border">
+      <div className="bg-card p-3 rounded-lg border">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by name or phone..."
             value={searchTerm}

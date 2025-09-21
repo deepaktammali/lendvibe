@@ -353,8 +353,8 @@ export default function LoanDetail() {
         </Button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Loan Details</h1>
-            <p className="text-gray-600 mt-2">Comprehensive loan information and payment history</p>
+            <h1 className="text-3xl font-bold text-foreground">Loan Details</h1>
+            <p className="text-muted-foreground mt-2">Comprehensive loan information and payment history</p>
           </div>
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogTrigger asChild>

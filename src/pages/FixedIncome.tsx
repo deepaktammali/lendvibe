@@ -237,8 +237,8 @@ export default function FixedIncomePage() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Fixed Income</h1>
-          <p className="text-gray-600 mt-2">Manage your income-generating assets</p>
+          <h1 className="text-3xl font-bold text-foreground">Fixed Income</h1>
+          <p className="text-muted-foreground mt-2">Manage your income-generating assets</p>
         </div>
 
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -713,9 +713,9 @@ export default function FixedIncomePage() {
       </div>
 
       {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white p-3 rounded-lg border">
+      <div className="flex flex-col sm:flex-row gap-3 bg-card p-3 rounded-lg border">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by label or payer name..."
             value={searchTerm}
@@ -743,7 +743,7 @@ export default function FixedIncomePage() {
             <div className="flex items-center">
               <TrendingUp className="h-6 w-6 text-green-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Active</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Active</p>
                 <p className="text-base font-bold">
                   {formatCurrency(
                     filteredFixedIncomes
@@ -761,7 +761,7 @@ export default function FixedIncomePage() {
             <div className="flex items-center">
               <IndianRupee className="h-6 w-6 text-blue-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Active Count</p>
+                <p className="text-sm font-medium text-muted-foreground">Active Count</p>
                 <p className="text-base font-bold">
                   {filteredFixedIncomes.filter((item) => item.status === 'active').length}
                 </p>
@@ -775,7 +775,7 @@ export default function FixedIncomePage() {
             <div className="flex items-center">
               <Clock className="h-6 w-6 text-purple-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Average Payment</p>
+                <p className="text-sm font-medium text-muted-foreground">Average Payment</p>
                 <p className="text-base font-bold">
                   {filteredFixedIncomes.length > 0
                     ? formatCurrency(
@@ -794,7 +794,7 @@ export default function FixedIncomePage() {
             <div className="flex items-center">
               <Calendar className="h-6 w-6 text-orange-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Count</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Count</p>
                 <p className="text-base font-bold">{filteredFixedIncomes.length}</p>
               </div>
             </div>

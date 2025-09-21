@@ -1,4 +1,4 @@
-import { Banknote, Home, IndianRupee, Menu, Receipt, TrendingUp, Users, X } from 'lucide-react'
+import { Banknote, Home, IndianRupee, Menu, Receipt, Settings, TrendingUp, Users, X } from 'lucide-react'
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,7 @@ const navigation = [
   { name: 'Loans', href: '/loans', icon: Banknote },
   { name: 'Fixed Income', href: '/fixed-income', icon: TrendingUp },
   { name: 'Payments', href: '/payments', icon: Receipt },
+  { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
 interface SidebarContentProps {
@@ -44,7 +45,7 @@ const SidebarContent = ({ setSidebarOpen, expanded, setSidebarExpanded }: Sideba
             <div className="flex items-center gap-2">
               <IndianRupee className="h-6 w-6 text-primary" />
               {showText && (
-                <h1 className="text-xl font-bold text-gray-900">LendTracker</h1>
+                <h1 className="text-xl font-bold text-sidebar-foreground">LendTracker</h1>
               )}
             </div>
             <Button
@@ -88,7 +89,7 @@ const SidebarContent = ({ setSidebarOpen, expanded, setSidebarExpanded }: Sideba
                   expanded ? 'justify-start' : 'justify-center',
                   isActive
                     ? 'bg-primary text-primary-foreground'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -111,10 +112,10 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarExpanded, setSidebarExpanded] = useState(false)
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-background">
       {/* Expandable sidebar */}
       <div className={cn(
-        "bg-white shadow-sm border-r flex-shrink-0 transition-all duration-300 ease-in-out",
+        "bg-sidebar shadow-sm border-sidebar-border flex-shrink-0 transition-all duration-300 ease-in-out",
         sidebarExpanded ? "w-64" : "w-16"
       )}>
         <SidebarContent
@@ -142,7 +143,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile Sidebar - still needed for mobile menu */}
       <div
         className={cn(
-          'sm:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg border-r transform transition-transform duration-300 ease-in-out',
+          'sm:hidden fixed inset-y-0 left-0 z-50 w-64 bg-sidebar shadow-lg border-sidebar-border transform transition-transform duration-300 ease-in-out',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
@@ -152,13 +153,13 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile Header */}
-        <div className="sm:hidden bg-white border-b px-4 py-3 flex items-center justify-between">
+        <div className="sm:hidden bg-background border-b px-4 py-3 flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2">
             <IndianRupee className="h-5 w-5 text-primary" />
-            <h1 className="text-lg font-bold text-gray-900">LendTracker</h1>
+            <h1 className="text-lg font-bold text-foreground">LendTracker</h1>
           </div>
           <div className="w-8" /> {/* Spacer for centering */}
         </div>

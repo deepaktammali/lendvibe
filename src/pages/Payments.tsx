@@ -259,8 +259,8 @@ export default function Payments() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
-          <p className="text-gray-600 mt-2">Track and record payments</p>
+          <h1 className="text-3xl font-bold text-foreground">Payments</h1>
+          <p className="text-muted-foreground mt-2">Track and record payments</p>
         </div>
 
         <div className="flex gap-2">
@@ -733,9 +733,9 @@ export default function Payments() {
       </div>
 
       {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-white p-3 rounded-lg border">
+      <div className="flex flex-col sm:flex-row gap-3 bg-card p-3 rounded-lg border">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by borrower name or loan ID..."
             value={searchTerm}
@@ -763,7 +763,7 @@ export default function Payments() {
             <div className="flex items-center">
               <IndianRupee className="h-6 w-6 text-green-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Payments</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Payments</p>
                 <p className="text-base font-bold">{formatCurrency(totalPayments)}</p>
               </div>
             </div>
@@ -775,7 +775,7 @@ export default function Payments() {
             <div className="flex items-center">
               <Receipt className="h-6 w-6 text-blue-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Principal Paid</p>
+                <p className="text-sm font-medium text-muted-foreground">Principal Paid</p>
                 <p className="text-base font-bold">{formatCurrency(totalPrincipal)}</p>
               </div>
             </div>
@@ -787,7 +787,7 @@ export default function Payments() {
             <div className="flex items-center">
               <TrendingUp className="h-6 w-6 text-purple-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Interest Earned</p>
+                <p className="text-sm font-medium text-muted-foreground">Interest Earned</p>
                 <p className="text-base font-bold">{formatCurrency(totalInterest)}</p>
               </div>
             </div>
@@ -799,7 +799,7 @@ export default function Payments() {
             <div className="flex items-center">
               <Calendar className="h-6 w-6 text-orange-600" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">This Month</p>
+                <p className="text-sm font-medium text-muted-foreground">This Month</p>
                 <p className="text-base font-bold">{formatCurrency(monthlyPayments)}</p>
               </div>
             </div>
