@@ -237,9 +237,10 @@ export async function createPaymentSchedule(
   const newSchedule: PaymentSchedule = {
     id: generateId(),
     created_at: getCurrentTimestamp(),
-    total_principal_paid: 0,
-    total_interest_paid: 0,
     ...schedule,
+    // Ensure these fields have defaults if not provided
+    total_principal_paid: schedule.total_principal_paid ?? 0,
+    total_interest_paid: schedule.total_interest_paid ?? 0,
   }
 
   try {
