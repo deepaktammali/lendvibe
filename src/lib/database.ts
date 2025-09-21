@@ -693,8 +693,64 @@ export async function updateFixedIncomeStatus(
   await database.execute('UPDATE fixed_income SET status = $1 WHERE id = $2', [status, id])
 }
 
+export async function updateFixedIncome(
+  id: string,
+  updates: Partial<Omit<FixedIncome, 'id' | 'created_at'>>
+): Promise<void> {
+  const database = await initDatabase()
+  const fields = []
+  const values = []
+  let paramIndex = 1
+
+  if (updates.label !== undefined) {
+    fields.push(`label = $${paramIndex++}`)
+    values.push(updates.label)
+  }
+  if (updates.payer_id !== undefined) {
+    fields.push(`payer_id = $${paramIndex++}`)
+    values.push(updates.payer_id)
+  }
+  if (updates.amount !== undefined) {
+    fields.push(`amount = $${paramIndex++}`)
+    values.push(updates.amount)
+  }
+  if (updates.payment_interval_unit !== undefined) {
+    fields.push(`payment_interval_unit = $${paramIndex++}`)
+    values.push(updates.payment_interval_unit)
+  }
+  if (updates.payment_interval_value !== undefined) {
+    fields.push(`payment_interval_value = $${paramIndex++}`)
+    values.push(updates.payment_interval_value)
+  }
+  if (updates.start_date !== undefined) {
+    fields.push(`start_date = $${paramIndex++}`)
+    values.push(updates.start_date)
+  }
+  if (updates.end_date !== undefined) {
+    fields.push(`end_date = $${paramIndex++}`)
+    values.push(updates.end_date)
+  }
+  if (updates.status !== undefined) {
+    fields.push(`status = $${paramIndex++}`)
+    values.push(updates.status)
+  }
+
+  if (fields.length > 0) {
+    values.push(id)
+    await database.execute(
+      `UPDATE fixed_income SET ${fields.join(', ')} WHERE id = $${paramIndex}`,
+      values
+    )
+  }
+}
+
 export async function deleteFixedIncome(id: string): Promise<void> {
   const database = await initDatabase()
+
+  // First delete all income payments for this fixed income
+  await database.execute('DELETE FROM income_payments WHERE fixed_income_id = $1', [id])
+
+  // Then delete the fixed income itself
   await database.execute('DELETE FROM fixed_income WHERE id = $1', [id])
 }
 

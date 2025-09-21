@@ -11,6 +11,7 @@ import {
   getIncomePaymentsByFixedIncome as dbGetIncomePaymentsByFixedIncome,
   getLastIncomePaymentByFixedIncome as dbGetLastIncomePaymentByFixedIncome,
   getLastIncomePaymentsByFixedIncomes as dbGetLastIncomePaymentsByFixedIncomes,
+  updateFixedIncome as dbUpdateFixedIncome,
   updateFixedIncomeStatus as dbUpdateFixedIncomeStatus,
   updateIncomePayment as dbUpdateIncomePayment,
 } from '@/lib/database'
@@ -148,6 +149,10 @@ export const fixedIncomeService = {
       status: dbFixedIncome.status,
       created_at: dbFixedIncome.created_at,
     }
+  },
+
+  async updateFixedIncome(id: string, data: UpdateFixedIncomeData): Promise<void> {
+    return await dbUpdateFixedIncome(id, data)
   },
 
   async updateFixedIncomeStatus(id: string, status: FixedIncome['status']): Promise<void> {

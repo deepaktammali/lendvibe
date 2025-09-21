@@ -1,18 +1,14 @@
-import { useForm } from '@tanstack/react-form'
 import {
-  Calendar,
-  Clock,
-  Eye,
-  IndianRupee,
-  Plus,
-  RefreshCw,
-  Search,
-  Trash2,
-  TrendingUp,
-  User,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,16 +41,36 @@ import {
   useCreateFixedIncome,
   useDeleteFixedIncome,
   useGetFixedIncomesWithTenants,
+  useUpdateFixedIncome,
 } from '@/hooks/api/useFixedIncome'
 import { getCurrentDateISO } from '@/lib/utils'
 import { type FixedIncomeFormData, fixedIncomeSchema } from '@/lib/validation'
 import type { FixedIncome } from '@/types/api/fixedIncome'
+import { useForm } from '@tanstack/react-form'
+import {
+  Calendar,
+  Clock,
+  Edit,
+  Eye,
+  IndianRupee,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export default function FixedIncomePage() {
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [editingFixedIncome, setEditingFixedIncome] = useState<FixedIncome | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [deletingItem, setDeletingItem] = useState<FixedIncome | null>(null)
 
   // Use the new TanStack Query hooks
   const {
@@ -64,6 +80,7 @@ export default function FixedIncomePage() {
   } = useGetFixedIncomesWithTenants()
   const { data: borrowers = [], refetch: refetchBorrowers } = useGetBorrowers()
   const createFixedIncomeMutation = useCreateFixedIncome()
+  const updateFixedIncomeMutation = useUpdateFixedIncome()
   const deleteFixedIncomeMutation = useDeleteFixedIncome()
 
   const formatCurrency = (amount: number) => {
@@ -108,18 +125,81 @@ export default function FixedIncomePage() {
     },
   })
 
-  const handleDelete = async (id: string) => {
-    if (
-      window.confirm(
-        'Are you sure you want to delete this fixed income? This action cannot be undone.'
-      )
-    ) {
+  const editFixedIncomeForm = useForm({
+    defaultValues: {
+      label: '',
+      payer_id: '',
+      amount: 0,
+      payment_interval_unit: 'months' as const,
+      payment_interval_value: 1,
+      start_date: getCurrentDateISO(),
+      hasEndDate: false,
+      end_date: '',
+    } as FixedIncomeFormData & { hasEndDate: boolean },
+    validators: {
+      onBlur: fixedIncomeSchema,
+    },
+    onSubmit: async ({ value }) => {
+      if (!editingFixedIncome) return
+
       try {
-        await deleteFixedIncomeMutation.mutateAsync(id)
+        const fixedIncomeData = {
+          label: value.label,
+          payer_id: value.payer_id || undefined,
+          amount: value.amount,
+          payment_interval_unit: value.payment_interval_unit,
+          payment_interval_value: value.payment_interval_value,
+          start_date: value.start_date,
+          end_date: value.hasEndDate ? value.end_date : undefined,
+        }
+
+        await updateFixedIncomeMutation.mutateAsync({
+          id: editingFixedIncome.id,
+          data: fixedIncomeData,
+        })
+        setIsEditDialogOpen(false)
+        setEditingFixedIncome(null)
+        editFixedIncomeForm.reset()
       } catch (error) {
-        console.error('Failed to delete fixed income:', error)
+        console.error('Failed to update fixed income:', error)
       }
+    },
+  })
+
+  const handleEdit = (fixedIncome: FixedIncome) => {
+    setEditingFixedIncome(fixedIncome)
+    setIsEditDialogOpen(true)
+  }
+
+  // Pre-fill the edit form when editingFixedIncome changes
+  useEffect(() => {
+    if (editingFixedIncome) {
+      editFixedIncomeForm.setFieldValue('label', editingFixedIncome.label || '')
+      editFixedIncomeForm.setFieldValue('payer_id', editingFixedIncome.payer_id || '')
+      editFixedIncomeForm.setFieldValue('amount', editingFixedIncome.amount)
+      editFixedIncomeForm.setFieldValue('payment_interval_unit', editingFixedIncome.payment_interval_unit)
+      editFixedIncomeForm.setFieldValue('payment_interval_value', editingFixedIncome.payment_interval_value)
+      editFixedIncomeForm.setFieldValue('start_date', editingFixedIncome.start_date)
+      editFixedIncomeForm.setFieldValue('hasEndDate', !!editingFixedIncome.end_date)
+      editFixedIncomeForm.setFieldValue('end_date', editingFixedIncome.end_date || '')
+    } else {
+      editFixedIncomeForm.reset()
     }
+  }, [editingFixedIncome, editFixedIncomeForm])
+
+  const handleConfirmDelete = async () => {
+    if (!deletingItem) return
+
+    try {
+      await deleteFixedIncomeMutation.mutateAsync(deletingItem.id)
+      setDeletingItem(null)
+    } catch (error) {
+      console.error('Failed to delete fixed income:', error)
+    }
+  }
+
+  const handleInitiateDelete = (item: FixedIncome) => {
+    setDeletingItem(item)
   }
 
   const filteredFixedIncomes = fixedIncomes.filter((item) => {
@@ -397,6 +477,239 @@ export default function FixedIncomePage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Fixed Income</DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                editFixedIncomeForm.handleSubmit()
+              }}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <editFixedIncomeForm.Field name="label">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-label">Label</Label>
+                      <Input
+                        id="edit-label"
+                        placeholder="e.g., Rent - Apartment 1A"
+                        value={field.state.value || ''}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editFixedIncomeForm.Field>
+
+                <editFixedIncomeForm.Field name="payer_id">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-payer">Payer (Optional)</Label>
+                      <Select
+                        value={field.state.value || 'none'}
+                        onValueChange={(value) => field.handleChange(value === 'none' ? '' : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a payer (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No payer selected</SelectItem>
+                          {borrowers.map((borrower) => (
+                            <SelectItem key={borrower.id} value={borrower.id}>
+                              {borrower.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editFixedIncomeForm.Field>
+
+                <editFixedIncomeForm.Field name="amount">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-amount">Amount *</Label>
+                      <Input
+                        id="edit-amount"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={field.state.value || ''}
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0
+                          field.handleChange(amount)
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editFixedIncomeForm.Field>
+
+                <editFixedIncomeForm.Field name="payment_interval_value">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-interval-value">Payment Every *</Label>
+                      <Input
+                        id="edit-interval-value"
+                        type="number"
+                        min="1"
+                        value={field.state.value || ''}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value, 10) || 1
+                          field.handleChange(value)
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editFixedIncomeForm.Field>
+
+                <editFixedIncomeForm.Field name="payment_interval_unit">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-interval-unit">Interval Unit *</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) =>
+                          field.handleChange(value as FixedIncomeFormData['payment_interval_unit'])
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="days">Days</SelectItem>
+                          <SelectItem value="weeks">Weeks</SelectItem>
+                          <SelectItem value="months">Months</SelectItem>
+                          <SelectItem value="years">Years</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editFixedIncomeForm.Field>
+
+                <editFixedIncomeForm.Field name="start_date">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-start-date">Start Date *</Label>
+                      <Input
+                        id="edit-start-date"
+                        type="date"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-red-600">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editFixedIncomeForm.Field>
+
+                <editFixedIncomeForm.Field name="hasEndDate">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                        />
+                        <span>Has End Date</span>
+                      </Label>
+                    </div>
+                  )}
+                </editFixedIncomeForm.Field>
+              </div>
+
+              <editFixedIncomeForm.Subscribe selector={(state) => state.values.hasEndDate}>
+                {(hasEndDate) => {
+                  if (hasEndDate) {
+                    return (
+                      <editFixedIncomeForm.Field name="end_date">
+                        {(field) => (
+                          <div className="space-y-2">
+                            <Label htmlFor="edit-end-date">End Date</Label>
+                            <Input
+                              id="edit-end-date"
+                              type="date"
+                              value={field.state.value}
+                              onChange={(e) => field.handleChange(e.target.value)}
+                              onBlur={field.handleBlur}
+                            />
+                            {field.state.meta.errors.length > 0 && (
+                              <p className="text-sm text-red-600">
+                                {field.state.meta.errors[0]?.message}
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </editFixedIncomeForm.Field>
+                    )
+                  }
+                  return null
+                }}
+              </editFixedIncomeForm.Subscribe>
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    editFixedIncomeForm.reset()
+                    setIsEditDialogOpen(false)
+                    setEditingFixedIncome(null)
+                  }}
+                >
+                  Cancel
+                </Button>
+                <editFixedIncomeForm.Subscribe
+                  selector={(state) => [state.canSubmit, state.isSubmitting]}
+                >
+                  {([canSubmit, isSubmitting]) => (
+                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                      {isSubmitting ? 'Updating...' : 'Update Fixed Income'}
+                    </Button>
+                  )}
+                </editFixedIncomeForm.Subscribe>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Search & Filter */}
@@ -556,9 +869,39 @@ export default function FixedIncomePage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(item.id)}>
-                          <Trash2 className="h-4 w-4" />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(item)}
+                        >
+                          <Edit className="h-4 w-4" />
                         </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleInitiateDelete(item)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Fixed Income</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{deletingItem?.label || 'this fixed income'}"?
+                                This action cannot be undone and will also delete all related payment records.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={handleConfirmDelete}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>

@@ -1,11 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type CreateFixedIncomeData,
   type CreateIncomePaymentData,
   fixedIncomeService,
+  type UpdateFixedIncomeData,
   type UpdateIncomePaymentData,
 } from '@/services/api/fixed-incomes.service'
 import type { FixedIncome, IncomePayment } from '@/types/api/fixedIncome'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { borrowerKeys } from './useBorrowers'
 import { dashboardKeys } from './useDashboard'
 
@@ -126,6 +127,41 @@ export function useUpdateFixedIncomeStatus() {
     },
     onError: (error) => {
       console.error('Failed to update fixed income status:', error)
+    },
+  })
+}
+
+export function useUpdateFixedIncome() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateFixedIncomeData }) =>
+      fixedIncomeService.updateFixedIncome(id, data),
+    onSuccess: (_, { id, data }) => {
+      // Update the fixed income in cache
+      queryClient.setQueryData<FixedIncome | null>(fixedIncomeKeys.detail(id), (old) => {
+        if (!old) return null
+        return { ...old, ...data }
+      })
+
+      // Update in lists
+      const updateFixedIncomeInList = (old: FixedIncome[] | undefined) => {
+        if (!old) return old
+        return old.map((fixedIncome) =>
+          fixedIncome.id === id ? { ...fixedIncome, ...data } : fixedIncome
+        )
+      }
+
+      queryClient.setQueryData<FixedIncome[]>(fixedIncomeKeys.lists(), updateFixedIncomeInList)
+      queryClient.setQueryData<FixedIncome[]>(fixedIncomeKeys.withTenants(), updateFixedIncomeInList)
+
+      // Invalidate to ensure consistency
+      queryClient.invalidateQueries({ queryKey: fixedIncomeKeys.detail(id) })
+      queryClient.invalidateQueries({ queryKey: fixedIncomeKeys.withTenants() })
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all })
+    },
+    onError: (error) => {
+      console.error('Failed to update fixed income:', error)
     },
   })
 }
