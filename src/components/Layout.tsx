@@ -25,7 +25,7 @@ const SidebarContent = ({ setSidebarOpen }: SidebarContentProps) => {
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 p-6 border-b">
+      <div className="hidden sm:flex items-center justify-between gap-2 p-6 border-b">
         <div className="flex items-center gap-2">
           <IndianRupee className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-bold text-gray-900">LendTracker</h1>
@@ -57,7 +57,7 @@ const SidebarContent = ({ setSidebarOpen }: SidebarContentProps) => {
                 )}
               >
                 <item.icon className="h-5 w-5" />
-                <span className="sm:inline">{item.name}</span>
+                <span className="hidden sm:inline">{item.name}</span>
               </Link>
             )
           })}
@@ -72,8 +72,8 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Desktop Sidebar */}
-      <div className="hidden sm:block w-64 bg-white shadow-sm border-r">
+      {/* Sidebar - collapsed on small screens */}
+      <div className="w-16 sm:w-64 bg-white shadow-sm border-r">
         <SidebarContent setSidebarOpen={setSidebarOpen} />
       </div>
 
