@@ -1,3 +1,21 @@
+import { useForm } from '@tanstack/react-form'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  Clock,
+  Edit,
+  IndianRupee,
+  RefreshCw,
+  Trash2,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,11 +54,17 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useGetBorrower, useGetBorrowers } from '@/hooks/api/useBorrowers'
-import { useDeleteAllPaymentSchedulesAndPayments, useGetLoan, useGetPaymentSchedulesByLoan, useUpdateLoan } from '@/hooks/api/useLoans'
+import {
+  useDeleteAllPaymentSchedulesAndPayments,
+  useGetLoan,
+  useGetPaymentSchedulesByLoan,
+  useUpdateLoan,
+} from '@/hooks/api/useLoans'
 import { useDeletePayment, useGetPaymentsByLoan } from '@/hooks/api/usePayments'
 import { deletePaymentSchedule } from '@/lib/database'
 import {
   calculateAccruedInterest,
+  calculateBulletLoanInterest,
   getDaysSinceLastPayment,
   getNextPaymentDate,
 } from '@/lib/finance'
@@ -49,24 +73,6 @@ import { formatDate, getCurrentDateISO, isOverdue } from '@/lib/utils'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
 import type { Payment } from '@/types/api/payments'
-import { useForm } from '@tanstack/react-form'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Calendar,
-  ChevronDown,
-  ChevronRight,
-  Clock,
-  Edit,
-  IndianRupee,
-  RefreshCw,
-  Trash2,
-  TrendingUp,
-  User,
-} from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 
 export default function LoanDetail() {
   const { id } = useParams<{ id: string }>()
@@ -126,7 +132,7 @@ export default function LoanDetail() {
     },
     onError: (error) => {
       console.error('Failed to delete payment schedule:', error)
-    }
+    },
   })
 
   const loading = loanLoading || borrowerLoading || paymentsLoading || schedulesLoading
@@ -140,11 +146,30 @@ export default function LoanDetail() {
     const totalInterestPaid = payments.reduce((sum, payment) => sum + payment.interest_amount, 0)
     const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0)
     const remainingPrincipal = loan.principal_amount - totalPrincipalPaid
-    const accruedInterest = calculateAccruedInterest(loan)
     const lastPayment = payments[0] // Payments are ordered by date DESC
-    const nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date)
     const daysSinceLastPayment = getDaysSinceLastPayment(loan, lastPayment?.payment_date)
-    const isOverdueStatus = isOverdue(nextDueDate)
+
+    // Calculate interest differently for bullet vs installment loans
+    let accruedInterest = 0
+    let pendingInterest = 0
+    let nextDueDate = ''
+    let isOverdueStatus = false
+
+    if (loan.loan_type === 'bullet') {
+      // For bullet loans, calculate time-based interest with payment history
+      const bulletInterest = calculateBulletLoanInterest(loan, payments)
+      accruedInterest = bulletInterest.totalInterestAccrued
+      pendingInterest = bulletInterest.pendingInterest
+      // Bullet loans don't have fixed due dates
+      nextDueDate = 'No fixed schedule'
+      isOverdueStatus = false
+    } else {
+      // For installment loans, use period-based calculation
+      accruedInterest = calculateAccruedInterest(loan)
+      pendingInterest = Math.max(0, accruedInterest - totalInterestPaid)
+      nextDueDate = getNextPaymentDate(loan, lastPayment?.payment_date)
+      isOverdueStatus = isOverdue(nextDueDate)
+    }
 
     return {
       totalPrincipalPaid,
@@ -152,6 +177,7 @@ export default function LoanDetail() {
       totalPayments,
       remainingPrincipal,
       accruedInterest,
+      pendingInterest,
       lastPayment,
       nextDueDate,
       daysSinceLastPayment,
@@ -167,7 +193,7 @@ export default function LoanDetail() {
   }
 
   const toggleScheduleExpansion = (scheduleId: string) => {
-    setExpandedSchedules(prev => {
+    setExpandedSchedules((prev) => {
       const newSet = new Set(prev)
       if (newSet.has(scheduleId)) {
         newSet.delete(scheduleId)
@@ -179,7 +205,7 @@ export default function LoanDetail() {
   }
 
   const getSchedulePayments = (scheduleId: string) => {
-    return payments.filter(payment => payment.payment_schedule_id === scheduleId)
+    return payments.filter((payment) => payment.payment_schedule_id === scheduleId)
   }
 
   const handleDeleteSchedule = (scheduleId: string) => {
@@ -322,7 +348,7 @@ export default function LoanDetail() {
   if (error || !loan) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-lg text-red-600">Failed to load loan details</div>
+        <div className="text-lg text-destructive">Failed to load loan details</div>
       </div>
     )
   }
@@ -330,7 +356,7 @@ export default function LoanDetail() {
   if (!borrower) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-lg text-red-600">Borrower not found</div>
+        <div className="text-lg text-destructive">Borrower not found</div>
       </div>
     )
   }
@@ -354,279 +380,291 @@ export default function LoanDetail() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Loan Details</h1>
-            <p className="text-muted-foreground mt-2">Comprehensive loan information and payment history</p>
+            <p className="text-muted-foreground mt-2">
+              Comprehensive loan information and payment history
+            </p>
           </div>
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => setIsEditDialogOpen(true)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Loan
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Edit Loan</DialogTitle>
-            </DialogHeader>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                editForm.handleSubmit()
-              }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-6"
-            >
-              <editForm.Field name="borrower_id">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-loan-borrower">Borrower *</Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(value) => field.handleChange(value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a borrower" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {borrowers.map((borrower) => (
-                          <SelectItem key={borrower.id} value={borrower.id}>
-                            {borrower.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </editForm.Field>
-
-              <editForm.Field name="loan_type">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-loan-type">Loan Type *</Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(value) =>
-                        field.handleChange(value as LoanFormData['loan_type'])
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a loan type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(() => {
-                          const { traditional_loan, fixed_income } = getLoanTypesByCategory()
-                          return (
-                            <>
-                              <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                Traditional Loan
-                              </div>
-                              {traditional_loan.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {getLoanTypeLabel(type)}
-                                </SelectItem>
-                              ))}
-                              <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide mt-2">
-                                Fixed Income
-                              </div>
-                              {fixed_income.map((type) => (
-                                <SelectItem key={type} value={type}>
-                                  {getLoanTypeLabel(type)}
-                                </SelectItem>
-                              ))}
-                            </>
-                          )
-                        })()}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </editForm.Field>
-
-              <editForm.Field name="principal_amount">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-loan-principal">Principal Amount *</Label>
-                    <Input
-                      id="edit-loan-principal"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={field.state.value || ''}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0
-                        field.handleChange(value)
-                      }}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </editForm.Field>
-
-              <editForm.Field name="interest_rate">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-loan-rate">Interest Rate (%)</Label>
-                    <Input
-                      id="edit-loan-rate"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={field.state.value || ''}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0
-                        field.handleChange(value)
-                      }}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </editForm.Field>
-
-              <editForm.Field name="repayment_interval_unit">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-repayment-unit">Repayment Unit *</Label>
-                    <Select
-                      value={field.state.value}
-                      onValueChange={(value) =>
-                        field.handleChange(value as LoanFormData['repayment_interval_unit'])
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="days">Days</SelectItem>
-                        <SelectItem value="weeks">Weeks</SelectItem>
-                        <SelectItem value="months">Months</SelectItem>
-                        <SelectItem value="years">Years</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </editForm.Field>
-
-              <editForm.Subscribe selector={(state) => state.values.repayment_interval_unit}>
-                {(unit) => {
-                  const unitName = unit || 'interval'
-                  const capitalizedUnit = unitName.charAt(0).toUpperCase() + unitName.slice(1)
-                  const labelText = `Number of ${capitalizedUnit}`
-
-                  return (
-                    <editForm.Field name="repayment_interval_value">
-                      {(field) => (
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-repayment-value">{labelText} *</Label>
-                          <Input
-                            id="edit-repayment-value"
-                            type="number"
-                            min="1"
-                            value={field.state.value || ''}
-                            onChange={(e) => field.handleChange(parseInt(e.target.value, 10) || 1)}
-                            onBlur={field.handleBlur}
-                          />
-                        </div>
-                      )}
-                    </editForm.Field>
-                  )
+            <DialogTrigger asChild>
+              <Button onClick={() => setIsEditDialogOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Loan
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Loan</DialogTitle>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  editForm.handleSubmit()
                 }}
-              </editForm.Subscribe>
-
-              <editForm.Field name="start_date">
-                {(field) => (
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-loan-startDate">Start Date *</Label>
-                    <Input
-                      id="edit-loan-startDate"
-                      type="date"
-                      value={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                    />
-                    {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
-                    )}
-                  </div>
-                )}
-              </editForm.Field>
-
-              <editForm.Field name="hasEndDate">
-                {(field) => (
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <input
-                        id="edit-loan-hasEndDate"
-                        type="checkbox"
-                        checked={field.state.value}
-                        onChange={(e) => field.handleChange(e.target.checked)}
-                        className="rounded border-gray-300"
-                      />
-                      <Label htmlFor="edit-loan-hasEndDate">Has End Date</Label>
+                className="grid grid-cols-1 md:grid-cols-2 gap-6"
+              >
+                <editForm.Field name="borrower_id">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-loan-borrower">Borrower *</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) => field.handleChange(value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a borrower" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {borrowers.map((borrower) => (
+                            <SelectItem key={borrower.id} value={borrower.id}>
+                              {borrower.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-destructive">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
                     </div>
-                  </div>
-                )}
-              </editForm.Field>
+                  )}
+                </editForm.Field>
 
-              <editForm.Subscribe selector={(state) => state.values.hasEndDate}>
-                {(hasEndDate) => {
-                  if (hasEndDate) {
+                <editForm.Field name="loan_type">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-loan-type">Loan Type *</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) =>
+                          field.handleChange(value as LoanFormData['loan_type'])
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a loan type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(() => {
+                            const { traditional_loan, fixed_income } = getLoanTypesByCategory()
+                            return (
+                              <>
+                                <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                  Traditional Loan
+                                </div>
+                                {traditional_loan.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {getLoanTypeLabel(type)}
+                                  </SelectItem>
+                                ))}
+                                <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide mt-2">
+                                  Fixed Income
+                                </div>
+                                {fixed_income.map((type) => (
+                                  <SelectItem key={type} value={type}>
+                                    {getLoanTypeLabel(type)}
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )
+                          })()}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </editForm.Field>
+
+                <editForm.Field name="principal_amount">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-loan-principal">Principal Amount *</Label>
+                      <Input
+                        id="edit-loan-principal"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={field.state.value || ''}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0
+                          field.handleChange(value)
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-destructive">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editForm.Field>
+
+                <editForm.Field name="interest_rate">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-loan-rate">Interest Rate (%)</Label>
+                      <Input
+                        id="edit-loan-rate"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={field.state.value || ''}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value) || 0
+                          field.handleChange(value)
+                        }}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-destructive">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editForm.Field>
+
+                <editForm.Field name="repayment_interval_unit">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-repayment-unit">Repayment Unit *</Label>
+                      <Select
+                        value={field.state.value}
+                        onValueChange={(value) =>
+                          field.handleChange(value as LoanFormData['repayment_interval_unit'])
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="days">Days</SelectItem>
+                          <SelectItem value="weeks">Weeks</SelectItem>
+                          <SelectItem value="months">Months</SelectItem>
+                          <SelectItem value="years">Years</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </editForm.Field>
+
+                <editForm.Subscribe selector={(state) => state.values.repayment_interval_unit}>
+                  {(unit) => {
+                    const unitName = unit || 'interval'
+                    const capitalizedUnit = unitName.charAt(0).toUpperCase() + unitName.slice(1)
+                    const labelText = `Number of ${capitalizedUnit}`
+
                     return (
-                      <editForm.Field name="end_date">
+                      <editForm.Field name="repayment_interval_value">
                         {(field) => (
                           <div className="space-y-2">
-                            <Label htmlFor="edit-loan-endDate">End Date *</Label>
+                            <Label htmlFor="edit-repayment-value">{labelText} *</Label>
                             <Input
-                              id="edit-loan-endDate"
-                              type="date"
-                              value={field.state.value}
-                              onChange={(e) => field.handleChange(e.target.value)}
+                              id="edit-repayment-value"
+                              type="number"
+                              min="1"
+                              value={field.state.value || ''}
+                              onChange={(e) =>
+                                field.handleChange(parseInt(e.target.value, 10) || 1)
+                              }
                               onBlur={field.handleBlur}
                             />
-                            {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm text-red-600">
-                                {field.state.meta.errors[0]?.message}
-                              </p>
-                            )}
                           </div>
                         )}
                       </editForm.Field>
                     )
-                  }
-                  return null
-                }}
-              </editForm.Subscribe>
-
-              <div className="flex justify-end space-x-2 pt-4 md:col-span-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    editForm.reset()
-                    setIsEditDialogOpen(false)
                   }}
-                >
-                  Cancel
-                </Button>
-                <editForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
-                  {([canSubmit, isSubmitting]) => (
-                    <Button type="submit" disabled={!canSubmit || isSubmitting}>
-                      {isSubmitting ? 'Updating...' : 'Update Loan'}
-                    </Button>
-                  )}
                 </editForm.Subscribe>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+
+                <editForm.Field name="start_date">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <Label htmlFor="edit-loan-startDate">Start Date *</Label>
+                      <Input
+                        id="edit-loan-startDate"
+                        type="date"
+                        value={field.state.value}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                      />
+                      {field.state.meta.errors.length > 0 && (
+                        <p className="text-sm text-destructive">
+                          {field.state.meta.errors[0]?.message}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </editForm.Field>
+
+                <editForm.Field name="hasEndDate">
+                  {(field) => (
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          id="edit-loan-hasEndDate"
+                          type="checkbox"
+                          checked={field.state.value}
+                          onChange={(e) => field.handleChange(e.target.checked)}
+                          className="rounded border-input"
+                        />
+                        <Label htmlFor="edit-loan-hasEndDate">Has End Date</Label>
+                      </div>
+                    </div>
+                  )}
+                </editForm.Field>
+
+                <editForm.Subscribe selector={(state) => state.values.hasEndDate}>
+                  {(hasEndDate) => {
+                    if (hasEndDate) {
+                      return (
+                        <editForm.Field name="end_date">
+                          {(field) => (
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-loan-endDate">End Date *</Label>
+                              <Input
+                                id="edit-loan-endDate"
+                                type="date"
+                                value={field.state.value}
+                                onChange={(e) => field.handleChange(e.target.value)}
+                                onBlur={field.handleBlur}
+                              />
+                              {field.state.meta.errors.length > 0 && (
+                                <p className="text-sm text-destructive">
+                                  {field.state.meta.errors[0]?.message}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </editForm.Field>
+                      )
+                    }
+                    return null
+                  }}
+                </editForm.Subscribe>
+
+                <div className="flex justify-end space-x-2 pt-4 md:col-span-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      editForm.reset()
+                      setIsEditDialogOpen(false)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <editForm.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting]}>
+                    {([canSubmit, isSubmitting]) => (
+                      <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                        {isSubmitting ? 'Updating...' : 'Update Loan'}
+                      </Button>
+                    )}
+                  </editForm.Subscribe>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -711,10 +749,10 @@ export default function LoanDetail() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Interest Earned</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
+            <TrendingUp className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-2xl font-bold text-primary">
               {formatCurrency(loanStats.totalInterestPaid)}
             </div>
             <p className="text-xs text-muted-foreground">Interest collected</p>
@@ -723,214 +761,254 @@ export default function LoanDetail() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Accrued Interest</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              {loan?.loan_type === 'bullet' ? 'Pending Interest' : 'Accrued Interest'}
+            </CardTitle>
             <Clock
-              className={`h-4 w-4 ${loanStats.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}
+              className={`h-4 w-4 ${loanStats.isOverdue ? 'text-destructive' : 'text-muted-foreground'}`}
             />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${loanStats.isOverdue ? 'text-red-600' : ''}`}>
-              {formatCurrency(loanStats.accruedInterest)}
+            <div className={`text-2xl font-bold ${loanStats.isOverdue ? 'text-destructive' : ''}`}>
+              {formatCurrency(
+                loan?.loan_type === 'bullet' ? loanStats.pendingInterest : loanStats.accruedInterest
+              )}
             </div>
             <p
-              className={`text-xs ${loanStats.isOverdue ? 'text-red-500' : 'text-muted-foreground'}`}
+              className={`text-xs ${loanStats.isOverdue ? 'text-destructive' : 'text-muted-foreground'}`}
             >
-              {loanStats.isOverdue ? 'Overdue' : 'Current period'}
+              {loan?.loan_type === 'bullet'
+                ? `${loanStats.daysSinceLastPayment} days since ${loanStats.lastPayment ? 'last payment' : 'loan start'}`
+                : loanStats.isOverdue
+                  ? 'Overdue'
+                  : 'Current period'}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Next Payment Info */}
+      {/* Payment Info */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            Payment Schedule
+            {loan?.loan_type === 'bullet' ? 'Bullet Loan Summary' : 'Payment Schedule'}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Next Due Date</Label>
-              <div
-                className={`flex items-center gap-2 mt-1 ${loanStats.isOverdue ? 'text-red-600' : ''}`}
-              >
-                {loanStats.isOverdue && <AlertTriangle className="h-4 w-4" />}
-                <span className="font-medium">{formatDate(loanStats.nextDueDate, 'medium')}</span>
-                {loanStats.isOverdue && <Badge variant="destructive">Overdue</Badge>}
+          {loan?.loan_type === 'bullet' ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Remaining Principal</Label>
+                <div className="text-2xl font-bold mt-1">
+                  {formatCurrency(loanStats.remainingPrincipal)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {((loanStats.remainingPrincipal / loan.principal_amount) * 100).toFixed(1)}%
+                  remaining
+                </p>
               </div>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Days Since Last Payment</Label>
-              <div className="font-medium mt-1">{loanStats.daysSinceLastPayment} days</div>
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Repayment Interval</Label>
-              <div className="font-medium mt-1">
-                Every {loan.repayment_interval_value} {loan.repayment_interval_unit}
+              <div>
+                <Label className="text-sm font-medium">Total Interest Accrued</Label>
+                <div className="text-2xl font-bold mt-1">
+                  {formatCurrency(loanStats.accruedInterest)}
+                </div>
+                <p className="text-xs text-muted-foreground">Since loan start</p>
               </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Payment Schedules */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Payment Schedules ({paymentSchedules.length})
-            </CardTitle>
-            {paymentSchedules.length > 0 && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setShowDeleteAllDialog(true)}
-                disabled={deleteAllPaymentSchedulesMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {deleteAllPaymentSchedulesMutation.isPending ? 'Deleting...' : 'Delete All Schedules & Payments'}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {paymentSchedules.length === 0 ? (
-            <div className="text-center py-8">
-              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No payment schedules generated yet</p>
+              <div>
+                <Label className="text-sm font-medium">Days Since Last Payment</Label>
+                <div className="text-2xl font-bold mt-1">{loanStats.daysSinceLastPayment}</div>
+                <p className="text-xs text-muted-foreground">
+                  {loanStats.lastPayment ? 'Since last payment' : 'Since loan start'}
+                </p>
+              </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-8"></TableHead>
-                  <TableHead>Period</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Principal Due</TableHead>
-                  <TableHead>Interest Due</TableHead>
-                  <TableHead>Paid</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paymentSchedules.map((schedule) => {
-                  const schedulePayments = getSchedulePayments(schedule.id)
-                  const isExpanded = expandedSchedules.has(schedule.id)
-                  const totalPaid = schedule.total_principal_paid + schedule.total_interest_paid
-
-                  return (
-                    <>
-                      <TableRow key={schedule.id} className="cursor-pointer hover:bg-gray-50">
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => toggleScheduleExpansion(schedule.id)}
-                            className="p-1 h-6 w-6"
-                          >
-                            {isExpanded ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {new Date(schedule.period_start_date).toLocaleDateString('en-IN', {
-                            month: 'short',
-                            day: 'numeric'
-                          })} - {new Date(schedule.period_end_date).toLocaleDateString('en-IN', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(schedule.due_date).toLocaleDateString('en-IN')}
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(schedule.total_principal_due)}
-                        </TableCell>
-                        <TableCell>
-                          {formatCurrency(schedule.total_interest_due)}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {formatCurrency(totalPaid)}
-                        </TableCell>
-                        <TableCell>
-                          {getScheduleStatusBadge(schedule)}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteSchedule(schedule.id)}
-                            className="h-8 w-8 p-0"
-                            disabled={deleteScheduleMutation.isPending}
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                      {isExpanded && schedulePayments.length > 0 && (
-                        <TableRow>
-                          <TableCell colSpan={8} className="p-0">
-                            <div className="px-4 py-2 bg-gray-50 border-l-4 border-blue-200">
-                              <h4 className="text-sm font-medium mb-2 text-gray-700">
-                                Payments for this schedule ({schedulePayments.length})
-                              </h4>
-                              <div className="space-y-1">
-                                {schedulePayments.map((payment) => (
-                                  <div key={payment.id} className="flex justify-between items-center text-sm">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-gray-600">
-                                        {new Date(payment.payment_date).toLocaleDateString('en-IN')}
-                                      </span>
-                                      {getPaymentTypeBadge(payment.payment_type)}
-                                    </div>
-                                    <div className="flex gap-4">
-                                      <span>Total: {formatCurrency(payment.amount)}</span>
-                                      {payment.principal_amount > 0 && (
-                                        <span className="text-blue-600">
-                                          Principal: {formatCurrency(payment.principal_amount)}
-                                        </span>
-                                      )}
-                                      {payment.interest_amount > 0 && (
-                                        <span className="text-green-600">
-                                          Interest: {formatCurrency(payment.interest_amount)}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {isExpanded && schedulePayments.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={8} className="p-0">
-                            <div className="px-4 py-2 bg-gray-50 border-l-4 border-gray-200">
-                              <p className="text-sm text-gray-500 italic">
-                                No payments made for this schedule yet
-                              </p>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
-                  )
-                })}
-              </TableBody>
-            </Table>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Next Due Date</Label>
+                <div
+                  className={`flex items-center gap-2 mt-1 ${loanStats.isOverdue ? 'text-destructive' : ''}`}
+                >
+                  {loanStats.isOverdue && <AlertTriangle className="h-4 w-4" />}
+                  <span className="font-medium">{formatDate(loanStats.nextDueDate, 'medium')}</span>
+                  {loanStats.isOverdue && <Badge variant="destructive">Overdue</Badge>}
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Days Since Last Payment</Label>
+                <div className="font-medium mt-1">{loanStats.daysSinceLastPayment} days</div>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Repayment Interval</Label>
+                <div className="font-medium mt-1">
+                  Every {loan.repayment_interval_value} {loan.repayment_interval_unit}
+                </div>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Payment Schedules - Only for non-bullet loans */}
+      {loan?.loan_type !== 'bullet' && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Payment Schedules ({paymentSchedules.length})
+              </CardTitle>
+              {paymentSchedules.length > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setShowDeleteAllDialog(true)}
+                  disabled={deleteAllPaymentSchedulesMutation.isPending}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {deleteAllPaymentSchedulesMutation.isPending
+                    ? 'Deleting...'
+                    : 'Delete All Schedules & Payments'}
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {paymentSchedules.length === 0 ? (
+              <div className="text-center py-8">
+                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No payment schedules generated yet</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Principal Due</TableHead>
+                    <TableHead>Interest Due</TableHead>
+                    <TableHead>Paid</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paymentSchedules.map((schedule) => {
+                    const schedulePayments = getSchedulePayments(schedule.id)
+                    const isExpanded = expandedSchedules.has(schedule.id)
+                    const totalPaid = schedule.total_principal_paid + schedule.total_interest_paid
+
+                    return (
+                      <>
+                        <TableRow key={schedule.id} className="cursor-pointer hover:bg-muted/50">
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleScheduleExpansion(schedule.id)}
+                              className="p-1 h-6 w-6"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {new Date(schedule.period_start_date).toLocaleDateString('en-IN', {
+                              month: 'short',
+                              day: 'numeric',
+                            })}{' '}
+                            -{' '}
+                            {new Date(schedule.period_end_date).toLocaleDateString('en-IN', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            {new Date(schedule.due_date).toLocaleDateString('en-IN')}
+                          </TableCell>
+                          <TableCell>{formatCurrency(schedule.total_principal_due)}</TableCell>
+                          <TableCell>{formatCurrency(schedule.total_interest_due)}</TableCell>
+                          <TableCell className="font-medium">{formatCurrency(totalPaid)}</TableCell>
+                          <TableCell>{getScheduleStatusBadge(schedule)}</TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDeleteSchedule(schedule.id)}
+                              className="h-8 w-8 p-0"
+                              disabled={deleteScheduleMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && schedulePayments.length > 0 && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="p-0">
+                              <div className="px-4 py-2 bg-muted/50 border-l-4 border-secondary">
+                                <h4 className="text-sm font-medium mb-2 text-foreground">
+                                  Payments for this schedule ({schedulePayments.length})
+                                </h4>
+                                <div className="space-y-1">
+                                  {schedulePayments.map((payment) => (
+                                    <div
+                                      key={payment.id}
+                                      className="flex justify-between items-center text-sm"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-muted-foreground">
+                                          {new Date(payment.payment_date).toLocaleDateString(
+                                            'en-IN'
+                                          )}
+                                        </span>
+                                        {getPaymentTypeBadge(payment.payment_type)}
+                                      </div>
+                                      <div className="flex gap-4">
+                                        <span>Total: {formatCurrency(payment.amount)}</span>
+                                        {payment.principal_amount > 0 && (
+                                          <span className="text-secondary">
+                                            Principal: {formatCurrency(payment.principal_amount)}
+                                          </span>
+                                        )}
+                                        {payment.interest_amount > 0 && (
+                                          <span className="text-primary">
+                                            Interest: {formatCurrency(payment.interest_amount)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {isExpanded && schedulePayments.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="p-0">
+                              <div className="px-4 py-2 bg-muted/50 border-l-4 border-border">
+                                <p className="text-sm text-muted-foreground italic">
+                                  No payments made for this schedule yet
+                                </p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Payment History */}
       <Card>
@@ -956,8 +1034,8 @@ export default function LoanDetail() {
         <CardContent>
           {payments.length === 0 ? (
             <div className="text-center py-8">
-              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No payments recorded yet</p>
+              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No payments recorded yet</p>
             </div>
           ) : (
             <Table>
@@ -1000,25 +1078,33 @@ export default function LoanDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Payment Schedule</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this payment schedule? This action will also delete all payments associated with this schedule and cannot be undone.
+              Are you sure you want to delete this payment schedule? This action will also delete
+              all payments associated with this schedule and cannot be undone.
               {deleteScheduleId &&
                 (() => {
                   const schedule = paymentSchedules.find((s) => s.id === deleteScheduleId)
                   const schedulePayments = getSchedulePayments(deleteScheduleId)
                   if (schedule) {
                     return (
-                      <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                      <div className="mt-3 p-3 bg-muted/50 rounded-md">
                         <p>
-                          <strong>Period:</strong> {new Date(schedule.period_start_date).toLocaleDateString('en-IN')} - {new Date(schedule.period_end_date).toLocaleDateString('en-IN')}
+                          <strong>Period:</strong>{' '}
+                          {new Date(schedule.period_start_date).toLocaleDateString('en-IN')} -{' '}
+                          {new Date(schedule.period_end_date).toLocaleDateString('en-IN')}
                         </p>
                         <p>
-                          <strong>Due Date:</strong> {new Date(schedule.due_date).toLocaleDateString('en-IN')}
+                          <strong>Due Date:</strong>{' '}
+                          {new Date(schedule.due_date).toLocaleDateString('en-IN')}
                         </p>
                         <p>
-                          <strong>Total Due:</strong> {formatCurrency(schedule.total_principal_due + schedule.total_interest_due)}
+                          <strong>Total Due:</strong>{' '}
+                          {formatCurrency(
+                            schedule.total_principal_due + schedule.total_interest_due
+                          )}
                         </p>
                         <p>
-                          <strong>Associated Payments:</strong> {schedulePayments.length} payment(s) will be deleted
+                          <strong>Associated Payments:</strong> {schedulePayments.length} payment(s)
+                          will be deleted
                         </p>
                       </div>
                     )
@@ -1031,7 +1117,7 @@ export default function LoanDetail() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteSchedule}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
               disabled={deleteScheduleMutation.isPending}
             >
               {deleteScheduleMutation.isPending ? 'Deleting...' : 'Delete Schedule'}
@@ -1046,18 +1132,19 @@ export default function LoanDetail() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete All Payment Schedules and Payments</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete ALL payment schedules and payments for this loan? This action cannot be undone.
-
-              <div className="mt-3 p-3 bg-red-50 rounded-md border border-red-200">
-                <p className="text-sm text-red-800">
+              Are you sure you want to delete ALL payment schedules and payments for this loan? This
+              action cannot be undone.
+              <div className="mt-3 p-3 bg-destructive/10 rounded-md border border-destructive/20">
+                <p className="text-sm text-destructive">
                   <strong>This will delete:</strong>
                 </p>
-                <ul className="text-sm text-red-700 mt-1 list-disc list-inside">
+                <ul className="text-sm text-destructive/80 mt-1 list-disc list-inside">
                   <li>{paymentSchedules.length} payment schedule(s)</li>
                   <li>{payments.length} payment(s)</li>
                 </ul>
-                <p className="text-sm text-red-800 mt-2">
-                  New payment schedules with proper interest calculations will be recreated automatically when you refresh the page.
+                <p className="text-sm text-destructive mt-2">
+                  New payment schedules with proper interest calculations will be recreated
+                  automatically when you refresh the page.
                 </p>
               </div>
             </AlertDialogDescription>
@@ -1066,7 +1153,7 @@ export default function LoanDetail() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAllSchedulesAndPayments}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
               disabled={deleteAllPaymentSchedulesMutation.isPending}
             >
               {deleteAllPaymentSchedulesMutation.isPending ? 'Deleting...' : 'Delete All'}

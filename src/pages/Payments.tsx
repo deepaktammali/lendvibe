@@ -319,7 +319,7 @@ export default function Payments() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -390,7 +390,7 @@ export default function Payments() {
                                     </span>
                                     {statusBadge}
                                   </div>
-                                  <div className="text-sm text-gray-500">
+                                  <div className="text-sm text-muted-foreground">
                                     Due: {formatDate(schedule.due_date, 'medium')} | Principal:{' '}
                                     {formatCurrency(schedule.total_principal_due)} | Interest:{' '}
                                     {formatCurrency(schedule.total_interest_due)}
@@ -402,7 +402,7 @@ export default function Payments() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -428,7 +428,7 @@ export default function Payments() {
                         placeholder="0.00"
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -454,7 +454,7 @@ export default function Payments() {
                         placeholder="0.00"
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -474,7 +474,7 @@ export default function Payments() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -494,7 +494,7 @@ export default function Payments() {
                         placeholder="Optional notes about this payment..."
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -565,7 +565,9 @@ export default function Payments() {
                       </SelectContent>
                     </Select>
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -589,7 +591,9 @@ export default function Payments() {
                       placeholder="0.00"
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -613,7 +617,9 @@ export default function Payments() {
                       placeholder="0.00"
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -631,7 +637,9 @@ export default function Payments() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -649,7 +657,9 @@ export default function Payments() {
                       placeholder="Optional notes about this payment..."
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -691,7 +701,7 @@ export default function Payments() {
                     const payment = payments.find((p) => p.id === deletePaymentId)
                     if (payment) {
                       return (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                        <div className="mt-3 p-3 bg-muted/50 rounded-md">
                           <p>
                             <strong>Borrower:</strong> {payment.borrower_name}
                           </p>
@@ -723,7 +733,7 @@ export default function Payments() {
               <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => deletePaymentId && handleDeletePayment(deletePaymentId)}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-destructive hover:bg-destructive/90"
               >
                 Delete Payment
               </AlertDialogAction>
@@ -761,7 +771,7 @@ export default function Payments() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <IndianRupee className="h-6 w-6 text-green-600" />
+              <IndianRupee className="h-6 w-6 text-primary" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Total Payments</p>
                 <p className="text-base font-bold">{formatCurrency(totalPayments)}</p>
@@ -773,7 +783,7 @@ export default function Payments() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Receipt className="h-6 w-6 text-blue-600" />
+              <Receipt className="h-6 w-6 text-secondary" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Principal Paid</p>
                 <p className="text-base font-bold">{formatCurrency(totalPrincipal)}</p>
@@ -785,7 +795,7 @@ export default function Payments() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
+              <TrendingUp className="h-6 w-6 text-accent-foreground" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Interest Earned</p>
                 <p className="text-base font-bold">{formatCurrency(totalInterest)}</p>
@@ -797,7 +807,7 @@ export default function Payments() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Calendar className="h-6 w-6 text-orange-600" />
+              <Calendar className="h-6 w-6 text-chart-4" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">This Month</p>
                 <p className="text-base font-bold">{formatCurrency(monthlyPayments)}</p>
@@ -837,9 +847,9 @@ export default function Payments() {
             <CardContent>
               {filteredPayments.length === 0 ? (
                 <div className="text-center py-8">
-                  <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No payments found</p>
-                  <p className="text-sm text-gray-400">
+                  <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No payments found</p>
+                  <p className="text-sm text-muted-foreground/70">
                     {searchTerm || typeFilter !== 'all'
                       ? 'Try adjusting your search or filter'
                       : 'Record your first payment to get started'}
@@ -865,7 +875,7 @@ export default function Payments() {
                       <TableRow key={payment.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <User className="h-4 w-4 text-gray-400" />
+                            <User className="h-4 w-4 text-muted-foreground" />
                             <span className="font-medium">{payment.borrower_name}</span>
                           </div>
                         </TableCell>
@@ -885,16 +895,16 @@ export default function Payments() {
                         <TableCell className="hidden sm:table-cell">
                           {getPaymentTypeBadge(payment.payment_type)}
                         </TableCell>
-                        <TableCell className="text-sm text-gray-500">
+                        <TableCell className="text-sm text-muted-foreground">
                           {formatDate(payment.payment_date, 'short')}
                         </TableCell>
                         <TableCell
-                          className="hidden lg:table-cell text-sm text-gray-500 max-w-32 truncate"
+                          className="hidden lg:table-cell text-sm text-muted-foreground max-w-32 truncate"
                           title={payment.notes || ''}
                         >
                           {payment.notes || '-'}
                         </TableCell>
-                        <TableCell className="hidden xl:table-cell text-sm text-gray-500">
+                        <TableCell className="hidden xl:table-cell text-sm text-muted-foreground">
                           {formatDate(payment.created_at, 'relative')}
                         </TableCell>
                         <TableCell>
@@ -910,7 +920,7 @@ export default function Payments() {
                               variant="outline"
                               size="sm"
                               onClick={() => setDeletePaymentId(payment.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>

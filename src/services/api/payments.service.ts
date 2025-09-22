@@ -2,7 +2,7 @@ import {
   createPayment as dbCreatePayment,
   createPaymentSchedule as dbCreatePaymentSchedule,
   deletePayment as dbDeletePayment,
-  deleteAllPaymentSchedulesAndPaymentsForLoan,
+  deletePaymentSchedule as dbDeletePaymentSchedule,
   getBorrower as dbGetBorrower,
   getLastPaymentByLoan as dbGetLastPaymentByLoan,
   getLastPaymentsByLoans as dbGetLastPaymentsByLoans,
@@ -12,6 +12,7 @@ import {
   getPaymentsByLoan as dbGetPaymentsByLoan,
   updatePayment as dbUpdatePayment,
   updatePaymentSchedule as dbUpdatePaymentSchedule,
+  deleteAllPaymentSchedulesAndPaymentsForLoan,
   getLoan,
   updateLoanBalance,
   updateLoanStatus,
@@ -77,19 +78,28 @@ export const paymentService = {
       throw new Error('Loan not found')
     }
 
+    // Bullet loans don't have payment schedules - they have payments only
+    if (loan.loan_type === 'bullet') {
+      return
+    }
+
     // Get existing schedules
     const existingSchedules = await dbGetPaymentSchedulesByLoan(loanId)
 
     // If no schedules exist, create them from loan start date to a reasonable future date
     if (existingSchedules.length === 0) {
-      await this.createMissedPaymentSchedules(loanId, {
-        start_date: loan.start_date,
-        repayment_interval_unit: loan.repayment_interval_unit,
-        repayment_interval_value: loan.repayment_interval_value,
-        current_balance: loan.current_balance,
-        interest_rate: loan.interest_rate,
-        loan_type: loan.loan_type,
-      }, new Date())
+      await this.createMissedPaymentSchedules(
+        loanId,
+        {
+          start_date: loan.start_date,
+          repayment_interval_unit: loan.repayment_interval_unit,
+          repayment_interval_value: loan.repayment_interval_value,
+          current_balance: loan.current_balance,
+          interest_rate: loan.interest_rate,
+          loan_type: loan.loan_type,
+        },
+        new Date()
+      )
     }
   },
 
@@ -156,7 +166,7 @@ export const paymentService = {
       repayment_interval_value?: number
       current_balance?: number
       interest_rate?: number
-      loan_type?: string
+      loan_type?: 'installment' | 'bullet'
     },
     paymentDate: Date,
     principalAmount: number,
@@ -176,16 +186,23 @@ export const paymentService = {
 
     if (!paymentSchedule) {
       // Calculate expected amounts for this period
-      let expectedPrincipalDue = principalAmount
+      const expectedPrincipalDue = principalAmount
       let expectedInterestDue = interestAmount
 
       // If the payment amounts are less than what should be expected, calculate proper amounts
-      if (loan.current_balance && loan.interest_rate && loan.interest_rate > 0) {
+      if (
+        loan.current_balance &&
+        loan.interest_rate &&
+        loan.interest_rate > 0 &&
+        loan.loan_type &&
+        loan.loan_type !== 'bullet'
+      ) {
         const calculatedInterest = calculateAccruedInterest({
           current_balance: loan.current_balance,
           interest_rate: loan.interest_rate,
           repayment_interval_unit: loan.repayment_interval_unit,
           repayment_interval_value: loan.repayment_interval_value,
+          loan_type: loan.loan_type,
         })
         expectedInterestDue = Math.max(interestAmount, calculatedInterest)
       }
@@ -307,22 +324,51 @@ export const paymentService = {
       throw new Error('Loan not found')
     }
 
-    // Validate that the payment schedule exists and belongs to the loan
-    const paymentSchedule = await dbGetPaymentSchedule(data.payment_schedule_id)
-
-    if (!paymentSchedule) {
-      throw new Error('Payment schedule not found')
-    }
-
-    if (paymentSchedule.loan_id !== data.loan_id) {
-      throw new Error('Payment schedule does not belong to the specified loan')
-    }
-
     const totalAmount = data.principal_amount + data.interest_amount
     const newBalance = loan.current_balance - data.principal_amount
 
+    let paymentScheduleId: string
+
+    if (loan.loan_type === 'bullet') {
+      // Bullet loans don't use payment schedules - create payment directly
+      if (data.payment_schedule_id) {
+        throw new Error('Bullet loans should not have payment_schedule_id')
+      }
+
+      // For bullet loans, we create a special "bullet payment" schedule entry
+      // This maintains database consistency while indicating it's a bullet loan payment
+      const bulletSchedule = await dbCreatePaymentSchedule({
+        loan_id: data.loan_id,
+        period_start_date: data.payment_date,
+        period_end_date: data.payment_date,
+        due_date: data.payment_date,
+        total_principal_due: 0, // No expected amounts for bullet loans
+        total_interest_due: 0,
+        total_principal_paid: data.principal_amount,
+        total_interest_paid: data.interest_amount,
+        status: 'paid',
+      })
+      paymentScheduleId = bulletSchedule.id
+    } else {
+      // Installment loans require existing payment schedules
+      if (!data.payment_schedule_id) {
+        throw new Error('Installment loans require payment_schedule_id')
+      }
+
+      const paymentSchedule = await dbGetPaymentSchedule(data.payment_schedule_id)
+      if (!paymentSchedule) {
+        throw new Error('Payment schedule not found')
+      }
+
+      if (paymentSchedule.loan_id !== data.loan_id) {
+        throw new Error('Payment schedule does not belong to the specified loan')
+      }
+
+      paymentScheduleId = data.payment_schedule_id
+    }
+
     const paymentData = {
-      payment_schedule_id: data.payment_schedule_id,
+      payment_schedule_id: paymentScheduleId,
       amount: totalAmount,
       payment_date: data.payment_date,
       principal_amount: data.principal_amount,
@@ -332,21 +378,24 @@ export const paymentService = {
         : data.principal_amount > 0
           ? 'principal'
           : 'interest') as Payment['payment_type'],
+      notes: data.notes,
     }
 
     const dbPayment = await dbCreatePayment(paymentData)
 
-    // Update payment schedule with accumulated totals
-    await this.updatePaymentScheduleTotals(
-      data.payment_schedule_id,
-      data.principal_amount,
-      data.interest_amount
-    )
+    // Update payment schedule totals only for installment loans
+    if (loan.loan_type !== 'bullet') {
+      await this.updatePaymentScheduleTotals(
+        paymentScheduleId,
+        data.principal_amount,
+        data.interest_amount
+      )
 
-    // Update payment schedule status based on payments
-    await this.updatePaymentScheduleStatus(data.payment_schedule_id)
+      // Update payment schedule status based on payments
+      await this.updatePaymentScheduleStatus(paymentScheduleId)
+    }
 
-    // Only update loan balance if there's a principal payment
+    // Update loan balance if there's a principal payment
     if (data.principal_amount > 0) {
       await updateLoanBalance(data.loan_id, Math.max(0, newBalance))
 
@@ -453,15 +502,20 @@ export const paymentService = {
 
     await dbDeletePayment(id)
 
-    // Update payment schedule totals (subtract the deleted payment)
-    await this.updatePaymentScheduleTotals(
-      schedule.id,
-      -payment.principal_amount,
-      -payment.interest_amount
-    )
+    // For bullet loans, also delete the special payment schedule we created
+    if (loan.loan_type === 'bullet') {
+      await dbDeletePaymentSchedule(schedule.id)
+    } else {
+      // Update payment schedule totals only for installment loans
+      await this.updatePaymentScheduleTotals(
+        schedule.id,
+        -payment.principal_amount,
+        -payment.interest_amount
+      )
 
-    // Update payment schedule status
-    await this.updatePaymentScheduleStatus(schedule.id)
+      // Update payment schedule status
+      await this.updatePaymentScheduleStatus(schedule.id)
+    }
   },
 
   // Helper method to create payment schedules for any missed periods
@@ -473,10 +527,14 @@ export const paymentService = {
       repayment_interval_value?: number
       current_balance?: number
       interest_rate?: number
-      loan_type?: string
+      loan_type?: 'installment' | 'bullet'
     },
     upToDate: Date
   ): Promise<void> {
+    // Bullet loans don't have payment schedules
+    if (loan.loan_type === 'bullet') {
+      return
+    }
     const existingSchedules = await dbGetPaymentSchedulesByLoan(loanId)
     const loanStartDate = new Date(loan.start_date)
     const intervalUnit = loan.repayment_interval_unit || 'months'
@@ -524,9 +582,24 @@ export const paymentService = {
         break
       }
 
+      // Calculate due date as start of next period (not end of current period)
+      let dueDate: Date
+      if (intervalUnit === 'months') {
+        dueDate = new Date(periodStart)
+        dueDate.setMonth(periodStart.getMonth() + intervalValue)
+      } else if (intervalUnit === 'weeks') {
+        dueDate = new Date(periodStart)
+        dueDate.setDate(periodStart.getDate() + intervalValue * 7)
+      } else if (intervalUnit === 'years') {
+        dueDate = new Date(periodStart)
+        dueDate.setFullYear(periodStart.getFullYear() + intervalValue)
+      } else {
+        dueDate = periodEnd // fallback to current logic for days
+      }
+
       const periodStartStr = periodStart.toISOString().split('T')[0]
       const periodEndStr = periodEnd.toISOString().split('T')[0]
-      const dueDateStr = periodEnd.toISOString().split('T')[0]
+      const dueDateStr = dueDate.toISOString().split('T')[0]
 
       // Check if schedule already exists
       const existingSchedule = existingSchedules.find(
@@ -547,32 +620,37 @@ export const paymentService = {
         let principalDue = 0
         let interestDue = 0
 
-        if (loan.current_balance && loan.interest_rate && loan.interest_rate > 0) {
+        if (
+          loan.current_balance &&
+          loan.interest_rate &&
+          loan.interest_rate > 0 &&
+          loan.loan_type
+        ) {
           // For fixed income types, the interest is the expected payment amount
-          if (loan.loan_type && isFixedIncomeType(loan.loan_type as any)) {
+          if (isFixedIncomeType(loan.loan_type as any)) {
             // For fixed income loans, the amount is typically pure income/interest
             interestDue = calculateAccruedInterest({
               current_balance: loan.current_balance,
               interest_rate: loan.interest_rate,
               repayment_interval_unit: loan.repayment_interval_unit,
               repayment_interval_value: loan.repayment_interval_value,
+              loan_type: loan.loan_type,
             })
-          } else {
-            // For installment and bullet loans, calculate accrued interest
+          } else if (loan.loan_type === 'installment') {
+            // For installment loans only, calculate accrued interest
             interestDue = calculateAccruedInterest({
               current_balance: loan.current_balance,
               interest_rate: loan.interest_rate,
               repayment_interval_unit: loan.repayment_interval_unit,
               repayment_interval_value: loan.repayment_interval_value,
+              loan_type: loan.loan_type,
             })
 
             // For installment loans, we might expect principal payments too
             // This could be extended based on loan amortization schedule
-            if (loan.loan_type === 'installment') {
-              // For now, principal due is 0 unless specifically calculated
-              principalDue = 0
-            }
+            principalDue = 0
           }
+          // Bullet loans don't have expected interest amounts - they are manual
         }
 
         // Create the missed schedule with calculated amounts

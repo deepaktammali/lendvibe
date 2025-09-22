@@ -39,7 +39,6 @@ export default function FixedIncomeDetail() {
     }).format(amount)
   }
 
-
   const getStatusBadge = (status: string) => {
     const variants = {
       active: 'default',
@@ -64,7 +63,7 @@ export default function FixedIncomeDetail() {
   if (!fixedIncome) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <div className="text-lg text-gray-500">Fixed income asset not found</div>
+        <div className="text-lg text-muted-foreground">Fixed income asset not found</div>
         <Button onClick={() => navigate('/fixed-income')} className="mt-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Fixed Income
@@ -82,9 +81,10 @@ export default function FixedIncomeDetail() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Fixed Income Details</h1>
-            <p className="text-gray-600 mt-1">
-              {fixedIncome.label || 'Fixed Income'} • {fixedIncome.tenant_name || 'No payer assigned'}
+            <h1 className="text-3xl font-bold text-foreground">Fixed Income Details</h1>
+            <p className="text-muted-foreground mt-1">
+              {fixedIncome.label || 'Fixed Income'} •{' '}
+              {fixedIncome.tenant_name || 'No payer assigned'}
             </p>
           </div>
         </div>
@@ -97,9 +97,9 @@ export default function FixedIncomeDetail() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center">
-              <IndianRupee className="h-8 w-8 text-green-600" />
+              <IndianRupee className="h-8 w-8 text-primary" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Payment Amount</p>
+                <p className="text-sm font-medium text-muted-foreground">Payment Amount</p>
                 <p className="text-xl font-bold">{formatCurrency(fixedIncome.amount)}</p>
               </div>
             </div>
@@ -109,10 +109,12 @@ export default function FixedIncomeDetail() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-blue-600" />
+              <TrendingUp className="h-8 w-8 text-secondary" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Payment Frequency</p>
-                <p className="text-xl font-bold">Every {fixedIncome.payment_interval_value} {fixedIncome.payment_interval_unit}</p>
+                <p className="text-sm font-medium text-muted-foreground">Payment Frequency</p>
+                <p className="text-xl font-bold">
+                  Every {fixedIncome.payment_interval_value} {fixedIncome.payment_interval_unit}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -121,9 +123,9 @@ export default function FixedIncomeDetail() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center">
-              <Receipt className="h-8 w-8 text-purple-600" />
+              <Receipt className="h-8 w-8 text-accent-foreground" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Total Received</p>
+                <p className="text-sm font-medium text-muted-foreground">Total Received</p>
                 <p className="text-xl font-bold">{formatCurrency(totalPayments)}</p>
               </div>
             </div>
@@ -133,9 +135,9 @@ export default function FixedIncomeDetail() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center">
-              <Calendar className="h-8 w-8 text-orange-600" />
+              <Calendar className="h-8 w-8 text-chart-4" />
               <div className="ml-3">
-                <p className="text-sm font-medium text-gray-600">Status</p>
+                <p className="text-sm font-medium text-muted-foreground">Status</p>
                 <div className="mt-1">{getStatusBadge(fixedIncome.status)}</div>
               </div>
             </div>
@@ -151,28 +153,28 @@ export default function FixedIncomeDetail() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm font-medium text-gray-600">Tenant</p>
+              <p className="text-sm font-medium text-muted-foreground">Tenant</p>
               <p className="text-base">{fixedIncome.tenant_name}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Income Type</p>
+              <p className="text-sm font-medium text-muted-foreground">Income Type</p>
               <div className="mt-1">
                 <Badge variant="default">{fixedIncome.label || 'Fixed Income'}</Badge>
               </div>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Payment Schedule</p>
+              <p className="text-sm font-medium text-muted-foreground">Payment Schedule</p>
               <p className="text-base">
                 Every {fixedIncome.payment_interval_value} {fixedIncome.payment_interval_unit}
               </p>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-600">Start Date</p>
+              <p className="text-sm font-medium text-muted-foreground">Start Date</p>
               <p className="text-base">{formatDate(fixedIncome.start_date, 'medium')}</p>
             </div>
             {fixedIncome.end_date && (
               <div>
-                <p className="text-sm font-medium text-gray-600">End Date</p>
+                <p className="text-sm font-medium text-muted-foreground">End Date</p>
                 <p className="text-base">{formatDate(fixedIncome.end_date, 'medium')}</p>
               </div>
             )}
@@ -190,9 +192,11 @@ export default function FixedIncomeDetail() {
         <CardContent>
           {payments.length === 0 ? (
             <div className="text-center py-8">
-              <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No payments recorded yet</p>
-              <p className="text-sm text-gray-400">Record the first payment to get started</p>
+              <Receipt className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No payments recorded yet</p>
+              <p className="text-sm text-muted-foreground/70">
+                Record the first payment to get started
+              </p>
             </div>
           ) : (
             <Table>
@@ -211,10 +215,10 @@ export default function FixedIncomeDetail() {
                       {formatDate(payment.payment_date, 'short')}
                     </TableCell>
                     <TableCell className="font-medium">{formatCurrency(payment.amount)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-gray-500">
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                       {payment.notes || '-'}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm text-gray-500">
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                       {formatDate(payment.created_at, 'relative')}
                     </TableCell>
                   </TableRow>

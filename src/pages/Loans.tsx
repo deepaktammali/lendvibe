@@ -1,3 +1,20 @@
+import { useForm } from '@tanstack/react-form'
+import {
+  AlertCircle,
+  ArrowUpDown,
+  Calendar,
+  Eye,
+  IndianRupee,
+  Percent,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  User,
+  X,
+} from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -51,23 +68,6 @@ import {
 import { getCurrentDateISO } from '@/lib/utils'
 import { type LoanFormData, loanSchema } from '@/lib/validation'
 import type { Loan } from '@/types/api/loans'
-import { useForm } from '@tanstack/react-form'
-import {
-  AlertCircle,
-  ArrowUpDown,
-  Calendar,
-  Eye,
-  IndianRupee,
-  Percent,
-  Plus,
-  RefreshCw,
-  Search,
-  Trash2,
-  User,
-  X,
-} from 'lucide-react'
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-IN', {
@@ -165,11 +165,14 @@ export default function Loans() {
   }
 
   // Get unique values for filter dropdowns
-  const uniqueLoanTypes = Array.from(new Set(loans.map(loan => loan.loan_type))).sort()
-  const uniqueIntervals = Array.from(new Set(loans.map(loan => loan.repayment_interval_unit || 'months'))).sort()
+  const uniqueLoanTypes = Array.from(new Set(loans.map((loan) => loan.loan_type))).sort()
+  const uniqueIntervals = Array.from(
+    new Set(loans.map((loan) => loan.repayment_interval_unit || 'months'))
+  ).sort()
 
   // Helper functions for filters
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || loanTypeFilter !== 'all' || intervalFilter !== 'all'
+  const hasActiveFilters =
+    searchTerm || statusFilter !== 'all' || loanTypeFilter !== 'all' || intervalFilter !== 'all'
 
   const clearAllFilters = () => {
     setSearchTerm('')
@@ -187,7 +190,8 @@ export default function Loans() {
 
     const matchesStatus = statusFilter === 'all' || loan.status === statusFilter
     const matchesLoanType = loanTypeFilter === 'all' || loan.loan_type === loanTypeFilter
-    const matchesInterval = intervalFilter === 'all' || (loan.repayment_interval_unit || 'months') === intervalFilter
+    const matchesInterval =
+      intervalFilter === 'all' || (loan.repayment_interval_unit || 'months') === intervalFilter
 
     return matchesSearch && matchesStatus && matchesLoanType && matchesInterval
   })
@@ -293,7 +297,9 @@ export default function Loans() {
                       </SelectContent>
                     </Select>
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -317,7 +323,7 @@ export default function Loans() {
                           const { traditional_loan, fixed_income } = getLoanTypesByCategory()
                           return (
                             <>
-                              <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+                              <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
                                 {LOAN_CATEGORY_LABELS.traditional_loan}
                               </div>
                               {traditional_loan.map((type) => (
@@ -325,7 +331,7 @@ export default function Loans() {
                                   {getLoanTypeLabel(type)}
                                 </SelectItem>
                               ))}
-                              <div className="px-2 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide mt-2">
+                              <div className="px-2 py-1 text-xs font-medium text-muted-foreground uppercase tracking-wide mt-2">
                                 {LOAN_CATEGORY_LABELS.fixed_income}
                               </div>
                               {fixed_income.map((type) => (
@@ -359,7 +365,9 @@ export default function Loans() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -383,7 +391,9 @@ export default function Loans() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -449,7 +459,9 @@ export default function Loans() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -464,7 +476,7 @@ export default function Loans() {
                         type="checkbox"
                         checked={field.state.value}
                         onChange={(e) => field.handleChange(e.target.checked)}
-                        className="rounded border-gray-300"
+                        className="rounded border-input"
                       />
                       <Label htmlFor="loan-hasEndDate">Has End Date</Label>
                     </div>
@@ -488,7 +500,7 @@ export default function Loans() {
                               onBlur={field.handleBlur}
                             />
                             {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm text-red-600">
+                              <p className="text-sm text-destructive">
                                 {field.state.meta.errors[0]?.message}
                               </p>
                             )}
@@ -513,7 +525,9 @@ export default function Loans() {
                       placeholder="Optional notes about this loan..."
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -553,17 +567,17 @@ export default function Loans() {
                     }
 
                     return (
-                      <div className="p-3 bg-gray-50 rounded-lg space-y-1 md:col-span-2">
-                        <p className="text-sm font-medium text-gray-700">
+                      <div className="p-3 bg-muted/50 rounded-lg space-y-1 md:col-span-2">
+                        <p className="text-sm font-medium text-foreground">
                           Expected Interest per {intervalLabel}: {formatCurrency(intervalInterest)}
                         </p>
                         {isTraditionalLoanType(values.loan_type) && term_preview > 0 && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             Total Loan Period: {term_preview} months
                           </p>
                         )}
                         {isFixedIncomeType(values.loan_type) && (
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             Fixed Income: Interest-only payments, no principal reduction by default
                           </p>
                         )}
@@ -626,7 +640,7 @@ export default function Loans() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
-            {uniqueLoanTypes.map(type => (
+            {uniqueLoanTypes.map((type) => (
               <SelectItem key={type} value={type}>
                 {getLoanTypeLabel(type)}
               </SelectItem>
@@ -639,7 +653,7 @@ export default function Loans() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Intervals</SelectItem>
-            {uniqueIntervals.map(interval => (
+            {uniqueIntervals.map((interval) => (
               <SelectItem key={interval} value={interval}>
                 {`${interval.charAt(0).toUpperCase()}${interval.slice(1)}`}
               </SelectItem>
@@ -647,12 +661,7 @@ export default function Loans() {
           </SelectContent>
         </Select>
         {hasActiveFilters && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearAllFilters}
-            className="shrink-0"
-          >
+          <Button variant="outline" size="sm" onClick={clearAllFilters} className="shrink-0">
             <X className="h-4 w-4" />
           </Button>
         )}
@@ -663,7 +672,7 @@ export default function Loans() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <IndianRupee className="h-6 w-6 text-green-600" />
+              <IndianRupee className="h-6 w-6 text-primary" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Total Active</p>
                 <p className="text-base font-bold">
@@ -681,7 +690,7 @@ export default function Loans() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Calendar className="h-6 w-6 text-blue-600" />
+              <Calendar className="h-6 w-6 text-secondary" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Active Loans</p>
                 <p className="text-base font-bold">
@@ -695,28 +704,15 @@ export default function Loans() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Percent className="h-6 w-6 text-purple-600" />
+              <Percent className="h-6 w-6 text-accent-foreground" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Avg. Interest</p>
                 <p className="text-base font-bold">
                   {filteredLoans.length > 0
                     ? `${(
-                      filteredLoans.reduce((sum, loan) => {
-                        const unit = loan.repayment_interval_unit || 'months'
-                        let normalizedRate = loan.interest_rate
-
-                        if (unit === 'years') {
-                          normalizedRate = loan.interest_rate / 12
-                        } else if (unit === 'weeks') {
-                          normalizedRate = loan.interest_rate * 4.333
-                        } else if (unit === 'days') {
-                          normalizedRate = loan.interest_rate
-                        }
-                        // months: keep as is
-
-                        return sum + normalizedRate
-                      }, 0) / filteredLoans.length
-                    ).toFixed(1)}%`
+                        filteredLoans.reduce((sum, loan) => sum + loan.interest_rate, 0) /
+                          filteredLoans.length
+                      ).toFixed(1)}%`
                     : '0%'}
                 </p>
               </div>
@@ -727,7 +723,7 @@ export default function Loans() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <AlertCircle className="h-6 w-6 text-red-600" />
+              <AlertCircle className="h-6 w-6 text-destructive" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Defaulted</p>
                 <p className="text-base font-bold">
@@ -760,9 +756,9 @@ export default function Loans() {
         <CardContent>
           {filteredLoans.length === 0 ? (
             <div className="text-center py-8">
-              <IndianRupee className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No loans found</p>
-              <p className="text-sm text-gray-400">
+              <IndianRupee className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No loans found</p>
+              <p className="text-sm text-muted-foreground/70">
                 {searchTerm || statusFilter !== 'all'
                   ? 'Try adjusting your search or filter'
                   : 'Create your first loan to get started'}
@@ -838,7 +834,7 @@ export default function Loans() {
                   <TableRow key={loan.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
+                        <User className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{loan.borrower_name}</span>
                       </div>
                     </TableCell>
@@ -848,22 +844,17 @@ export default function Loans() {
                     <TableCell className="font-medium">
                       {formatCurrency(loan.real_remaining_principal)}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      {loan.interest_rate}%
+                    <TableCell className="hidden md:table-cell">{loan.interest_rate}%</TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="text-sm">{getLoanTypeLabel(loan.loan_type)}</div>
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
-                      <div className="text-sm">
-                        {getLoanTypeLabel(loan.loan_type)}
+                      <div className="text-sm text-muted-foreground">
+                        {loan.repayment_interval_value || 1}{' '}
+                        {loan.repayment_interval_unit || 'months'}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <div className="text-sm text-gray-500">
-                        {loan.repayment_interval_value || 1} {loan.repayment_interval_unit || 'months'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(loan.start_date).toLocaleDateString('en-IN')}
-                    </TableCell>
+                    <TableCell>{new Date(loan.start_date).toLocaleDateString('en-IN')}</TableCell>
                     <TableCell>
                       <Select
                         value={loan.status}
@@ -915,7 +906,7 @@ export default function Loans() {
                   const loan = loans.find((l) => l.id === deleteLoanId)
                   if (loan) {
                     return (
-                      <div className="mt-3 p-3 bg-gray-50 rounded-md">
+                      <div className="mt-3 p-3 bg-muted/50 rounded-md">
                         <p>
                           <strong>Borrower:</strong> {loan.borrower_name}
                         </p>
@@ -937,7 +928,10 @@ export default function Loans() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive hover:bg-destructive/90"
+            >
               Delete Loan
             </AlertDialogAction>
           </AlertDialogFooter>

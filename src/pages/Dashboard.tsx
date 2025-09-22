@@ -40,12 +40,9 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center space-y-4">
-          <div className="text-lg text-red-600">Failed to load dashboard</div>
-          <div className="text-sm text-gray-600 max-w-md">{errorMessage}</div>
-          <Button
-            variant="default"
-            onClick={() => window.location.reload()}
-          >
+          <div className="text-lg text-destructive">Failed to load dashboard</div>
+          <div className="text-sm text-muted-foreground max-w-md">{errorMessage}</div>
+          <Button variant="default" onClick={() => window.location.reload()}>
             Retry
           </Button>
         </div>
@@ -107,7 +104,7 @@ export default function Dashboard() {
 
         <Card className="min-h-[120px]">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Accrued Interest</CardTitle>
+            <CardTitle className="text-sm font-medium">Interest Earned</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           </CardHeader>
           <CardContent>
@@ -137,12 +134,12 @@ export default function Dashboard() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue Items</CardTitle>
             <AlertTriangle
-              className={`h-4 w-4 flex-shrink-0 ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
+              className={`h-4 w-4 flex-shrink-0 ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-destructive' : 'text-muted-foreground'}`}
             />
           </CardHeader>
           <CardContent>
             <div
-              className={`text-xl font-bold ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-red-600' : ''}`}
+              className={`text-xl font-bold ${(stats?.loanStats?.defaulted || 0) > 0 ? 'text-destructive' : ''}`}
             >
               {stats?.loanStats?.defaulted || 0}
             </div>

@@ -127,7 +127,7 @@ export default function Borrowers() {
   if (error) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-lg text-red-600">Failed to load borrowers: {error.message}</div>
+        <div className="text-lg text-destructive">Failed to load borrowers: {error.message}</div>
       </div>
     )
   }
@@ -171,7 +171,9 @@ export default function Borrowers() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -189,7 +191,9 @@ export default function Borrowers() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -207,7 +211,9 @@ export default function Borrowers() {
                       onBlur={field.handleBlur}
                     />
                     {field.state.meta.errors.length > 0 && (
-                      <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                      <p className="text-sm text-destructive">
+                        {field.state.meta.errors[0]?.message}
+                      </p>
                     )}
                   </div>
                 )}
@@ -264,9 +270,9 @@ export default function Borrowers() {
         <CardContent>
           {filteredBorrowers.length === 0 ? (
             <div className="text-center py-8">
-              <User className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No borrowers found</p>
-              <p className="text-sm text-gray-400">
+              <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No borrowers found</p>
+              <p className="text-sm text-muted-foreground/70">
                 {searchTerm
                   ? 'Try adjusting your search'
                   : 'Add your first borrower to get started'}
@@ -288,14 +294,14 @@ export default function Borrowers() {
                   <TableRow key={borrower.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
+                        <User className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">{borrower.name}</span>
                       </div>
                     </TableCell>
                     <TableCell>
                       {borrower.phone && (
                         <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-3 w-3 text-gray-400" />
+                          <Phone className="h-3 w-3 text-muted-foreground" />
                           {borrower.phone}
                         </div>
                       )}
@@ -303,12 +309,12 @@ export default function Borrowers() {
                     <TableCell>
                       {borrower.address && (
                         <div className="flex items-center gap-2 text-sm">
-                          <MapPin className="h-3 w-3 text-gray-400" />
+                          <MapPin className="h-3 w-3 text-muted-foreground" />
                           {borrower.address}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500">
+                    <TableCell className="text-sm text-muted-foreground">
                       {formatDate(borrower.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
@@ -366,7 +372,9 @@ export default function Borrowers() {
                     onBlur={field.handleBlur}
                   />
                   {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    <p className="text-sm text-destructive">
+                      {field.state.meta.errors[0]?.message}
+                    </p>
                   )}
                 </div>
               )}
@@ -384,7 +392,9 @@ export default function Borrowers() {
                     onBlur={field.handleBlur}
                   />
                   {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    <p className="text-sm text-destructive">
+                      {field.state.meta.errors[0]?.message}
+                    </p>
                   )}
                 </div>
               )}
@@ -402,7 +412,9 @@ export default function Borrowers() {
                     onBlur={field.handleBlur}
                   />
                   {field.state.meta.errors.length > 0 && (
-                    <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                    <p className="text-sm text-destructive">
+                      {field.state.meta.errors[0]?.message}
+                    </p>
                   )}
                 </div>
               )}

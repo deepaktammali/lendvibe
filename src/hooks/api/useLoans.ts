@@ -253,7 +253,8 @@ export function useDeleteAllPaymentSchedulesAndPayments() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (loanId: string) => paymentService.deleteAllPaymentSchedulesAndPaymentsForLoan(loanId),
+    mutationFn: (loanId: string) =>
+      paymentService.deleteAllPaymentSchedulesAndPaymentsForLoan(loanId),
     onSuccess: (_, loanId) => {
       // Invalidate all payment and schedule related queries
       queryClient.invalidateQueries({ queryKey: loanKeys.paymentSchedulesByLoan(loanId) })

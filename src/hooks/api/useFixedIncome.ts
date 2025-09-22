@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   type CreateFixedIncomeData,
   type CreateIncomePaymentData,
@@ -6,7 +7,6 @@ import {
   type UpdateIncomePaymentData,
 } from '@/services/api/fixed-incomes.service'
 import type { FixedIncome, IncomePayment } from '@/types/api/fixedIncome'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { borrowerKeys } from './useBorrowers'
 import { dashboardKeys } from './useDashboard'
 
@@ -153,7 +153,10 @@ export function useUpdateFixedIncome() {
       }
 
       queryClient.setQueryData<FixedIncome[]>(fixedIncomeKeys.lists(), updateFixedIncomeInList)
-      queryClient.setQueryData<FixedIncome[]>(fixedIncomeKeys.withTenants(), updateFixedIncomeInList)
+      queryClient.setQueryData<FixedIncome[]>(
+        fixedIncomeKeys.withTenants(),
+        updateFixedIncomeInList
+      )
 
       // Invalidate to ensure consistency
       queryClient.invalidateQueries({ queryKey: fixedIncomeKeys.detail(id) })

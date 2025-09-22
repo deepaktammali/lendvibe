@@ -79,7 +79,6 @@ export const LOAN_TYPE_LABELS: Record<Loan['loan_type'], string> = {
   bullet: 'Bullet',
 }
 
-
 export interface BorrowerWithLoans extends Borrower {
   loans: Loan[]
 }

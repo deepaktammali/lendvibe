@@ -1,4 +1,14 @@
-import { Banknote, Home, IndianRupee, Menu, Receipt, Settings, TrendingUp, Users, X } from 'lucide-react'
+import {
+  Banknote,
+  Home,
+  IndianRupee,
+  Menu,
+  Receipt,
+  Settings,
+  TrendingUp,
+  Users,
+  X,
+} from 'lucide-react'
 import React, { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -94,9 +104,7 @@ const SidebarContent = ({ setSidebarOpen, expanded, setSidebarExpanded }: Sideba
               >
                 <item.icon className="h-5 w-5" />
                 {expanded && showText && (
-                  <span className="transition-all duration-200 opacity-100">
-                    {item.name}
-                  </span>
+                  <span className="transition-all duration-200 opacity-100">{item.name}</span>
                 )}
               </Link>
             )
@@ -114,10 +122,12 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen bg-background">
       {/* Expandable sidebar */}
-      <div className={cn(
-        "bg-sidebar shadow-sm border-sidebar-border flex-shrink-0 transition-all duration-300 ease-in-out",
-        sidebarExpanded ? "w-64" : "w-16"
-      )}>
+      <div
+        className={cn(
+          'bg-sidebar shadow-sm border-sidebar-border flex-shrink-0 transition-all duration-300 ease-in-out',
+          sidebarExpanded ? 'w-64' : 'w-16'
+        )}
+      >
         <SidebarContent
           setSidebarOpen={setSidebarOpen}
           expanded={sidebarExpanded}
@@ -128,7 +138,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Mobile Sidebar Overlay - still needed for mobile menu */}
       {sidebarOpen && (
         <Button
-          className="sm:hidden fixed inset-0 z-50 bg-black bg-opacity-50"
+          className="sm:hidden fixed inset-0 z-50 bg-black/50"
           onClick={() => setSidebarOpen(false)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') {

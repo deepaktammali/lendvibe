@@ -95,13 +95,14 @@ export default function FixedIncomePaymentDialog({ onSuccess }: FixedIncomePayme
                   <SelectContent>
                     {fixedIncomes.map((income) => (
                       <SelectItem key={income.id} value={income.id}>
-                        {income.label || income.tenant_name || 'Untitled'} - {formatCurrency(income.amount)}
+                        {income.label || income.tenant_name || 'Untitled'} -{' '}
+                        {formatCurrency(income.amount)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                  <p className="text-sm text-destructive">{field.state.meta.errors[0]?.message}</p>
                 )}
               </div>
             )}
@@ -125,7 +126,7 @@ export default function FixedIncomePaymentDialog({ onSuccess }: FixedIncomePayme
                   placeholder="0.00"
                 />
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                  <p className="text-sm text-destructive">{field.state.meta.errors[0]?.message}</p>
                 )}
               </div>
             )}
@@ -143,7 +144,7 @@ export default function FixedIncomePaymentDialog({ onSuccess }: FixedIncomePayme
                   onBlur={field.handleBlur}
                 />
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                  <p className="text-sm text-destructive">{field.state.meta.errors[0]?.message}</p>
                 )}
               </div>
             )}
@@ -161,7 +162,7 @@ export default function FixedIncomePaymentDialog({ onSuccess }: FixedIncomePayme
                   placeholder="Optional notes about this payment..."
                 />
                 {field.state.meta.errors.length > 0 && (
-                  <p className="text-sm text-red-600">{field.state.meta.errors[0]?.message}</p>
+                  <p className="text-sm text-destructive">{field.state.meta.errors[0]?.message}</p>
                 )}
               </div>
             )}

@@ -1,3 +1,19 @@
+import { useForm } from '@tanstack/react-form'
+import {
+  Calendar,
+  Clock,
+  Edit,
+  Eye,
+  IndianRupee,
+  Plus,
+  RefreshCw,
+  Search,
+  Trash2,
+  TrendingUp,
+  User,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,22 +62,6 @@ import {
 import { getCurrentDateISO } from '@/lib/utils'
 import { type FixedIncomeFormData, fixedIncomeSchema } from '@/lib/validation'
 import type { FixedIncome } from '@/types/api/fixedIncome'
-import { useForm } from '@tanstack/react-form'
-import {
-  Calendar,
-  Clock,
-  Edit,
-  Eye,
-  IndianRupee,
-  Plus,
-  RefreshCw,
-  Search,
-  Trash2,
-  TrendingUp,
-  User,
-} from 'lucide-react'
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 export default function FixedIncomePage() {
   const navigate = useNavigate()
@@ -177,8 +177,14 @@ export default function FixedIncomePage() {
       editFixedIncomeForm.setFieldValue('label', editingFixedIncome.label || '')
       editFixedIncomeForm.setFieldValue('payer_id', editingFixedIncome.payer_id || '')
       editFixedIncomeForm.setFieldValue('amount', editingFixedIncome.amount)
-      editFixedIncomeForm.setFieldValue('payment_interval_unit', editingFixedIncome.payment_interval_unit)
-      editFixedIncomeForm.setFieldValue('payment_interval_value', editingFixedIncome.payment_interval_value)
+      editFixedIncomeForm.setFieldValue(
+        'payment_interval_unit',
+        editingFixedIncome.payment_interval_unit
+      )
+      editFixedIncomeForm.setFieldValue(
+        'payment_interval_value',
+        editingFixedIncome.payment_interval_value
+      )
       editFixedIncomeForm.setFieldValue('start_date', editingFixedIncome.start_date)
       editFixedIncomeForm.setFieldValue('hasEndDate', !!editingFixedIncome.end_date)
       editFixedIncomeForm.setFieldValue('end_date', editingFixedIncome.end_date || '')
@@ -211,7 +217,6 @@ export default function FixedIncomePage() {
 
     return matchesSearch && matchesStatus
   })
-
 
   const getStatusBadge = (status: FixedIncome['status']) => {
     const variants = {
@@ -273,7 +278,7 @@ export default function FixedIncomePage() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -302,7 +307,7 @@ export default function FixedIncomePage() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -327,7 +332,7 @@ export default function FixedIncomePage() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -351,7 +356,7 @@ export default function FixedIncomePage() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -380,7 +385,7 @@ export default function FixedIncomePage() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -400,7 +405,7 @@ export default function FixedIncomePage() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -440,7 +445,7 @@ export default function FixedIncomePage() {
                               onBlur={field.handleBlur}
                             />
                             {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm text-red-600">
+                              <p className="text-sm text-destructive">
                                 {field.state.meta.errors[0]?.message}
                               </p>
                             )}
@@ -505,7 +510,7 @@ export default function FixedIncomePage() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -534,7 +539,7 @@ export default function FixedIncomePage() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -559,7 +564,7 @@ export default function FixedIncomePage() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -583,7 +588,7 @@ export default function FixedIncomePage() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -612,7 +617,7 @@ export default function FixedIncomePage() {
                         </SelectContent>
                       </Select>
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -632,7 +637,7 @@ export default function FixedIncomePage() {
                         onBlur={field.handleBlur}
                       />
                       {field.state.meta.errors.length > 0 && (
-                        <p className="text-sm text-red-600">
+                        <p className="text-sm text-destructive">
                           {field.state.meta.errors[0]?.message}
                         </p>
                       )}
@@ -672,7 +677,7 @@ export default function FixedIncomePage() {
                               onBlur={field.handleBlur}
                             />
                             {field.state.meta.errors.length > 0 && (
-                              <p className="text-sm text-red-600">
+                              <p className="text-sm text-destructive">
                                 {field.state.meta.errors[0]?.message}
                               </p>
                             )}
@@ -741,7 +746,7 @@ export default function FixedIncomePage() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <TrendingUp className="h-6 w-6 text-green-600" />
+              <TrendingUp className="h-6 w-6 text-primary" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Total Active</p>
                 <p className="text-base font-bold">
@@ -759,7 +764,7 @@ export default function FixedIncomePage() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <IndianRupee className="h-6 w-6 text-blue-600" />
+              <IndianRupee className="h-6 w-6 text-secondary" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Active Count</p>
                 <p className="text-base font-bold">
@@ -773,14 +778,14 @@ export default function FixedIncomePage() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Clock className="h-6 w-6 text-purple-600" />
+              <Clock className="h-6 w-6 text-accent-foreground" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Average Payment</p>
                 <p className="text-base font-bold">
                   {filteredFixedIncomes.length > 0
                     ? formatCurrency(
                         filteredFixedIncomes.reduce((sum, item) => sum + item.amount, 0) /
-                        filteredFixedIncomes.length
+                          filteredFixedIncomes.length
                       )
                     : formatCurrency(0)}
                 </p>
@@ -792,7 +797,7 @@ export default function FixedIncomePage() {
         <Card className="h-20">
           <CardContent className="p-3 h-full flex items-center">
             <div className="flex items-center">
-              <Calendar className="h-6 w-6 text-orange-600" />
+              <Calendar className="h-6 w-6 text-chart-4" />
               <div className="ml-3">
                 <p className="text-sm font-medium text-muted-foreground">Total Count</p>
                 <p className="text-base font-bold">{filteredFixedIncomes.length}</p>
@@ -823,9 +828,9 @@ export default function FixedIncomePage() {
         <CardContent>
           {filteredFixedIncomes.length === 0 ? (
             <div className="text-center py-8">
-              <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No fixed income assets found</p>
-              <p className="text-sm text-gray-400">
+              <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">No fixed income assets found</p>
+              <p className="text-sm text-muted-foreground/70">
                 {searchTerm || statusFilter !== 'all'
                   ? 'Try adjusting your search or filter'
                   : 'Create your first fixed income asset to get started'}
@@ -851,14 +856,14 @@ export default function FixedIncomePage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <User className="h-4 w-4 text-gray-400" />
+                        <User className="h-4 w-4 text-muted-foreground" />
                         <span>{item.tenant_name || 'No payer assigned'}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      {formatCurrency(item.amount)}
+                    <TableCell className="font-medium">{formatCurrency(item.amount)}</TableCell>
+                    <TableCell>
+                      {item.payment_interval_value} {item.payment_interval_unit}
                     </TableCell>
-                    <TableCell>{item.payment_interval_value} {item.payment_interval_unit}</TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-2">
@@ -869,11 +874,7 @@ export default function FixedIncomePage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(item)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(item)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <AlertDialog>
@@ -890,8 +891,9 @@ export default function FixedIncomePage() {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Fixed Income</AlertDialogTitle>
                               <AlertDialogDescription>
-                                Are you sure you want to delete "{deletingItem?.label || 'this fixed income'}"?
-                                This action cannot be undone and will also delete all related payment records.
+                                Are you sure you want to delete "
+                                {deletingItem?.label || 'this fixed income'}"? This action cannot be
+                                undone and will also delete all related payment records.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

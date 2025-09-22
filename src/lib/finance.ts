@@ -1,31 +1,184 @@
-import type { FixedIncome, Loan } from '@/types/database'
+import type { FixedIncome, Loan, Payment } from '@/types/database'
 import { isFixedIncomeType } from './loans'
 import { formatDate } from './utils'
 
 /**
  * Calculates expected interest for the next repayment period.
- * Formula: Current Balance × Rate (%) ÷ 100
+ * For installment loans: Current Balance × Rate (%) ÷ 100 per interval
+ * For bullet loans: Use calculateBulletLoanInterest for interval-based calculation
  */
 export function calculateAccruedInterest(
   loan: Pick<
     Loan,
-    'current_balance' | 'interest_rate' | 'repayment_interval_unit' | 'repayment_interval_value'
+    | 'current_balance'
+    | 'interest_rate'
+    | 'repayment_interval_unit'
+    | 'repayment_interval_value'
+    | 'loan_type'
   >
 ): number {
   if (loan.interest_rate <= 0 || loan.current_balance <= 0) {
     return 0
   }
 
-  // Simple calculation: principal × rate ÷ 100
+  // For bullet loans, this simple calculation is not appropriate
+  // Use calculateBulletLoanInterest instead for time-based calculation
+  if (loan.loan_type === 'bullet') {
+    throw new Error(
+      'Use calculateBulletLoanInterest for bullet loans - this function requires payment history'
+    )
+  }
+
+  // Interest calculation: principal × rate ÷ 100 per interval
+  // The interest_rate is already per interval (not annual)
   const periodInterest = loan.current_balance * (loan.interest_rate / 100)
 
   return Math.round(periodInterest * 100) / 100 // Round to 2 decimal places
 }
 
 /**
+ * Calculates interval-based interest for bullet loans using payment history.
+ * Interest rate is per interval (not annual).
+ */
+export function calculateBulletLoanInterest(
+  loan: Pick<
+    Loan,
+    | 'start_date'
+    | 'principal_amount'
+    | 'interest_rate'
+    | 'repayment_interval_unit'
+    | 'repayment_interval_value'
+  >,
+  payments: Payment[],
+  upToDate?: Date
+): {
+  totalInterestAccrued: number
+  totalInterestPaid: number
+  pendingInterest: number
+} {
+  if (loan.interest_rate <= 0 || loan.principal_amount <= 0) {
+    return { totalInterestAccrued: 0, totalInterestPaid: 0, pendingInterest: 0 }
+  }
+
+  const targetDate = upToDate || new Date()
+  const loanStartDate = new Date(loan.start_date)
+  const intervalUnit = loan.repayment_interval_unit || 'months'
+  const intervalValue = loan.repayment_interval_value || 1
+
+  // Sort payments by date
+  const sortedPayments = [...payments].sort(
+    (a, b) => new Date(a.payment_date).getTime() - new Date(b.payment_date).getTime()
+  )
+
+  let totalInterestAccrued = 0
+  let totalInterestPaid = 0
+  let currentPrincipal = loan.principal_amount
+  let lastDate = loanStartDate
+
+  // Calculate interest for each period between payments
+  for (const payment of sortedPayments) {
+    const paymentDate = new Date(payment.payment_date)
+
+    // Calculate number of complete intervals elapsed
+    const intervalsElapsed = calculateIntervalsElapsed(
+      lastDate,
+      paymentDate,
+      intervalUnit,
+      intervalValue
+    )
+
+    // Interest = Principal × Rate × Number of intervals
+    const interestForPeriod = currentPrincipal * (loan.interest_rate / 100) * intervalsElapsed
+
+    totalInterestAccrued += interestForPeriod
+    totalInterestPaid += payment.interest_amount
+
+    // Update principal balance after payment
+    currentPrincipal -= payment.principal_amount
+    lastDate = paymentDate
+  }
+
+  // Calculate interest from last payment to target date
+  const finalIntervalsElapsed = calculateIntervalsElapsed(
+    lastDate,
+    targetDate,
+    intervalUnit,
+    intervalValue
+  )
+  const finalInterestForPeriod =
+    currentPrincipal * (loan.interest_rate / 100) * finalIntervalsElapsed
+
+  totalInterestAccrued += finalInterestForPeriod
+
+  return {
+    totalInterestAccrued: Math.round(totalInterestAccrued * 100) / 100,
+    totalInterestPaid: Math.round(totalInterestPaid * 100) / 100,
+    pendingInterest: Math.round((totalInterestAccrued - totalInterestPaid) * 100) / 100,
+  }
+}
+
+/**
+ * Calculates the number of complete intervals elapsed between two dates
+ */
+function calculateIntervalsElapsed(
+  startDate: Date,
+  endDate: Date,
+  intervalUnit: 'days' | 'weeks' | 'months' | 'years',
+  intervalValue: number
+): number {
+  if (endDate <= startDate) return 0
+
+  let intervals = 0
+
+  switch (intervalUnit) {
+    case 'days': {
+      const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      intervals = Math.floor(daysDiff / intervalValue)
+      break
+    }
+    case 'weeks': {
+      const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+      intervals = Math.floor(daysDiff / (intervalValue * 7))
+      break
+    }
+    case 'months': {
+      const yearsDiff = endDate.getFullYear() - startDate.getFullYear()
+      const monthsDiff = endDate.getMonth() - startDate.getMonth()
+      const totalMonths = yearsDiff * 12 + monthsDiff
+
+      // Only count as complete interval if we've passed the day of month
+      let completeMonths = totalMonths
+      if (endDate.getDate() < startDate.getDate()) {
+        completeMonths -= 1
+      }
+
+      intervals = Math.floor(Math.max(0, completeMonths) / intervalValue)
+      break
+    }
+    case 'years': {
+      const yearsDiff = endDate.getFullYear() - startDate.getFullYear()
+
+      // Only count as complete interval if we've passed the anniversary
+      let completeYears = yearsDiff
+      if (
+        endDate.getMonth() < startDate.getMonth() ||
+        (endDate.getMonth() === startDate.getMonth() && endDate.getDate() < startDate.getDate())
+      ) {
+        completeYears -= 1
+      }
+
+      intervals = Math.floor(Math.max(0, completeYears) / intervalValue)
+      break
+    }
+  }
+
+  return Math.max(0, intervals)
+}
+
+/**
  * Calculates the expected payment amount for the next period.
  * For installment loans, this is typically the accrued interest.
- * For bullet losses, this might be interest-only.
+ * For bullet loans, there is no expected payment amount (manual payments).
  */
 export function calculateExpectedPaymentAmount(
   loan: Pick<
@@ -37,9 +190,14 @@ export function calculateExpectedPaymentAmount(
     | 'repayment_interval_value'
   >
 ): number {
+  // Bullet loans don't have expected payment amounts
+  if (loan.loan_type === 'bullet') {
+    return 0
+  }
+
   const accruedInterest = calculateAccruedInterest(loan)
 
-  // For most loan types, the expected payment is the accrued interest
+  // For installment loans, the expected payment is the accrued interest
   // This can be extended to include principal payments for specific loan types
   return accruedInterest
 }
@@ -182,9 +340,7 @@ export function getDaysSinceLastPayment(
 /**
  * Calculates accrued income for fixed income assets
  */
-export function calculateAccruedIncome(
-  fixedIncome: Pick<FixedIncome, 'amount'>
-): number {
+export function calculateAccruedIncome(fixedIncome: Pick<FixedIncome, 'amount'>): number {
   // In the simplified model, the amount IS the expected payment
   return fixedIncome.amount
 }
@@ -236,6 +392,7 @@ export function getDaysSinceLastIncomePayment(
 
 /**
  * Applies a payment to a loan, distributing it between accrued interest and principal.
+ * NOTE: For bullet loans, use applyBulletLoanPayment instead which allows manual allocation.
  */
 export function applyPayment(
   loan: Pick<
@@ -259,7 +416,14 @@ export function applyPayment(
     }
   }
 
-  // For installment and bullet loans:
+  // For bullet loans, use applyBulletLoanPayment with manual allocation
+  if (loan.loan_type === 'bullet') {
+    throw new Error(
+      'Use applyBulletLoanPayment for bullet loans - this function requires manual interest/principal allocation'
+    )
+  }
+
+  // For installment loans only:
   const accruedInterest = calculateAccruedInterest(loan)
 
   const interestPaid = Math.min(paymentAmount, accruedInterest)
@@ -273,6 +437,27 @@ export function applyPayment(
     newBalance: isPaidOff ? 0 : Math.round(newBalance * 100) / 100,
     principalPaid: Math.round(principalPaid * 100) / 100,
     interestPaid: Math.round(interestPaid * 100) / 100,
+    isPaidOff,
+  }
+}
+
+/**
+ * Applies a payment to a bullet loan with manual interest/principal allocation.
+ */
+export function applyBulletLoanPayment(
+  currentBalance: number,
+  interestAmount: number,
+  principalAmount: number
+): PaymentApplicationResult {
+  const newBalance = currentBalance - principalAmount
+
+  // Use a small threshold for floating point issues to determine if paid off
+  const isPaidOff = newBalance <= 0.005
+
+  return {
+    newBalance: isPaidOff ? 0 : Math.round(newBalance * 100) / 100,
+    principalPaid: Math.round(principalAmount * 100) / 100,
+    interestPaid: Math.round(interestAmount * 100) / 100,
     isPaidOff,
   }
 }

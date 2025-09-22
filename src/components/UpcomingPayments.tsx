@@ -1,3 +1,5 @@
+import { ArrowUpDown, Calendar, RefreshCw, Search, User, X } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,13 +23,9 @@ import { useGetBorrowers } from '@/hooks/api/useBorrowers'
 import { useGetFixedIncomesWithTenants } from '@/hooks/api/useFixedIncome'
 import { useGetLoans } from '@/hooks/api/useLoans'
 import { getPaymentSchedulesByLoan } from '@/lib/database'
-import type {
-  UpcomingPayment,
-} from '@/lib/finance'
+import type { UpcomingPayment } from '@/lib/finance'
 import { formatDate, parseDate } from '@/lib/utils'
 import { paymentService } from '@/services/api/payments.service'
-import { ArrowUpDown, Calendar, RefreshCw, Search, User, X } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
 
 interface UpcomingPaymentsProps {
   title?: string
@@ -97,13 +95,18 @@ export default function UpcomingPayments({
         const schedules = await getPaymentSchedulesByLoan(loan.id)
 
         // Find first unpaid schedule
-        const nextSchedule = schedules.find(s => s.status !== 'paid')
+        const nextSchedule = schedules.find((s) => s.status !== 'paid')
 
-        if (nextSchedule && (nextSchedule.total_interest_due > 0 || nextSchedule.total_principal_due > 0)) {
+        if (
+          nextSchedule &&
+          (nextSchedule.total_interest_due > 0 || nextSchedule.total_principal_due > 0)
+        ) {
           // Use payment schedule only if it has non-zero amounts
           const dueDate = new Date(nextSchedule.due_date)
-          const remainingInterest = nextSchedule.total_interest_due - nextSchedule.total_interest_paid
-          const remainingPrincipal = nextSchedule.total_principal_due - nextSchedule.total_principal_paid
+          const remainingInterest =
+            nextSchedule.total_interest_due - nextSchedule.total_interest_paid
+          const remainingPrincipal =
+            nextSchedule.total_principal_due - nextSchedule.total_principal_paid
 
           upcomingPayments.push({
             id: loan.id,
@@ -113,10 +116,16 @@ export default function UpcomingPayments({
             dueDate: formatDate(dueDate, 'iso'),
             accruedInterest: remainingInterest,
             expectedPaymentAmount: remainingInterest + remainingPrincipal,
-            daysSinceLastPayment: Math.floor((today.getTime() - new Date(loan.start_date).getTime()) / (1000 * 60 * 60 * 24)),
+            daysSinceLastPayment: Math.floor(
+              (today.getTime() - new Date(loan.start_date).getTime()) / (1000 * 60 * 60 * 24)
+            ),
             currentBalance: loan.current_balance,
-            paymentStatus: nextSchedule.status === 'overdue' ? 'overdue' :
-                          nextSchedule.status === 'partially_paid' ? 'partial' : 'pending',
+            paymentStatus:
+              nextSchedule.status === 'overdue'
+                ? 'overdue'
+                : nextSchedule.status === 'partially_paid'
+                  ? 'partial'
+                  : 'pending',
           })
         } else {
           // Fall back to simple calculation based on loan interval
@@ -126,7 +135,7 @@ export default function UpcomingPayments({
 
           // Calculate next due date based on loan start date and interval
           const today = new Date()
-          let nextDueDate = new Date(startDate)
+          const nextDueDate = new Date(startDate)
 
           // Find the next payment due date after today
           while (nextDueDate <= today) {
@@ -147,12 +156,12 @@ export default function UpcomingPayments({
           }
 
           // Calculate period interest
-          // Use the full interest rate for each interval payment
+          // Interest rate is already per interval
           const periodInterest = (loan.current_balance * loan.interest_rate) / 100
 
-          // For installment loans, payment includes both principal and interest
-          // This is a simplified calculation - actual installment calculation would be more complex
-          const expectedPayment = periodInterest + (loan.current_balance * 0.1) // Simple 10% principal
+          // For installment loans, use only accrued interest as expected payment
+          // Principal payments are variable and should be calculated by payment schedules
+          const expectedPayment = periodInterest
 
           upcomingPayments.push({
             id: loan.id,
@@ -162,7 +171,9 @@ export default function UpcomingPayments({
             dueDate: formatDate(nextDueDate, 'iso'),
             accruedInterest: periodInterest,
             expectedPaymentAmount: expectedPayment,
-            daysSinceLastPayment: Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
+            daysSinceLastPayment: Math.floor(
+              (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+            ),
             currentBalance: loan.current_balance,
             paymentStatus: nextDueDate < today ? 'overdue' : 'pending',
           })
@@ -176,7 +187,7 @@ export default function UpcomingPayments({
 
         // Calculate next due date based on loan start date and interval
         const today = new Date()
-        let nextDueDate = new Date(startDate)
+        const nextDueDate = new Date(startDate)
 
         // Find the next payment due date after today
         while (nextDueDate <= today) {
@@ -197,12 +208,12 @@ export default function UpcomingPayments({
         }
 
         // Calculate period interest
-        // Use the full interest rate for each interval payment
+        // Interest rate is already per interval
         const periodInterest = (loan.current_balance * loan.interest_rate) / 100
 
-        // For installment loans, payment includes both principal and interest
-        // This is a simplified calculation - actual installment calculation would be more complex
-        const expectedPayment = periodInterest + (loan.current_balance * 0.1) // Simple 10% principal
+        // For installment loans, use only accrued interest as expected payment
+        // Principal payments are variable and should be calculated by payment schedules
+        const expectedPayment = periodInterest
 
         upcomingPayments.push({
           id: loan.id,
@@ -212,7 +223,9 @@ export default function UpcomingPayments({
           dueDate: formatDate(nextDueDate, 'iso'),
           accruedInterest: periodInterest,
           expectedPaymentAmount: expectedPayment,
-          daysSinceLastPayment: Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
+          daysSinceLastPayment: Math.floor(
+            (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+          ),
           currentBalance: loan.current_balance,
           paymentStatus: nextDueDate < today ? 'overdue' : 'pending',
         })
@@ -229,24 +242,30 @@ export default function UpcomingPayments({
       const intervalValue = fixedIncome.payment_interval_value || 1
 
       // Calculate next due date based on fixed income start date and interval
-      let nextDueDate = new Date(startDate)
+      const nextDueDate = new Date(startDate)
 
       // Calculate how many intervals have passed since start
       let intervalsPassed = 0
 
       switch (intervalUnit) {
         case 'days':
-          intervalsPassed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+          intervalsPassed = Math.floor(
+            (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+          )
           intervalsPassed = Math.floor(intervalsPassed / intervalValue)
           nextDueDate.setDate(startDate.getDate() + (intervalsPassed + 1) * intervalValue)
           break
         case 'weeks':
-          intervalsPassed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7))
+          intervalsPassed = Math.floor(
+            (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 7)
+          )
           intervalsPassed = Math.floor(intervalsPassed / intervalValue)
           nextDueDate.setDate(startDate.getDate() + (intervalsPassed + 1) * intervalValue * 7)
           break
         case 'months':
-          intervalsPassed = (today.getFullYear() - startDate.getFullYear()) * 12 + (today.getMonth() - startDate.getMonth())
+          intervalsPassed =
+            (today.getFullYear() - startDate.getFullYear()) * 12 +
+            (today.getMonth() - startDate.getMonth())
           intervalsPassed = Math.floor(intervalsPassed / intervalValue)
           nextDueDate.setMonth(startDate.getMonth() + (intervalsPassed + 1) * intervalValue)
           break
@@ -268,7 +287,9 @@ export default function UpcomingPayments({
         dueDate: formatDate(nextDueDate, 'iso'),
         accruedInterest: periodIncome,
         expectedPaymentAmount: periodIncome,
-        daysSinceLastPayment: Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)),
+        daysSinceLastPayment: Math.floor(
+          (today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+        ),
         currentBalance: 0,
         assetValue: fixedIncome.amount,
         paymentStatus: nextDueDate < today ? 'overdue' : 'pending',
@@ -299,14 +320,17 @@ export default function UpcomingPayments({
   }, [loans, borrowers, calculateUpcomingPayments])
 
   // Get unique borrowers and interval types for filter dropdowns
-  const uniqueBorrowers = Array.from(new Set(upcomingPayments.map(p => p.borrowerName))).sort()
-  const uniqueIntervals = Array.from(new Set([
-    ...loans.map(loan => loan.repayment_interval_unit || 'months'),
-    ...fixedIncomes.map(fixedIncome => fixedIncome.payment_interval_unit || 'months')
-  ])).sort()
+  const uniqueBorrowers = Array.from(new Set(upcomingPayments.map((p) => p.borrowerName))).sort()
+  const uniqueIntervals = Array.from(
+    new Set([
+      ...loans.map((loan) => loan.repayment_interval_unit || 'months'),
+      ...fixedIncomes.map((fixedIncome) => fixedIncome.payment_interval_unit || 'months'),
+    ])
+  ).sort()
 
   // Helper functions for filters
-  const hasActiveFilters = searchTerm || borrowerFilter !== 'all' || intervalFilter !== 'all' || statusFilter !== 'all'
+  const hasActiveFilters =
+    searchTerm || borrowerFilter !== 'all' || intervalFilter !== 'all' || statusFilter !== 'all'
 
   const clearAllFilters = () => {
     setSearchTerm('')
@@ -332,17 +356,17 @@ export default function UpcomingPayments({
 
   // Borrower filter
   if (borrowerFilter !== 'all') {
-    filteredPayments = filteredPayments.filter(payment => payment.borrowerName === borrowerFilter)
+    filteredPayments = filteredPayments.filter((payment) => payment.borrowerName === borrowerFilter)
   }
 
   // Interval type filter
   if (intervalFilter !== 'all') {
-    filteredPayments = filteredPayments.filter(payment => {
+    filteredPayments = filteredPayments.filter((payment) => {
       if (payment.type === 'loan') {
-        const loan = loans.find(l => l.id === payment.id)
+        const loan = loans.find((l) => l.id === payment.id)
         return loan && (loan.repayment_interval_unit || 'months') === intervalFilter
       } else {
-        const fixedIncome = fixedIncomes.find(fi => fi.id === payment.id)
+        const fixedIncome = fixedIncomes.find((fi) => fi.id === payment.id)
         return fixedIncome && fixedIncome.payment_interval_unit === intervalFilter
       }
     })
@@ -350,14 +374,15 @@ export default function UpcomingPayments({
 
   // Status filter
   if (statusFilter !== 'all') {
-    filteredPayments = filteredPayments.filter(payment => payment.paymentStatus === statusFilter)
+    filteredPayments = filteredPayments.filter((payment) => payment.paymentStatus === statusFilter)
   }
 
   // Search filter
   if (searchTerm) {
-    filteredPayments = filteredPayments.filter(payment =>
-      payment.borrowerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.assetType.toLowerCase().includes(searchTerm.toLowerCase())
+    filteredPayments = filteredPayments.filter(
+      (payment) =>
+        payment.borrowerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        payment.assetType.toLowerCase().includes(searchTerm.toLowerCase())
     )
   }
 
@@ -435,7 +460,7 @@ export default function UpcomingPayments({
         // refetchPayments(),
         refetchLoans(),
         refetchBorrowers(),
-        refetchFixedIncomes()
+        refetchFixedIncomes(),
       ])
       // The useEffect will automatically recalculate when data changes
       onRefresh?.()
@@ -496,8 +521,10 @@ export default function UpcomingPayments({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Borrowers</SelectItem>
-                {uniqueBorrowers.map(borrower => (
-                  <SelectItem key={borrower} value={borrower}>{borrower}</SelectItem>
+                {uniqueBorrowers.map((borrower) => (
+                  <SelectItem key={borrower} value={borrower}>
+                    {borrower}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -507,7 +534,7 @@ export default function UpcomingPayments({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Intervals</SelectItem>
-                {uniqueIntervals.map(interval => (
+                {uniqueIntervals.map((interval) => (
                   <SelectItem key={interval} value={interval}>
                     {`${interval.charAt(0).toUpperCase()}${interval.slice(1)}`}
                   </SelectItem>
@@ -527,12 +554,7 @@ export default function UpcomingPayments({
               </SelectContent>
             </Select>
             {hasActiveFilters && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={clearAllFilters}
-                className="shrink-0"
-              >
+              <Button variant="outline" size="sm" onClick={clearAllFilters} className="shrink-0">
                 <X className="h-4 w-4" />
               </Button>
             )}
